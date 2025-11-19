@@ -1,3 +1,4 @@
+```
 research-app-expo/
 ├── mobile/                       # Expo app (React Native + TS)
 │   ├── app.json
@@ -76,3 +77,5 @@ research-app-expo/
 │       └── e2e-build.yml
 ├── README.md
 └── LICENSE
+
+```
