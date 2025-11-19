@@ -1,1 +1,0 @@
-## This is a project that make a app for taking quastionare for the reasearch 
