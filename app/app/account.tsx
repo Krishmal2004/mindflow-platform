@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView } from 'react-native';
+import { StyleSheet, View, SafeAreaView, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import { useSession } from '../src/contexts/SessionContext';
 import Auth from '../src/components/Auth';
-import Dashboard from '../src/components/Dashboard';
-import AboutMe from '../src/components/AboutMe';
+import AccountComponent from '../src/components/Account';
+import { supabase } from '../src/lib/supabase';
 
-export default function HomeScreen() {
+export default function AccountScreen() {
   const { session, loading } = useSession();
-  const [showAboutMe, setShowAboutMe] = useState(false);
-
+  
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -16,18 +15,14 @@ export default function HomeScreen() {
       </SafeAreaView>
     );
   }
-
+  
   if (!session) {
     return <Auth />;
   }
 
-  if (showAboutMe) {
-    return <AboutMe session={session} onBack={() => setShowAboutMe(false)} />;
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      <Dashboard session={session} onNavigateToAboutMe={() => setShowAboutMe(true)} />
+      <AccountComponent session={session} />
     </SafeAreaView>
   );
 }
