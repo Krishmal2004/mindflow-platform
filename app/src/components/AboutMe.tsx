@@ -1,16 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  Alert, 
-  ActivityIndicator 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
+
+// Custom SVG Icons
+const Icons = {
+  school: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M12 3L1 9L12 15L21 10.09V17H23V9L12 3Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M12 15V22" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  graduation: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M22 10L12 5L2 10L12 15L22 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M6 12V18C6 19.1046 7.89543 20 12 20C16.1046 20 18 19.1046 18 18V12" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  book: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M4 19.5C4 18.837 4.26339 18.2011 4.73223 17.7322C5.20107 17.2634 5.83696 17 6.5 17H20V5H6.5C5.83696 5 5.20107 5.26339 4.73223 5.73223C4.26339 6.20107 4 6.83696 4 7.5V19.5Z" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M20 17H6.5C5.83696 17 5.20107 17.2634 4.73223 17.7322C4.26339 18.2011 4 18.837 4 19.5C4 20.163 4.26339 20.7989 4.73223 21.2678C5.20107 21.7366 5.83696 22 6.5 22H20" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  calendar: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Rect x="3" y="4" width="18" height="18" rx="2" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  home: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M9 22V12H15V22" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  family: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M6 20C6 16.6863 8.68629 14 12 14C15.3137 14 18 16.6863 18 20" stroke="#64C59A" strokeWidth="2"/>
+      <Circle cx="19" cy="7" r="3" stroke="#64C59A" strokeWidth="2"/>
+      <Circle cx="5" cy="7" r="3" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  globe: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M2 12H22" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M12 2C14.5013 4.73835 15.9228 8.29203 16 12C15.9228 15.708 14.5013 19.2616 12 22C9.49872 19.2616 8.07725 15.708 8 12C8.07725 8.29203 9.49872 4.73835 12 2Z" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  heart: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M20.84 4.61C20.3292 4.099 19.7228 3.69364 19.0554 3.41708C18.3879 3.14052 17.6725 2.99817 16.95 2.99817C16.2275 2.99817 15.5121 3.14052 14.8446 3.41708C14.1772 3.69364 13.5708 4.099 13.06 4.61L12 5.67L10.94 4.61C9.90836 3.57831 8.50903 2.99884 7.05 2.99884C5.59096 2.99884 4.19164 3.57831 3.16 4.61C2.12831 5.64169 1.54884 7.04102 1.54884 8.5C1.54884 9.95898 2.12831 11.3583 3.16 12.39L4.22 13.45L12 21.23L19.78 13.45L20.84 12.39C21.351 11.8792 21.7564 11.2728 22.0329 10.6054C22.3095 9.93789 22.4518 9.22249 22.4518 8.5C22.4518 7.77751 22.3095 7.0621 22.0329 6.39464C21.7564 5.72718 21.351 5.12075 20.84 4.61Z" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  target: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+      <Circle cx="12" cy="12" r="6" stroke="#64C59A" strokeWidth="2"/>
+      <Circle cx="12" cy="12" r="2" fill="#64C59A"/>
+    </Svg>
+  ),
+  mindflow: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M12 2C13.3137 2 14.6136 2.25866 15.8268 2.75866C17.04 3.25866 18.1421 4.00001 19.071 5.00001C20 6.00001 20.7424 7.14214 21.2424 8.35534C21.7424 9.56854 22 10.8137 22 12" stroke="#64C59A" strokeWidth="2.5" strokeLinecap="round"/>
+      <Path d="M12 22C10.6863 22 9.38642 21.7413 8.17317 21.2413C6.95991 20.7413 5.85786 20 4.92893 19C4 18 3.25759 16.8579 2.75759 15.6447C2.25759 14.4315 2 13.1863 2 12" stroke="#64C59A" strokeWidth="2.5" strokeLinecap="round"/>
+      <Path d="M8 14C8.65661 14.6278 9.50909 15 10.4142 15C12.2142 15 13.4142 13.6569 13.4142 12C13.4142 10.3431 12.2142 9 10.4142 9C9.50909 9 8.65661 9.37216 8 10" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+};
 
 interface AboutMeData {
   university_id: string;
@@ -23,30 +97,31 @@ interface AboutMeData {
   hobbies_interests: string;
   personal_goals: string;
   why_mindflow: string;
-  is_completed: boolean;
-  completion_percentage: number;
 }
 
-const livingSituations = [
-  "Dorm",
-  "Off-campus housing",
-  "With family",
-  "Other"
+const questions = [
+  { key: 'university_id', Icon: Icons.school, title: 'University ID', subtitle: 'Your official student ID', required: true },
+  { key: 'education_level', Icon: Icons.graduation, title: 'Education Level', subtitle: 'Current academic year', required: true },
+  { key: 'major_field_of_study', Icon: Icons.book, title: 'Major / Field of Study', subtitle: 'What are you studying?', required: true },
+  { key: 'age', Icon: Icons.calendar, title: 'Age', subtitle: 'How old are you?', required: true },
+  { key: 'living_situation', Icon: Icons.home, title: 'Living Situation', subtitle: 'Where do you currently live?', required: true },
+  { key: 'family_background', Icon: Icons.family, title: 'Family Background', subtitle: 'Tell us about your family', required: false },
+  { key: 'cultural_background', Icon: Icons.globe, title: 'Cultural Background', subtitle: 'Your culture & heritage', required: false },
+  { key: 'hobbies_interests', Icon: Icons.heart, title: 'Hobbies & Interests', subtitle: 'What do you enjoy doing?', required: false },
+  { key: 'personal_goals', Icon: Icons.target, title: 'Personal Goals', subtitle: 'What are you working towards?', required: false },
+  { key: 'why_mindflow', Icon: Icons.mindflow, title: 'Why MindFlow?', subtitle: 'What brings you here?', required: true },
 ];
 
-const educationLevels = [
-  "First Year",
-  "Second Year",
-  "Third Year",
-  "Fourth Year",
-  "Graduate Student",
-  "Other"
-];
+const educationLevels = ["First Year", "Second Year", "Third Year", "Fourth Year", "Graduate Student", "Other"];
+const livingSituations = ["Dorm", "Off-campus housing", "With family", "Other"];
 
-export default function AboutMe({ session, onBack }: { session: Session, onBack: () => void }) {
+export default function AboutMe({ session, onBack }: { session: Session; onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [aboutMeData, setAboutMeData] = useState<AboutMeData>({
+  const [declarationChecked, setDeclarationChecked] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [data, setData] = useState<AboutMeData>({
     university_id: '',
     education_level: '',
     major_field_of_study: '',
@@ -57,555 +132,330 @@ export default function AboutMe({ session, onBack }: { session: Session, onBack:
     hobbies_interests: '',
     personal_goals: '',
     why_mindflow: '',
-    is_completed: false,
-    completion_percentage: 0
   });
 
+  // Compute completion percentage
+  const requiredQuestions = questions.filter(q => q.required);
+  const filledRequired = requiredQuestions.filter(q => {
+    const value = data[q.key as keyof AboutMeData];
+    return value !== '' && value !== null && value !== undefined;
+  }).length;
+  const completionPercentage = requiredQuestions.length > 0
+    ? Math.round((filledRequired / requiredQuestions.length) * 100)
+    : 0;
+
   useEffect(() => {
-    fetchAboutMeData();
+    fetchData();
   }, []);
 
-  // Calculate completion percentage whenever aboutMeData changes
-  useEffect(() => {
-    const completionPercentage = calculateCompletion();
-    setAboutMeData(prev => ({
-      ...prev,
-      completion_percentage: completionPercentage
-    }));
-  }, [aboutMeData.university_id, aboutMeData.education_level, aboutMeData.major_field_of_study, 
-      aboutMeData.age, aboutMeData.living_situation, aboutMeData.family_background, 
-      aboutMeData.cultural_background, aboutMeData.hobbies_interests, 
-      aboutMeData.personal_goals, aboutMeData.why_mindflow]);
-
-  async function fetchAboutMeData() {
+  async function fetchData() {
     try {
       setLoading(true);
-      if (!session?.user) throw new Error('No user on the session!');
-
-      const { data, error } = await supabase
+      const { data: profile } = await supabase
         .from('about_me_profiles')
         .select('*')
         .eq('id', session?.user.id)
         .single();
 
-      if (error) throw error;
-
-      if (data) {
-        const completionPercentage = calculateCompletionFromData(data);
-        setAboutMeData({
-          university_id: data.university_id || '',
-          education_level: data.education_level || '',
-          major_field_of_study: data.major_field_of_study || '',
-          age: data.age,
-          living_situation: data.living_situation || '',
-          family_background: data.family_background || '',
-          cultural_background: data.cultural_background || '',
-          hobbies_interests: data.hobbies_interests || '',
-          personal_goals: data.personal_goals || '',
-          why_mindflow: data.why_mindflow || '',
-          is_completed: data.is_completed || false,
-          completion_percentage: completionPercentage
-        });
+      if (profile) {
+        setData(prev => ({ ...prev, ...profile }));
+        if (profile.is_completed) {
+          setShowSuccessModal(true);
+        }
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert('Error', error.message);
-      }
+    } catch (e) {
+      console.log("No profile yet or error:", e);
     } finally {
       setLoading(false);
     }
   }
 
-  function calculateCompletionFromData(data: any): number {
-    const fields = [
-      data.university_id,
-      data.education_level,
-      data.major_field_of_study,
-      data.age,
-      data.living_situation,
-      data.family_background,
-      data.cultural_background,
-      data.hobbies_interests,
-      data.personal_goals,
-      data.why_mindflow
-    ];
-    
-    const filledFields = fields.filter(field => 
-      field !== null && field !== undefined && field !== ''
-    ).length;
-    
-    return Math.round((filledFields / fields.length) * 100);
-  }
+  async function save() {
+    if (!declarationChecked) {
+      Alert.alert("Declaration Required", "Please confirm that your information is accurate before submitting.");
+      return;
+    }
 
-  function calculateCompletion(): number {
-    const fields = [
-      aboutMeData.university_id,
-      aboutMeData.education_level,
-      aboutMeData.major_field_of_study,
-      aboutMeData.age,
-      aboutMeData.living_situation,
-      aboutMeData.family_background,
-      aboutMeData.cultural_background,
-      aboutMeData.hobbies_interests,
-      aboutMeData.personal_goals,
-      aboutMeData.why_mindflow
-    ];
-    
-    const filledFields = fields.filter(field => 
-      field !== null && field !== undefined && field !== ''
-    ).length;
-    
-    return Math.round((filledFields / fields.length) * 100);
-  }
-
-  async function saveAboutMeData() {
     try {
       setSaving(true);
-      if (!session?.user) throw new Error('No user on the session!');
+      const isCompleted = completionPercentage === 100;
 
-      const isCompleted = aboutMeData.completion_percentage === 100;
-
-      const updates = {
+      await supabase.from('about_me_profiles').upsert({
         id: session?.user.id,
-        university_id: aboutMeData.university_id,
-        education_level: aboutMeData.education_level,
-        major_field_of_study: aboutMeData.major_field_of_study,
-        age: aboutMeData.age,
-        living_situation: aboutMeData.living_situation,
-        family_background: aboutMeData.family_background,
-        cultural_background: aboutMeData.cultural_background,
-        hobbies_interests: aboutMeData.hobbies_interests,
-        personal_goals: aboutMeData.personal_goals,
-        why_mindflow: aboutMeData.why_mindflow,
-        completion_percentage: aboutMeData.completion_percentage,
+        ...data,
+        completion_percentage: completionPercentage,
         is_completed: isCompleted,
-        updated_at: new Date(),
-      };
-
-      const { error } = await supabase.from('about_me_profiles').upsert(updates);
-
-      if (error) throw error;
-
-      Alert.alert(
-        'Success', 
-        isCompleted 
-          ? 'Your profile has been completed! You can update these answers anytime in settings.' 
-          : 'Your answers have been saved!',
-        [{ text: 'OK', onPress: () => {
-          if (isCompleted) {
-            onBack();
-          }
-        }}]
-      );
-
-      // Update local state
-      setAboutMeData({
-        ...aboutMeData,
-        is_completed: isCompleted
       });
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert('Save Failed', error.message);
+
+      if (isCompleted) {
+        setShowSuccessModal(true);
+      } else {
+        Alert.alert('Saved!', 'Your progress has been saved.', [{ text: 'OK' }]);
       }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
   }
 
-  function updateField(field: keyof AboutMeData, value: any) {
-    setAboutMeData({
-      ...aboutMeData,
-      [field]: value
-    });
-  }
+  const update = (key: keyof AboutMeData, value: any) => {
+    setData(prev => ({ ...prev, [key]: value }));
+  };
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#64C59A" />
-          <Text style={styles.loadingText}>Loading your profile...</Text>
-        </View>
+        <ActivityIndicator size="large" color="#64C59A" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+      {/* Header */}
+      <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>About Me</Text>
-        <Text style={styles.subtitle}>One-time profile setup to personalize your experience</Text>
-      </View>
-
-      <View style={styles.completionContainer}>
-        <View style={styles.completionBarBackground}>
-          <View 
-            style={[
-              styles.completionBar, 
-              { width: `${aboutMeData.completion_percentage}%` }
-            ]} 
-          />
+        <Text style={styles.headerTitle}>About Me</Text>
+        <Text style={styles.headerSubtitle}>One-time background questions</Text>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <Animated.View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
+          </View>
+          <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
         </View>
-        <Text style={styles.completionText}>{aboutMeData.completion_percentage}% Complete</Text>
-      </View>
+      </LinearGradient>
 
-      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Academic Information</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>University ID *</Text>
-            <TextInput
-              style={styles.input}
-              value={aboutMeData.university_id}
-              onChangeText={(text) => updateField('university_id', text)}
-              placeholder="Enter your university ID"
-              placeholderTextColor="#A0A0A0"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Education Level *</Text>
-            <View style={styles.pickerContainer}>
-              {educationLevels.map((level) => (
-                <TouchableOpacity
-                  key={level}
-                  style={[
-                    styles.pickerItem,
-                    aboutMeData.education_level === level && styles.selectedPickerItem
-                  ]}
-                  onPress={() => updateField('education_level', level)}
-                >
-                  <Text style={[
-                    styles.pickerItemText,
-                    aboutMeData.education_level === level && styles.selectedPickerItemText
-                  ]}>
-                    {level}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Major / Field of Study *</Text>
-            <TextInput
-              style={styles.input}
-              value={aboutMeData.major_field_of_study}
-              onChangeText={(text) => updateField('major_field_of_study', text)}
-              placeholder="e.g., Computer Science, Psychology"
-              placeholderTextColor="#A0A0A0"
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Age *</Text>
-            <TextInput
-              style={styles.input}
-              value={aboutMeData.age ? aboutMeData.age.toString() : ''}
-              onChangeText={(text) => updateField('age', parseInt(text) || null)}
-              placeholder="Enter your age"
-              placeholderTextColor="#A0A0A0"
-              keyboardType="numeric"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Living Situation *</Text>
-            <View style={styles.pickerContainer}>
-              {livingSituations.map((situation) => (
-                <TouchableOpacity
-                  key={situation}
-                  style={[
-                    styles.pickerItem,
-                    aboutMeData.living_situation === situation && styles.selectedPickerItem
-                  ]}
-                  onPress={() => updateField('living_situation', situation)}
-                >
-                  <Text style={[
-                    styles.pickerItemText,
-                    aboutMeData.living_situation === situation && styles.selectedPickerItemText
-                  ]}>
-                    {situation}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Background & Interests</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Family Background</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={aboutMeData.family_background}
-              onChangeText={(text) => updateField('family_background', text)}
-              placeholder="Describe your family background"
-              placeholderTextColor="#A0A0A0"
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Cultural Background</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={aboutMeData.cultural_background}
-              onChangeText={(text) => updateField('cultural_background', text)}
-              placeholder="Describe your cultural background"
-              placeholderTextColor="#A0A0A0"
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hobbies & Interests</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={aboutMeData.hobbies_interests}
-              onChangeText={(text) => updateField('hobbies_interests', text)}
-              placeholder="List your hobbies and interests"
-              placeholderTextColor="#A0A0A0"
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Goals & Motivation</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Personal Goals</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={aboutMeData.personal_goals}
-              onChangeText={(text) => updateField('personal_goals', text)}
-              placeholder="What are your personal goals?"
-              placeholderTextColor="#A0A0A0"
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Why MindFlow? *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={aboutMeData.why_mindflow}
-              onChangeText={(text) => updateField('why_mindflow', text)}
-              placeholder="What motivated you to join MindFlow?"
-              placeholderTextColor="#A0A0A0"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
-        </View>
-
-        <View style={styles.noteContainer}>
-          <Text style={styles.noteText}>
-            Note: You can update these answers anytime in settings
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
+          <Text style={styles.helpTitle}>Help us know you better</Text>
+          <Text style={styles.helpText}>
+            Please provide accurate and truthful information. This helps us personalize your MindFlow experience.
           </Text>
-        </View>
+        </Animated.View>
 
-        <TouchableOpacity 
-          style={styles.saveButton} 
-          onPress={saveAboutMeData}
-          disabled={saving}
+        {questions.map((q, i) => (
+          <Animated.View key={q.key} entering={FadeInDown.delay(150 + i * 60)} style={styles.questionCard}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <q.Icon />
+              </View>
+              <View style={styles.questionText}>
+                <Text style={styles.questionTitle}>
+                  {q.title} {q.required && <Text style={{ color: '#FF6B6B' }}>*</Text>}
+                </Text>
+                <Text style={styles.questionSubtitle}>{q.subtitle}</Text>
+              </View>
+              <View style={[styles.dot, data[q.key as keyof AboutMeData] ? styles.dotFilled : {}]} />
+            </View>
+
+            {/* Special Inputs */}
+            {q.key === 'education_level' && (
+              <View style={styles.pillContainer}>
+                {educationLevels.map(level => (
+                  <TouchableOpacity
+                    key={level}
+                    style={[styles.pill, data.education_level === level && styles.pillActive]}
+                    onPress={() => update('education_level', level)}
+                  >
+                    <Text style={[styles.pillText, data.education_level === level && styles.pillTextActive]}>
+                      {level}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {q.key === 'living_situation' && (
+              <View style={styles.pillContainer}>
+                {livingSituations.map(sit => (
+                  <TouchableOpacity
+                    key={sit}
+                    style={[styles.pill, data.living_situation === sit && styles.pillActive]}
+                    onPress={() => update('living_situation', sit)}
+                  >
+                    <Text style={[styles.pillText, data.living_situation === sit && styles.pillTextActive]}>
+                      {sit}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {q.key === 'age' && (
+              <TextInput
+                style={styles.textInput}
+                value={data.age?.toString() || ''}
+                onChangeText={t => update('age', parseInt(t) || null)}
+                placeholder="e.g. 21"
+                keyboardType="numeric"
+              />
+            )}
+
+            {['university_id', 'major_field_of_study', 'family_background', 'cultural_background',
+              'hobbies_interests', 'personal_goals', 'why_mindflow'].includes(q.key) && (
+              <TextInput
+                style={[styles.textInput, q.key.includes('background') || q.key === 'why_mindflow' ? styles.multiline : {}]}
+                value={data[q.key as keyof AboutMeData] as string}
+                onChangeText={t => update(q.key as keyof AboutMeData, t)}
+                placeholder="Type your answer..."
+                multiline={q.key.includes('background') || q.key === 'why_mindflow'}
+                textAlignVertical="top"
+              />
+            )}
+          </Animated.View>
+        ))}
+
+        {/* Declaration */}
+        <TouchableOpacity
+          style={[styles.checkboxContainer, declarationChecked && styles.checkboxChecked]}
+          onPress={() => setDeclarationChecked(!declarationChecked)}
         >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveButtonText}>
-              {aboutMeData.is_completed ? 'Update My Answers' : 'Save My Answers'}
-            </Text>
-          )}
+          <View style={[styles.checkbox, declarationChecked && styles.checkboxActive]}>
+            {declarationChecked && <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Check</Text>}
+          </View>
+          <Text style={styles.checkboxLabel}>
+            I hereby confirm that all information provided above is true, accurate, and complete to the best of my knowledge.
+          </Text>
         </TouchableOpacity>
 
-        <View style={{ height: 30 }} />
+        {/* Submit Button */}
+        <TouchableOpacity
+          style={[
+            styles.saveBtn,
+            (!declarationChecked || completionPercentage < 100) && styles.saveBtnDisabled
+          ]}
+          onPress={save}
+          disabled={saving || !declarationChecked || completionPercentage < 100}
+        >
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Submit My Profile</Text>}
+        </TouchableOpacity>
+
+        <Text style={styles.footerNote}>
+          This information is used to improve your experience and will not be shared without consent.
+        </Text>
       </ScrollView>
+
+      {/* SUCCESS MODAL */}
+      <Modal visible={showSuccessModal} transparent animationType="fade">
+  <View style={styles.modalOverlay}>
+    <Animated.View entering={ZoomIn.duration(600)} style={styles.successCard}>
+      
+      {/* M3-STYLE SUCCESS HEADER WITH CUSTOM ANIMATED CHECKMARK */}
+      <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.successHeader}>
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <Animated.View entering={BounceIn.delay(300).springify()}>
+            <Svg width="80" height="80" viewBox="0 0 24 24" fill="none">
+              {/* Outer Circle */}
+              <Circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="#fff"
+                strokeWidth="2.5"
+                opacity="0.3"
+              />
+              {/* Animated Checkmark - Thick & Satisfying */}
+              <Path
+                d="M6 12L10 16L18 8"
+                stroke="#fff"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </Svg>
+          </Animated.View>
+        </View>
+
+        <Text style={styles.successTitle}>You're All Set!</Text>
+        <Text style={styles.successSubtitle}>Welcome to MindFlow</Text>
+      </LinearGradient>
+
+            <ScrollView style={styles.summaryContainer} showsVerticalScrollIndicator={false}>
+              <Text style={styles.summaryTitle}>Here's your profile summary:</Text>
+
+              {data.university_id && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>University ID</Text><Text style={styles.summaryValue}>{data.university_id}</Text></View>}
+              {data.education_level && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Education Level</Text><Text style={styles.summaryValue}>{data.education_level}</Text></View>}
+              {data.major_field_of_study && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Major</Text><Text style={styles.summaryValue}>{data.major_field_of_study}</Text></View>}
+              {data.age && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Age</Text><Text style={styles.summaryValue}>{data.age} years old</Text></View>}
+              {data.living_situation && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Living</Text><Text style={styles.summaryValue}>{data.living_situation}</Text></View>}
+              {data.family_background && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Family</Text><Text style={styles.summaryValue}>{data.family_background}</Text></View>}
+              {data.cultural_background && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Culture</Text><Text style={styles.summaryValue}>{data.cultural_background}</Text></View>}
+              {data.hobbies_interests && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Hobbies</Text><Text style={styles.summaryValue}>{data.hobbies_interests}</Text></View>}
+              {data.personal_goals && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Goals</Text><Text style={styles.summaryValue}>{data.personal_goals}</Text></View>}
+              {data.why_mindflow && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Why MindFlow?</Text><Text style={styles.summaryValue}>{data.why_mindflow}</Text></View>}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.closeSuccessBtn}
+              onPress={() => {
+                setShowSuccessModal(false);
+                onBack();
+              }}
+            >
+              <Text style={styles.closeSuccessText}>Back to Dashboard</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5FCFF',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#333333',
-  },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 20,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  backButton: {
-    marginBottom: 12,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#64C59A',
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
-  },
-  completionContainer: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  completionBarBackground: {
-    height: 10,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 5,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  completionBar: {
-    height: '100%',
-    backgroundColor: '#64C59A',
-    borderRadius: 5,
-  },
-  completionText: {
-    fontSize: 14,
-    color: '#333333',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333333',
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  pickerItem: {
-    backgroundColor: '#F0F9F6',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#64C59A',
-  },
-  selectedPickerItem: {
-    backgroundColor: '#64C59A',
-  },
-  pickerItemText: {
-    fontSize: 14,
-    color: '#333333',
-  },
-  selectedPickerItemText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  noteContainer: {
-    backgroundColor: '#E8F5F1',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  noteText: {
-    fontSize: 14,
-    color: '#2E8A66',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  saveButton: {
-    backgroundColor: '#64C59A',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#64C59A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 18,
-  },
+  container: { flex: 1, backgroundColor: '#F8FDFC' },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
+  backBtn: { position: 'absolute', left: 20, top: 60 },
+  backText: { fontSize: 28, color: '#fff' },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginTop: 10 },
+  headerSubtitle: { fontSize: 16, color: '#E8F5F1', marginTop: 6 },
+  progressContainer: { marginTop: 20, width: '100%', alignItems: 'center' },
+  progressBar: { height: 10, width: '85%', backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 10, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 10 },
+  progressText: { marginTop: 10, color: '#fff', fontSize: 15, fontWeight: '600' },
+  helpCard: { margin: 20, backgroundColor: '#E8F5F1', borderRadius: 20, padding: 20 },
+  helpTitle: { fontSize: 18, fontWeight: '700', color: '#2E8A66', marginBottom: 8 },
+  helpText: { fontSize: 15, color: '#444', lineHeight: 22 },
+  questionCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 8 },
+  questionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F0F9F6', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  questionText: { flex: 1 },
+  questionTitle: { fontSize: 17, fontWeight: '600', color: '#333' },
+  questionSubtitle: { fontSize: 14, color: '#888', marginTop: 4 },
+  dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#E0E0E0' },
+  dotFilled: { backgroundColor: '#64C59A' },
+  textInput: { backgroundColor: '#F7FAF9', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, fontSize: 16, borderWidth: 1.5, borderColor: '#E8F5E9' },
+  multiline: { minHeight: 100 },
+  pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
+  pill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 30, backgroundColor: '#F0F9F6', borderWidth: 1.5, borderColor: '#64C59A' },
+  pillActive: { backgroundColor: '#64C59A' },
+  pillText: { color: '#2E8A66', fontWeight: '600' },
+  pillTextActive: { color: '#fff' },
+  checkboxContainer: { flexDirection: 'row', marginHorizontal: 20, marginTop: 20, padding: 16, backgroundColor: '#fff', borderRadius: 16, alignItems: 'flex-start' },
+  checkboxChecked: { borderColor: '#64C59A', borderWidth: 2 },
+  checkbox: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: '#ccc', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  checkboxActive: { backgroundColor: '#64C59A', borderColor: '#64C59A' },
+  checkboxLabel: { flex: 1, fontSize: 15, color: '#333', lineHeight: 22 },
+  saveBtn: { marginHorizontal: 20, marginTop: 20, backgroundColor: '#64C59A', paddingVertical: 18, borderRadius: 30, alignItems: 'center', shadowColor: '#64C59A', shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
+  saveBtnDisabled: { backgroundColor: '#aaa', shadowOpacity: 0.2 },
+  saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  footerNote: { textAlign: 'center', marginTop: 20, marginBottom: 40, color: '#666', fontSize: 13, paddingHorizontal: 30, lineHeight: 20 },
+
+  // Success Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
+  successCard: { width: '92%', maxHeight: '92%', backgroundColor: '#fff', borderRadius: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 20 },
+  successHeader: { paddingVertical: 50, alignItems: 'center' },
+  successEmoji: { fontSize: 48, marginBottom: 10 },
+  successTitle: { fontSize: 30, fontWeight: '800', color: '#fff' },
+  successSubtitle: { fontSize: 18, color: '#E8F5F1', marginTop: 8 },
+  summaryContainer: { padding: 24, flexGrow: 1 },
+  summaryTitle: { fontSize: 19, fontWeight: '700', color: '#2E8A66', textAlign: 'center', marginBottom: 20 },
+  summaryItem: { marginBottom: 16, padding: 16, backgroundColor: '#F0F9F6', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#64C59A' },
+  summaryLabel: { fontSize: 15, fontWeight: '600', color: '#2E8A66', marginBottom: 4 },
+  summaryValue: { fontSize: 16, color: '#333', lineHeight: 22 },
+  closeSuccessBtn: { marginHorizontal: 24, marginVertical: 20, backgroundColor: '#64C59A', paddingVertical: 18, borderRadius: 30, alignItems: 'center' },
+  closeSuccessText: { color: '#fff', fontSize: 18, fontWeight: '700' },
 });

@@ -1,539 +1,309 @@
+// app/(tabs)/index.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
   Dimensions,
   Modal,
   Alert,
-  ActivityIndicator
 } from 'react-native';
-import { Session } from '@supabase/supabase-js';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
-// Mock data for demonstration
-const mindfulnessTips = [
+const MINDFULNESS_TIPS = [
   "Take a moment to breathe deeply. Notice how your body feels right now, without judgment.",
-  "Focus on the present moment. What do you see, hear, and feel right now?",
-  "Practice gratitude by thinking of three things you're thankful for today.",
-  "Take a mindful walk, paying attention to each step and your surroundings."
+  "Pause and observe one thing you can see, hear, and feel in this moment.",
+  "Let go of yesterday and tomorrow. This moment is all that exists.",
+  "Smile gently — even a small one changes your brain chemistry.",
+  "Wherever you are, be there completely.",
+  "Your breath is your anchor. Return to it whenever you feel lost.",
+  "You don't need to fix anything right now. Just notice.",
+  "Every exhale is a letting go.",
+  "You are exactly where you need to be.",
+  "This too shall pass. Breathe through it."
 ];
 
-const quickAccessCards = [
-  {
-    id: 'about',
-    title: 'About Me',
-    description: 'One-time questions',
-    progress: 0
-  },
-  {
-    id: 'weekly',
-    title: 'Weekly Questions',
-    description: 'Deeper reflections',
-    progress: 0
-  },
-  {
-    id: 'main',
-    title: 'Main Questions',
-    description: 'Deeper mindfulness',
-    progress: 25
-  },
-  {
-    id: 'basic',
-    title: 'Basic Questions',
-    description: 'Daily habits',
-    progress: 60
-  }
-];
-
-const recentActivities = [
-  { id: '1', text: 'Completed Main Question', time: '2h ago' },
-  { id: '2', text: 'New Weekly Challenge', time: '5h ago' },
-  { id: '3', text: 'Finished Basic Habit', time: '1d ago' },
-  { id: '4', text: 'Started About Me Section', time: '2d ago' }
-];
-
-// Simple calendar component
-const CalendarStrip = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const dates = [];
-  
-  // Generate 7 days starting from today
-  for (let i = 0; i < 7; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() + i);
-    dates.push(date);
-  }
-  
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-  };
-  
-  return (
-    <View style={styles.calendarContainer}>
-      <Text style={styles.sectionTitle}>This Week</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calendarScroll}>
-        {dates.map((date, index) => {
-          const isSelected = date.toDateString() === selectedDate.toDateString();
-          return (
-            <TouchableOpacity 
-              key={index}
-              style={[styles.calendarDay, isSelected && styles.selectedCalendarDay]}
-              onPress={() => setSelectedDate(date)}
-            >
-              <Text style={[styles.calendarDayText, isSelected && styles.selectedCalendarDayText]}>
-                {formatDate(date)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-};
-
-const QuickAccessCard = ({ item, onPress }: { item: typeof quickAccessCards[0], onPress: (id: string) => void }) => (
-  <TouchableOpacity 
-    style={styles.quickAccessCard} 
-    onPress={() => onPress(item.id)}
-    activeOpacity={0.8}
-  >
-    <View style={styles.cardHeader}>
-      <View style={[styles.cardIcon, { backgroundColor: getCardColor(item.id) }]} />
-      <Text style={styles.cardTitle}>{item.title}</Text>
-    </View>
-    <Text style={styles.cardDescription}>{item.description}</Text>
-    <View style={styles.progressContainer}>
-      <View style={styles.progressBarBackground}>
-        <View 
-          style={[
-            styles.progressBar, 
-            { 
-              width: `${item.progress}%`,
-              backgroundColor: getCardColor(item.id)
-            }
-          ]} 
-        />
-      </View>
-      <Text style={styles.cardProgress}>{item.progress}%</Text>
-    </View>
-  </TouchableOpacity>
-);
-
-const ActivityItem = ({ item }: { item: typeof recentActivities[0] }) => (
-  <View style={styles.activityItem}>
-    <View style={[styles.activityIcon, { backgroundColor: getActivityColor(item.text) }]} />
-    <View style={styles.activityContent}>
-      <Text style={styles.activityText}>{item.text}</Text>
-      <Text style={styles.activityTime}>{item.time}</Text>
-    </View>
+// Reusable Brain Avatar Component (same as Account screen)
+const BrainAvatar = ({ size = 48 }: { size?: number }) => (
+  <View style={[styles.avatarContainer, { width: size + 16, height: size + 16 }]}>
+    <Svg width={size} height={size} viewBox="0 0 120 120">
+      <Defs>
+        <SvgLinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor="#64C59A" />
+          <Stop offset="100%" stopColor="#4CAF85" />
+        </SvgLinearGradient>
+      </Defs>
+      <Circle cx="60" cy="60" r="58" fill="url(#grad)" opacity="0.15" />
+      <Path
+        d="M60 20 C40 20, 30 35, 30 55 C30 75, 45 90, 60 90 C75 90, 90 75, 90 55 C90 35, 80 20, 60 20 Z"
+        stroke="#64C59A"
+        strokeWidth="4"
+        fill="none"
+      />
+      <Path d="M45 40 Q40 50, 45 60 Q40 70, 45 80" stroke="#64C59A" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <Path d="M38 45 Q35 55, 38 65 Q35 75, 38 82" stroke="#64C59A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
+      <Path d="M75 40 Q80 50, 75 60 Q80 70, 75 80" stroke="#64C59A" strokeWidth="3" fill="none" strokeLinecap="round" />
+      <Path d="M82 45 Q85 55, 82 65 Q85 75, 82 82" stroke="#64C59A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
+      <Circle cx="60" cy="48" r="8" fill="#64C59A" opacity="0.25" />
+      <Circle cx="60" cy="48" r="4" fill="#64C59A" />
+      <Circle cx="60" cy="60" r="48" stroke="#64C59A" strokeWidth="1.5" fill="none" opacity="0.3" />
+    </Svg>
   </View>
 );
 
-// Helper functions for colors
-function getCardColor(id: string) {
-  switch (id) {
-    case 'about': return '#64C59A';
-    case 'weekly': return '#2E8A66';
-    case 'main': return '#333333';
-    case 'basic': return '#64C59A';
-    default: return '#64C59A';
-  }
-}
-
-function getActivityColor(text: string) {
-  if (text.includes('Completed')) return '#64C59A';
-  if (text.includes('New')) return '#2E8A66';
-  if (text.includes('Finished')) return '#333333';
-  return '#64C59A';
-}
-
-export default function Dashboard({ session, onNavigateToAboutMe }: { session: Session, onNavigateToAboutMe: () => void }) {
+export default function Dashboard({ session, onNavigateToAboutMe }: { session: any; onNavigateToAboutMe: () => void }) {
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
-  const [streak, setStreak] = useState(12); // Mock streak data
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
-  
-  // Rotate tips every 10 seconds
+  const [streak] = useState(12);
+  const [completed] = useState(48);
+  const [consistency] = useState(95);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTipIndex(prev => (prev + 1) % mindfulnessTips.length);
-    }, 10000);
-    
+      setCurrentTipIndex(prev => (prev + 1) % MINDFULNESS_TIPS.length);
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
-  
-  const handleCardPress = (id: string) => {
-    if (id === 'about') {
-      onNavigateToAboutMe();
-    }
-    // Handle other card presses as needed
+
+  const handleSignOut = async () => {
+    setShowAccountModal(false);
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          const { error } = await supabase.auth.signOut();
+          if (error) Alert.alert("Error", error.message);
+        },
+      },
+    ]);
   };
-  
-  async function confirmSignOut() {
-    try {
-      await supabase.auth.signOut();
-      setShowSignOutModal(false);
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert('Error', error.message);
-      }
-    }
-  }
-  
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MindFlow</Text>
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => setShowSignOutModal(true)}
-        >
-          <View style={styles.profileImageContainer}>
-            <Text style={styles.profileImageText}>👨‍💻</Text>
-          </View>
+        <TouchableOpacity onPress={() => setShowAccountModal(true)}>
+          <BrainAvatar size={48} />
         </TouchableOpacity>
       </View>
-      
-      <ScrollView style={styles.contentContainer} contentContainerStyle={styles.scrollContent}>
-        {/* Daily Mindfulness Tip Banner */}
-        <View style={styles.tipBanner}>
-          <Text style={styles.tipTitle}>Daily Mindfulness Tip</Text>
-          <Text style={styles.tipText}>"{mindfulnessTips[currentTipIndex]}"</Text>
-          <View style={styles.streakContainer}>
-            <Text style={styles.streakText}>Today's Focus – Day {streak} Streak</Text>
-          </View>
-        </View>
-        
-        {/* Horizontal Calendar */}
-        <CalendarStrip />
-        
-        {/* Quick Access Cards */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
-          <View style={styles.cardsContainer}>
-            {quickAccessCards.map(card => (
-              <QuickAccessCard key={card.id} item={card} onPress={handleCardPress} />
-            ))}
-          </View>
-        </View>
-        
-        {/* Recent Activity Feed */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityContainer}>
-            {recentActivities.map(activity => (
-              <ActivityItem key={activity.id} item={activity} />
-            ))}
-          </View>
-        </View>
-        
-        <View style={{ height: 20 }} />
-      </ScrollView>
-      
-      {/* Sign Out Confirmation Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={showSignOutModal}
-        onRequestClose={() => setShowSignOutModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Sign Out</Text>
-            <Text style={styles.modalMessage}>Are you sure you want to sign out?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowSignOutModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.signOutButton]}
-                onPress={confirmSignOut}
-              >
-                <Text style={styles.signOutButtonText}>Sign Out</Text>
-              </TouchableOpacity>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Daily Mindfulness Tip */}
+        <Animated.View entering={FadeIn.duration(800)}>
+          <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.tipCard}>
+            <View style={styles.tipHeader}>
+              <Svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+                <Path d="M12 2L13.09 8.26L22 9.27L16 14.14L17.18 21.02L12 17.77L6.82 21.02L8 14.14L2 9.27L10.91 8.26L12 2Z" />
+              </Svg>
+              <Text style={styles.tipLabel}>Daily Mindfulness Tip</Text>
+            </View>
+            <Text style={styles.tipText}>{MINDFULNESS_TIPS[currentTipIndex]}</Text>
+            <View style={styles.tipDots}>
+              {MINDFULNESS_TIPS.map((_, i) => (
+                <View key={i} style={[styles.dot, i === currentTipIndex && styles.activeDot]} />
+              ))}
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* Progress Section */}
+        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Progress</Text>
+          <View style={styles.progressGrid}>
+            <View style={styles.ringCard}>
+              <Svg width="160" height="160" viewBox="0 0 160 160">
+                <Circle cx="80" cy="80" r="70" stroke="#E8F5E9" strokeWidth="14" fill="none" />
+                <Circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  stroke="#64C59A"
+                  strokeWidth="14"
+                  fill="none"
+                  strokeDasharray="440"
+                  strokeDashoffset={440 - (440 * streak) / 30}
+                  strokeLinecap="round"
+                  transform="rotate(-90 80 80)"
+                />
+              </Svg>
+              <View style={styles.ringCenter}>
+                <Svg width="32" height="32" viewBox="0 0 24 24" fill="#FF9500">
+                  <Path d="M8.5 19C8.5 19 7 19 7 17.5C7 15.5 9.5 14.5 9.5 11C9.5 11 10 6 14.5 6.5C17 7 19 9.5 19 13.5C19 17.5 16 19.5 12 19.5C10.5 19.5 8.5 19 8.5 19Z" />
+                </Svg>
+                <Text style={styles.ringNumber}>{streak}</Text>
+                <Text style={styles.ringLabel}>Day Streak</Text>
+              </View>
+            </View>
+
+            <View style={styles.smallStats}>
+              <View style={styles.smallStat}>
+                <Text style={styles.smallNumber}>{completed}</Text>
+                <Text style={styles.smallLabel}>Completed</Text>
+              </View>
+              <View style={styles.smallStat}>
+                <Text style={styles.smallNumber}>{consistency}%</Text>
+                <Text style={styles.smallLabel}>Consistency</Text>
+              </View>
             </View>
           </View>
+        </Animated.View>
+
+        {/* Quick Access */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <View style={styles.grid}>
+            <TouchableOpacity style={[styles.card, styles.cardCalm]} onPress={onNavigateToAboutMe}>
+              <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+                <Circle cx="12" cy="7" r="4" stroke="#fff" strokeWidth="2.5" />
+              </Svg>
+              <Text style={styles.cardTitle}>About Me</Text>
+              <Text style={styles.cardDesc}>One-time questions</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.card, styles.cardWeekly]}>
+              <View style={styles.badge}><Text style={styles.badgeText}>Weekly</Text></View>
+              <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <Path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="#fff" strokeWidth="2.5" />
+                <Path d="M16 2V6" stroke="#fff" strokeWidth="2.5" />
+                <Path d="M8 2V6" stroke="#fff" strokeWidth="2.5" />
+              </Svg>
+              <Text style={styles.cardTitle}>Weekly Questions</Text>
+              <Text style={styles.cardDesc}>Available this week</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.card, styles.cardDeep]}>
+              <Svg width="40" height="40" viewBox="0 0 24 24" fill="#fff">
+                <Path d="M12 2C13.6569 2 15 3.34315 15 5C15 6.65685 13.6569 8 12 8C10.3431 8 9 6.65685 9 5C9 3.34315 10.3431 2 12 2Z" />
+                <Path d="M12 10C14.2091 10 16 11.7909 16 14C16 16.2091 14.2091 18 12 18C9.79086 18 8 16.2091 8 14C8 11.7909 9.79086 10 12 10Z" />
+                <Path d="M12 20C14.2091 20 16 18.2091 16 16C16 13.7909 14.2091 12 12 12C9.79086 12 8 13.7909 8 16C8 18.2091 9.79086 20 12 20Z" />
+              </Svg>
+              <Text style={styles.cardTitle}>Main Questions</Text>
+              <Text style={styles.cardDesc}>Deeper mindfulness</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.card, styles.cardDaily]}>
+              <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <Path d="M8 6H21" stroke="#fff" strokeWidth="2.5" />
+                <Path d="M8 12H21" stroke="#fff" strokeWidth="2.5" />
+                <Path d="M8 18H21" stroke="#fff" strokeWidth="2.5" />
+                <Path d="M3 6H3.01" stroke="#fff" strokeWidth="3" />
+                <Path d="M3 12H3.01" stroke="#fff" strokeWidth="3" />
+                <Path d="M3 18H3.01" stroke="#fff" strokeWidth="3" />
+              </Svg>
+              <Text style={styles.cardTitle}>Basic Questions</Text>
+              <Text style={styles.cardDesc}>Daily habits</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* This Week */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>This Week</Text>
+          <View style={styles.calendarCard}>
+            {['Wed\n14', 'Thu\n15', 'Fri\n16', 'Sat\n17', 'Sun\n18', 'Mon\n19', 'Tue\n20'].map((d, i) => {
+              const isActive = i >= 3 && i <= 5;
+              return (
+                <View key={i} style={styles.dayItem}>
+                  <Text style={styles.dayLabel}>{d.split('\n')[0]}</Text>
+                  <View style={[styles.dayCircle, isActive && styles.activeDayCircle]}>
+                    <Text style={[styles.dayNumber, isActive && styles.activeDayNumber]}>{d.split('\n')[1]}</Text>
+                  </View>
+                  {isActive && (
+                    <Svg width="20" height="20" viewBox="0 0 24 24" style={styles.checkIcon}>
+                      <Path d="M20 6L9 17L4 12" stroke="#64C59A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Account Modal */}
+      <Modal visible={showAccountModal} transparent animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); /* Navigate to Account */ }}>
+              <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <Circle cx="12" cy="7" r="4" stroke="#333" strokeWidth="2" />
+                <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#333" strokeWidth="2" />
+              </Svg>
+              <Text style={styles.modalText}>Manage Account</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
+              <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <Path d="M9 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H9" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M16 17L20 12L16 7" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M20 12H8" stroke="#EF4444" strokeWidth="2" />
+              </Svg>
+              <Text style={[styles.modalText, styles.logoutText]}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5FCFF',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingTop: 20,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2E8A66',
-  },
-  profileButton: {
-    padding: 4,
-  },
-  profileImageContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#64C59A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileImageText: {
-    fontSize: 20,
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-  },
-  tipBanner: {
-    backgroundColor: '#64C59A',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#64C59A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  tipTitle: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  tipText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontStyle: 'italic',
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  streakContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#2E8A66',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  streakText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  calendarContainer: {
-    marginBottom: 20,
-  },
-  calendarScroll: {
-    marginVertical: 10,
-  },
-  calendarDay: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginRight: 10,
-    minWidth: 70,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  selectedCalendarDay: {
-    backgroundColor: '#64C59A',
-    borderColor: '#64C59A',
-  },
-  calendarDayText: {
-    fontSize: 14,
-    color: '#333333',
-    textAlign: 'center',
-  },
-  selectedCalendarDayText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  cardsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  quickAccessCard: {
-    width: (width - 60) / 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333333',
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  progressContainer: {
-    marginTop: 'auto',
-  },
-  progressBarBackground: {
-    height: 6,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 3,
-    marginBottom: 6,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  cardProgress: {
-    fontSize: 12,
-    color: '#2E8A66',
-    fontWeight: '600',
-  },
-  activityContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  activityIcon: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 12,
-    marginTop: 2,
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityText: {
-    fontSize: 14,
-    color: '#333333',
-    marginBottom: 4,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: '#999999',
-  },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    width: '80%',
-    maxWidth: 300,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  modalMessage: {
-    fontSize: 16,
-    color: '#666666',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#F0F0F0',
-    marginRight: 10,
-  },
-  cancelButtonText: {
-    color: '#333333',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  signOutButton: {
-    backgroundColor: '#FF3B30',
-    marginLeft: 10,
-  },
-  signOutButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: '#F8FDFC' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 16 },
+  headerTitle: { fontSize: 34, fontWeight: '800', color: '#2E8A66' },
+  avatarContainer: { borderRadius: 60, backgroundColor: '#E8F5F1', padding: 8, borderWidth: 4, borderColor: '#fff', shadowColor: '#64C59A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 15 },
+  tipCard: { marginHorizontal: 24, marginTop: 20, borderRadius: 32, padding: 32, shadowColor: '#64C59A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 25, elevation: 20 },
+  tipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  tipLabel: { color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 10 },
+  tipText: { color: '#fff', fontSize: 20, lineHeight: 30, fontWeight: '500' },
+  tipDots: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)', marginHorizontal: 5 },
+  activeDot: { backgroundColor: '#fff', width: 24 },
+  section: { paddingHorizontal: 24, marginTop: 32 },
+  sectionTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginBottom: 20 },
+  progressGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  ringCard: { position: 'relative' },
+  ringCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+  ringNumber: { fontSize: 38, fontWeight: '800', color: '#2E8A66', marginTop: 8 },
+  ringLabel: { fontSize: 14, color: '#666', marginTop: 4 },
+  smallStats: { gap: 16 },
+  smallStat: { backgroundColor: '#fff', padding: 20, borderRadius: 28, width: 130, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 10 },
+  smallNumber: { fontSize: 36, fontWeight: '800', color: '#2E8A66' },
+  smallLabel: { fontSize: 13, color: '#666', marginTop: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  card: { width: (width - 72) / 2, backgroundColor: '#fff', borderRadius: 32, padding: 28, marginBottom: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 25, elevation: 16 },
+  cardCalm: { backgroundColor: '#64C59A' },
+  cardWeekly: { backgroundColor: '#2E8A66' },
+  cardDeep: { backgroundColor: '#1A5F4A' },
+  cardDaily: { backgroundColor: '#4CAF85' },
+  badge: { position: 'absolute', top: 16, right: 16, backgroundColor: '#FF9500', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  cardTitle: { color: '#fff', fontSize: 19, fontWeight: '700', marginTop: 20 },
+  cardDesc: { color: '#fff', fontSize: 14, opacity: 0.9, marginTop: 8, textAlign: 'center', lineHeight: 20 },
+  calendarCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 32, paddingVertical: 24, paddingHorizontal: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 20, elevation: 12 },
+  dayItem: { flex: 1, alignItems: 'center' },
+  dayLabel: { fontSize: 12, color: '#999', marginBottom: 8 },
+  dayCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
+  activeDayCircle: { backgroundColor: '#64C59A' },
+  dayNumber: { fontSize: 17, fontWeight: '600', color: '#666' },
+  activeDayNumber: { color: '#fff', fontWeight: '700' },
+  checkIcon: { position: 'absolute', bottom: -12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 20, paddingHorizontal: 24, paddingBottom: 40 },
+  modalHandle: { width: 50, height: 5, backgroundColor: '#ddd', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
+  modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18 },
+  logoutRow: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 28 },
+  modalText: { marginLeft: 16, fontSize: 18, color: '#333', fontWeight: '500' },
+  logoutText: { color: '#EF4444', fontWeight: '600' },
 });
