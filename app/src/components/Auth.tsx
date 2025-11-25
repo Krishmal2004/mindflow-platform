@@ -1,64 +1,60 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, View, AppState, TextInput, TouchableOpacity, Text, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { supabase } from '../lib/supabase';
 
-AppState.addEventListener('change', (state) => {
-  if (state === 'active') {
-    supabase.auth.startAutoRefresh();
-  } else {
-    supabase.auth.stopAutoRefresh();
-  }
-});
+// Use the project logo from local assets
+const MindFlowLogo = () => (
+  <View style={styles.logoContainer}>
+    <Image
+      source={require('../../assets/images/mindfulnessLogo.png')}
+      style={styles.logo}
+      resizeMode="contain"
+    />
+  </View>
+);
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{email?: string; password?: string}>({});
-  const [isSignUp, setIsSignUp] = useState(false);
-
-  function validate() {
-    let isValid = true;
-    let newErrors: {email?: string; password?: string} = {};
-
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-      isValid = false;
-    }
-    
-    if (!password.trim()) {
-      newErrors.password = 'Password is required';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  }
+  const [isSignUp, setIsSignUp] = useState(false); // Toggle between login and signup
 
   async function signInWithEmail() {
-    if (!validate()) return;
-
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
+      email,
+      password,
     });
-
-    if (error) {
-      Alert.alert('Sign In Failed', error.message);
-    }
+    if (error) Alert.alert('Login Failed', error.message);
     setLoading(false);
   }
 
   async function signUpWithEmail() {
-    if (!validate()) return;
-
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
+      email,
+      password,
     });
-
     if (error) {
       Alert.alert('Sign Up Failed', error.message);
     } else {
@@ -66,85 +62,90 @@ export default function Auth() {
         'Sign Up Successful',
         'Please check your email for confirmation.'
       );
-      setIsSignUp(false); // Switch back to login after successful signup
+      // Switch back to login view after successful signup
+      setIsSignUp(false);
     }
     setLoading(false);
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.formContainer}>
+        <View style={styles.innerContainer}>
+          {/* Logo */}
+          <MindFlowLogo />
+
+          {/* App Name */}
           <Text style={styles.appName}>MindFlow</Text>
-          <Text style={styles.title}>{isSignUp ? 'Create Account' : 'Welcome Back'}</Text>
-          <Text style={styles.subtitle}>
+
+          {/* Welcome Text */}
+          <Text style={styles.welcomeText}>
             {isSignUp 
-              ? 'Join our mindful community' 
-              : 'Continue your mindfulness journey'}
+              ? 'Create an account to start your mindfulness journey' 
+              : 'Welcome back to your mindfulness journey'}
           </Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={[styles.input, errors.email ? styles.inputError : null]}
-              placeholder="name@example.com"
-              placeholderTextColor="#A0A0A0"
-              onChangeText={(text) => {
-                setEmail(text);
-                if (errors.email) setErrors({...errors, email: undefined});
-              }}
-              value={email}
-              autoCapitalize={'none'}
-              keyboardType="email-address"
-            />
-            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+
+          {/* University Email */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>University Email</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="IT24XXXXXX@my.sliit.lk"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
           </View>
-          
-          <View style={styles.inputGroup}>
+
+          {/* Password */}
+          <View style={styles.inputContainer}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={[styles.input, errors.password ? styles.inputError : null]}
-              placeholder="Enter your password"
-              placeholderTextColor="#A0A0A0"
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) setErrors({...errors, password: undefined});
-              }}
-              value={password}
-              secureTextEntry={true}
-              autoCapitalize={'none'}
-            />
-            {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
           </View>
-          
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={() => isSignUp ? signUpWithEmail() : signInWithEmail()} 
+
+          {/* Action Button */}
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            onPress={isSignUp ? signUpWithEmail : signInWithEmail}
             disabled={loading}
-            activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>
-                {isSignUp ? 'Sign Up' : 'Sign In'}
+              <Text style={styles.loginButtonText}>
+                {isSignUp ? 'Sign Up' : 'Login'}
               </Text>
             )}
           </TouchableOpacity>
-          
-          <View style={styles.switchContainer}>
-            <Text style={styles.switchText}>
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+
+          {/* Toggle between Login and Sign Up */}
+          <View style={styles.signupContainer}>
+            <Text style={styles.signupText}>
+              {isSignUp 
+                ? 'Already have an account? ' 
+                : "Don't have an account? "}
             </Text>
-            <TouchableOpacity 
-              onPress={() => setIsSignUp(!isSignUp)}
-              style={styles.switchButton}
-            >
-              <Text style={styles.switchButtonText}>
-                {isSignUp ? 'Sign In' : 'Sign Up'}
+            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+              <Text style={styles.signupLink}>
+                {isSignUp ? 'Login' : 'Sign Up'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -157,108 +158,154 @@ export default function Auth() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5FCFF',
+    backgroundColor: '#fff',
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
+    paddingHorizontal: 32,
   },
-  formContainer: {
-    flex: 1,
+  innerContainer: {
+    alignItems: 'center',
+  },
+  logoContainer: {
+    width: 120,
+    height: 120,
+    backgroundColor: '#64C59A',
+    borderRadius: 60,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    tintColor: '#fff',
   },
   appName: {
     fontSize: 36,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: '#2E8A66',
     marginBottom: 8,
-    textAlign: 'center',
-    fontFamily: 'Arial',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
+  welcomeText: {
     fontSize: 16,
-    color: '#666666',
-    marginBottom: 32,
+    color: '#666',
     textAlign: 'center',
+    marginBottom: 40,
+    paddingHorizontal: 20,
   },
-  inputGroup: {
+  inputContainer: {
+    width: '100%',
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
+    color: '#333',
     marginBottom: 8,
+    fontWeight: '600',
+  },
+  inputWrapper: {
+    position: 'relative',
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#64C59A',
+    backgroundColor: '#F7F7F7',
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#333333',
-    shadowColor: '#64C59A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inputError: {
-    borderColor: '#EF4444',
-    borderWidth: 1,
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  button: {
-    backgroundColor: '#64C59A',
-    borderRadius: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    alignItems: 'center',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
     marginTop: 8,
-    shadowColor: '#64C59A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 18,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  switchText: {
-    color: '#666666',
-    fontSize: 16,
-    marginRight: 8,
-  },
-  switchButton: {
-    padding: 4,
-  },
-  switchButtonText: {
+  forgotPasswordText: {
     color: '#2E8A66',
+    fontSize: 14,
     fontWeight: '600',
+  },
+  loginButton: {
+    backgroundColor: '#64C59A',
+    width: '100%',
+    paddingVertical: 18,
+    borderRadius: 30,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#64C59A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 32,
+    width: '100%',
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#DDD',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#888',
+    fontSize: 14,
+  },
+  ssoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 16,
+  },
+  ssoButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F7F7F7',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  ssoIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  ssoText: {
     fontSize: 16,
-    textDecorationLine: 'underline',
+    fontWeight: '600',
+    color: '#333',
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    marginTop: 32,
+  },
+  signupText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  signupLink: {
+    color: '#2E8A66',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
