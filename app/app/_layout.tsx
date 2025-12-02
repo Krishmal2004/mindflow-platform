@@ -143,6 +143,13 @@ export default function RootLayout() {
             ),
           }}
         />
+        {/* Hidden route for daily sliders */}
+        <Tabs.Screen
+          name="daily-sliders"
+          options={{
+            href: null, // This hides the tab from the tab bar
+          }}
+        />
       </Tabs>
     </SessionProvider>
   );
