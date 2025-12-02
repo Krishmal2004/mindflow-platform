@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
@@ -59,6 +60,7 @@ const BrainAvatar = ({ size = 48 }: { size?: number }) => (
 );
 
 export default function Dashboard({ session, onNavigateToAboutMe }: { session: any; onNavigateToAboutMe: () => void }) {
+  const router = useRouter();
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [streak] = useState(12);
   const [completed] = useState(48);
@@ -192,7 +194,10 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
               <Text style={styles.cardDesc}>Deeper mindfulness</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.card, styles.cardDaily]}>
+            <TouchableOpacity 
+              style={[styles.card, styles.cardDaily]}
+              onPress={() => router.push('/daily-sliders')}
+            >
               <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
                 <Path d="M8 6H21" stroke="#fff" strokeWidth="2.5" />
                 <Path d="M8 12H21" stroke="#fff" strokeWidth="2.5" />
@@ -201,8 +206,8 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
                 <Path d="M3 12H3.01" stroke="#fff" strokeWidth="3" />
                 <Path d="M3 18H3.01" stroke="#fff" strokeWidth="3" />
               </Svg>
-              <Text style={styles.cardTitle}>Basic Questions</Text>
-              <Text style={styles.cardDesc}>Daily habits</Text>
+              <Text style={styles.cardTitle}>Daily Sliders</Text>
+              <Text style={styles.cardDesc}>Track stress & sleep</Text>
             </TouchableOpacity>
           </View>
         </View>

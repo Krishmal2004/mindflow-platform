@@ -1,6 +1,32 @@
-# Welcome to your Expo app 👋
+# MindFlow - Mindfulness Research App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Overview
+MindFlow is a mindfulness research application designed to help students track their mental wellness through daily reflections, stress monitoring, and guided breathing exercises.
+
+## New Features
+
+### Daily Sliders
+The Daily Sliders feature allows users to track their stress levels and sleep quality on a scale of 1-10. After submitting their ratings, users can participate in guided breathing exercises (2 or 4 minute sessions) with visual breathing cues. Post-exercise, users rate their relaxation level to complete the mindfulness session.
+
+### Database Schema
+The application uses Supabase for backend services. The following tables are used:
+
+1. `profiles` - Stores user profile information
+2. `daily_entries` - Stores user journal entries
+3. `daily_sliders` - Stores daily stress, sleep, and relaxation ratings
+
+#### Daily Sliders Table Structure
+```sql
+CREATE TABLE IF NOT EXISTS daily_sliders (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    stress_level INTEGER CHECK (stress_level >= 1 AND stress_level <= 10),
+    sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 10),
+    relaxation_level INTEGER CHECK (relaxation_level >= 1 AND relaxation_level <= 10),
+    exercise_duration INTEGER, -- in minutes
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
 
 ## Get started
 
