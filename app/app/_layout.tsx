@@ -150,6 +150,13 @@ export default function RootLayout() {
             href: null, // This hides the tab from the tab bar
           }}
         />
+        {/* Hidden route for weekly questions */}
+        <Tabs.Screen
+          name="weekly-questions"
+          options={{
+            href: null, // This hides the tab from the tab bar
+          }}
+        />
       </Tabs>
     </SessionProvider>
   );
