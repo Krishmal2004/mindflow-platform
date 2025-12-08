@@ -15,7 +15,6 @@ import Animated, { FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated'
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
-
 // Custom SVG Icons
 const Icons = {
   school: () => (
@@ -85,7 +84,6 @@ const Icons = {
     </Svg>
   ),
 };
-
 interface AboutMeData {
   university_id: string;
   education_level: string;
@@ -98,7 +96,6 @@ interface AboutMeData {
   personal_goals: string;
   why_mindflow: string;
 }
-
 const questions = [
   { key: 'university_id', Icon: Icons.school, title: 'University ID', subtitle: 'Your official student ID', required: true },
   { key: 'education_level', Icon: Icons.graduation, title: 'Education Level', subtitle: 'Current academic year', required: true },
@@ -111,16 +108,27 @@ const questions = [
   { key: 'personal_goals', Icon: Icons.target, title: 'Personal Goals', subtitle: 'What are you working towards?', required: false },
   { key: 'why_mindflow', Icon: Icons.mindflow, title: 'Why MindFlow?', subtitle: 'What brings you here?', required: true },
 ];
-
 const educationLevels = ["First Year", "Second Year", "Third Year", "Fourth Year", "Graduate Student", "Other"];
 const livingSituations = ["Dorm", "Off-campus housing", "With family", "Other"];
-
+const hobbiesOptions = [
+  "Reading",
+  "Sports & Fitness",
+  "Music",
+  "Travel",
+  "Cooking & Baking",
+  "Video Gaming",
+  "Art & Crafts",
+  "Hiking & Outdoors",
+  "Watching Movies/TV",
+  "Photography",
+  "Other"
+];
 export default function AboutMe({ session, onBack }: { session: Session; onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [declarationChecked, setDeclarationChecked] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
+  const [profileCompleted, setProfileCompleted] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [data, setData] = useState<AboutMeData>({
     university_id: '',
     education_level: '',
@@ -133,21 +141,43 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     personal_goals: '',
     why_mindflow: '',
   });
-
+  const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
+  const [otherHobby, setOtherHobby] = useState('');
   // Compute completion percentage
   const requiredQuestions = questions.filter(q => q.required);
+  const allQuestions = questions;
+  const filledAll = allQuestions.filter(q => {
+    const value = data[q.key as keyof AboutMeData];
+    return value !== '' && value !== null && value !== undefined;
+  }).length;
+  const completionPercentage = allQuestions.length > 0
+    ? Math.round((filledAll / allQuestions.length) * 100)
+    : 0;
   const filledRequired = requiredQuestions.filter(q => {
     const value = data[q.key as keyof AboutMeData];
     return value !== '' && value !== null && value !== undefined;
   }).length;
-  const completionPercentage = requiredQuestions.length > 0
-    ? Math.round((filledRequired / requiredQuestions.length) * 100)
-    : 0;
-
   useEffect(() => {
     fetchData();
   }, []);
-
+  useEffect(() => {
+    const hobbiesStr = data.hobbies_interests || '';
+    if (hobbiesStr) {
+      const hobbies = hobbiesStr.split(', ').filter(h => h.trim());
+      const predefinedSet = new Set(hobbiesOptions.slice(0, -1));
+      const predefined = hobbies.filter(h => predefinedSet.has(h));
+      const others = hobbies.filter(h => !predefinedSet.has(h));
+      setSelectedHobbies([...predefined, ...(others.length > 0 ? ['Other'] : [])]);
+      setOtherHobby(others.join(', ') || '');
+    } else {
+      setSelectedHobbies([]);
+      setOtherHobby('');
+    }
+  }, [data.hobbies_interests]);
+  useEffect(() => {
+    const hobbiesStr = [...selectedHobbies.filter(h => h !== 'Other'), otherHobby.trim()].filter(Boolean).join(', ');
+    update('hobbies_interests', hobbiesStr);
+  }, [selectedHobbies, otherHobby]);
   async function fetchData() {
     try {
       setLoading(true);
@@ -156,11 +186,10 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
         .select('*')
         .eq('id', session?.user.id)
         .single();
-
       if (profile) {
         setData(prev => ({ ...prev, ...profile }));
         if (profile.is_completed) {
-          setShowSuccessModal(true);
+          setProfileCompleted(true);
         }
       }
     } catch (e) {
@@ -169,40 +198,56 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
       setLoading(false);
     }
   }
-
   async function save() {
     if (!declarationChecked) {
       Alert.alert("Declaration Required", "Please confirm that your information is accurate before submitting.");
       return;
     }
-
+    if (filledRequired < requiredQuestions.length) {
+      Alert.alert("Incomplete", "Please complete all required fields before submitting.");
+      return;
+    }
     try {
       setSaving(true);
-      const isCompleted = completionPercentage === 100;
-
+      const hobbiesToSave = [...selectedHobbies.filter(h => h !== 'Other'), ...(otherHobby.trim() ? [otherHobby.trim()] : [])].join(', ');
+      const updateData = {
+        ...data,
+        hobbies_interests: hobbiesToSave,
+        completion_percentage: completionPercentage,
+        is_completed: true,
+      };
       await supabase.from('about_me_profiles').upsert({
         id: session?.user.id,
-        ...data,
-        completion_percentage: completionPercentage,
-        is_completed: isCompleted,
+        ...updateData
       });
-
-      if (isCompleted) {
-        setShowSuccessModal(true);
-      } else {
-        Alert.alert('Saved!', 'Your progress has been saved.', [{ text: 'OK' }]);
-      }
+      setData(updateData);
+      setShowCelebration(true);
+      setTimeout(() => {
+        setShowCelebration(false);
+        setProfileCompleted(true);
+      }, 5000);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
   }
-
   const update = (key: keyof AboutMeData, value: any) => {
     setData(prev => ({ ...prev, [key]: value }));
   };
-
+  const toggleHobby = (hobby: string) => {
+    setSelectedHobbies(prev => {
+      if (prev.includes(hobby)) {
+        const newSelected = prev.filter(h => h !== hobby);
+        if (hobby === 'Other') {
+          setOtherHobby('');
+        }
+        return newSelected;
+      } else {
+        return [...prev, hobby];
+      }
+    });
+  };
   if (loading) {
     return (
       <View style={styles.container}>
@@ -210,7 +255,74 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
       </View>
     );
   }
-
+  if (showCelebration) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.completionContainer}>
+          <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
+            <Text style={styles.celebrationEmoji}>🎉</Text>
+            <Text style={styles.completionTitle}>Great Job!</Text>
+            <Text style={styles.completionText}>You've completed your About Me routine.</Text>
+            <Text style={styles.completionText}>You're all set. Let's see the summary!</Text>
+            <Text style={styles.happyEmoji}>😊</Text>
+          </Animated.View>
+        </View>
+      </View>
+    );
+  }
+  // If profile is completed, show the success page instead of the form
+  if (profileCompleted) {
+    return (
+      <View style={styles.container}>
+        {/* Header */}
+        <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile Complete</Text>
+          <Text style={styles.headerSubtitle}>Here's your summary</Text>
+        </LinearGradient>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+          <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
+            <Text style={styles.helpTitle}>Your Profile Overview</Text>
+            <Text style={styles.helpText}>
+              We've captured all your details. This helps us tailor your MindFlow journey perfectly.
+            </Text>
+          </Animated.View>
+          <View style={styles.summaryContainer}>
+            {questions.map((q, i) => {
+              let displayValue: string;
+              const rawValue = data[q.key as keyof AboutMeData];
+              switch (q.key) {
+                case 'age':
+                  displayValue = rawValue ? `${rawValue} years old` : 'Not specified';
+                  break;
+                case 'hobbies_interests':
+                  displayValue = data.hobbies_interests ? data.hobbies_interests : 'None selected';
+                  break;
+                default:
+                  displayValue = (rawValue as string) || 'Not specified';
+              }
+              return (
+                <Animated.View key={q.key} entering={FadeInDown.delay(150 + i * 60)} style={styles.summaryQuestionCard}>
+                  <View style={styles.summaryQuestionHeader}>
+                    <View style={styles.iconCircle}>
+                      <q.Icon />
+                    </View>
+                    <View style={styles.questionText}>
+                      <Text style={styles.questionTitle}>{q.title}</Text>
+                      <Text style={styles.summaryValue} numberOfLines={4}>{displayValue}</Text>
+                    </View>
+                    <View style={styles.dotFilled} />
+                  </View>
+                </Animated.View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -227,7 +339,6 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
           <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
         </View>
       </LinearGradient>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
           <Text style={styles.helpTitle}>Help us know you better</Text>
@@ -235,7 +346,6 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
             Please provide accurate and truthful information. This helps us personalize your MindFlow experience.
           </Text>
         </Animated.View>
-
         {questions.map((q, i) => (
           <Animated.View key={q.key} entering={FadeInDown.delay(150 + i * 60)} style={styles.questionCard}>
             <View style={styles.questionHeader}>
@@ -250,7 +360,6 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
               </View>
               <View style={[styles.dot, data[q.key as keyof AboutMeData] ? styles.dotFilled : {}]} />
             </View>
-
             {/* Special Inputs */}
             {q.key === 'education_level' && (
               <View style={styles.pillContainer}>
@@ -267,7 +376,6 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
                 ))}
               </View>
             )}
-
             {q.key === 'living_situation' && (
               <View style={styles.pillContainer}>
                 {livingSituations.map(sit => (
@@ -283,7 +391,32 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
                 ))}
               </View>
             )}
-
+            {q.key === 'hobbies_interests' && (
+              <View style={styles.pillContainer}>
+                {hobbiesOptions.map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.pill, selectedHobbies.includes(option) && styles.pillActive]}
+                    onPress={() => toggleHobby(option)}
+                  >
+                    <Text style={[styles.pillText, selectedHobbies.includes(option) && styles.pillTextActive]}>
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {selectedHobbies.includes('Other') && (
+                  <View style={{ marginTop: 12, paddingHorizontal: 4 }}>
+                    <Text style={styles.questionSubtitle}>Other hobby:</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={otherHobby}
+                      onChangeText={setOtherHobby}
+                      placeholder="e.g., Dancing, Singing"
+                    />
+                  </View>
+                )}
+              </View>
+            )}
             {q.key === 'age' && (
               <TextInput
                 style={styles.textInput}
@@ -293,9 +426,8 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
                 keyboardType="numeric"
               />
             )}
-
             {['university_id', 'major_field_of_study', 'family_background', 'cultural_background',
-              'hobbies_interests', 'personal_goals', 'why_mindflow'].includes(q.key) && (
+              'personal_goals', 'why_mindflow'].includes(q.key) && (
               <TextInput
                 style={[styles.textInput, q.key.includes('background') || q.key === 'why_mindflow' ? styles.multiline : {}]}
                 value={data[q.key as keyof AboutMeData] as string}
@@ -307,104 +439,36 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
             )}
           </Animated.View>
         ))}
-
         {/* Declaration */}
         <TouchableOpacity
           style={[styles.checkboxContainer, declarationChecked && styles.checkboxChecked]}
           onPress={() => setDeclarationChecked(!declarationChecked)}
         >
           <View style={[styles.checkbox, declarationChecked && styles.checkboxActive]}>
-            {declarationChecked && <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Check</Text>}
+            {declarationChecked && <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>✓</Text>}
           </View>
           <Text style={styles.checkboxLabel}>
             I hereby confirm that all information provided above is true, accurate, and complete to the best of my knowledge.
           </Text>
         </TouchableOpacity>
-
         {/* Submit Button */}
         <TouchableOpacity
           style={[
             styles.saveBtn,
-            (!declarationChecked || completionPercentage < 100) && styles.saveBtnDisabled
+            (!declarationChecked || filledRequired < requiredQuestions.length) && styles.saveBtnDisabled
           ]}
           onPress={save}
-          disabled={saving || !declarationChecked || completionPercentage < 100}
+          disabled={saving || !declarationChecked || filledRequired < requiredQuestions.length}
         >
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Submit My Profile</Text>}
         </TouchableOpacity>
-
         <Text style={styles.footerNote}>
           This information is used to improve your experience and will not be shared without consent.
         </Text>
       </ScrollView>
-
-      {/* SUCCESS MODAL */}
-      <Modal visible={showSuccessModal} transparent animationType="fade">
-  <View style={styles.modalOverlay}>
-    <Animated.View entering={ZoomIn.duration(600)} style={styles.successCard}>
-      
-      {/* M3-STYLE SUCCESS HEADER WITH CUSTOM ANIMATED CHECKMARK */}
-      <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.successHeader}>
-        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <Animated.View entering={BounceIn.delay(300).springify()}>
-            <Svg width="80" height="80" viewBox="0 0 24 24" fill="none">
-              {/* Outer Circle */}
-              <Circle
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="#fff"
-                strokeWidth="2.5"
-                opacity="0.3"
-              />
-              {/* Animated Checkmark - Thick & Satisfying */}
-              <Path
-                d="M6 12L10 16L18 8"
-                stroke="#fff"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </Svg>
-          </Animated.View>
-        </View>
-
-        <Text style={styles.successTitle}>You're All Set!</Text>
-        <Text style={styles.successSubtitle}>Welcome to MindFlow</Text>
-      </LinearGradient>
-
-            <ScrollView style={styles.summaryContainer} showsVerticalScrollIndicator={false}>
-              <Text style={styles.summaryTitle}>Here's your profile summary:</Text>
-
-              {data.university_id && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>University ID</Text><Text style={styles.summaryValue}>{data.university_id}</Text></View>}
-              {data.education_level && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Education Level</Text><Text style={styles.summaryValue}>{data.education_level}</Text></View>}
-              {data.major_field_of_study && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Major</Text><Text style={styles.summaryValue}>{data.major_field_of_study}</Text></View>}
-              {data.age && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Age</Text><Text style={styles.summaryValue}>{data.age} years old</Text></View>}
-              {data.living_situation && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Living</Text><Text style={styles.summaryValue}>{data.living_situation}</Text></View>}
-              {data.family_background && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Family</Text><Text style={styles.summaryValue}>{data.family_background}</Text></View>}
-              {data.cultural_background && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Culture</Text><Text style={styles.summaryValue}>{data.cultural_background}</Text></View>}
-              {data.hobbies_interests && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Hobbies</Text><Text style={styles.summaryValue}>{data.hobbies_interests}</Text></View>}
-              {data.personal_goals && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Goals</Text><Text style={styles.summaryValue}>{data.personal_goals}</Text></View>}
-              {data.why_mindflow && <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Why MindFlow?</Text><Text style={styles.summaryValue}>{data.why_mindflow}</Text></View>}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.closeSuccessBtn}
-              onPress={() => {
-                setShowSuccessModal(false);
-                onBack();
-              }}
-            >
-              <Text style={styles.closeSuccessText}>Back to Dashboard</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </Modal>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
@@ -420,11 +484,14 @@ const styles = StyleSheet.create({
   helpTitle: { fontSize: 18, fontWeight: '700', color: '#2E8A66', marginBottom: 8 },
   helpText: { fontSize: 15, color: '#444', lineHeight: 22 },
   questionCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 8 },
+  summaryQuestionCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 8 },
+  summaryQuestionHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
   questionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F0F9F6', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   questionText: { flex: 1 },
   questionTitle: { fontSize: 17, fontWeight: '600', color: '#333' },
   questionSubtitle: { fontSize: 14, color: '#888', marginTop: 4 },
+  summaryValue: { fontSize: 16, color: '#333', marginTop: 8, lineHeight: 22 },
   dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#E0E0E0' },
   dotFilled: { backgroundColor: '#64C59A' },
   textInput: { backgroundColor: '#F7FAF9', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, fontSize: 16, borderWidth: 1.5, borderColor: '#E8F5E9' },
@@ -443,19 +510,36 @@ const styles = StyleSheet.create({
   saveBtnDisabled: { backgroundColor: '#aaa', shadowOpacity: 0.2 },
   saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   footerNote: { textAlign: 'center', marginTop: 20, marginBottom: 40, color: '#666', fontSize: 13, paddingHorizontal: 30, lineHeight: 20 },
-
-  // Success Modal Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
-  successCard: { width: '92%', maxHeight: '92%', backgroundColor: '#fff', borderRadius: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 20 },
-  successHeader: { paddingVertical: 50, alignItems: 'center' },
-  successEmoji: { fontSize: 48, marginBottom: 10 },
-  successTitle: { fontSize: 30, fontWeight: '800', color: '#fff' },
-  successSubtitle: { fontSize: 18, color: '#E8F5F1', marginTop: 8 },
-  summaryContainer: { padding: 24, flexGrow: 1 },
-  summaryTitle: { fontSize: 19, fontWeight: '700', color: '#2E8A66', textAlign: 'center', marginBottom: 20 },
-  summaryItem: { marginBottom: 16, padding: 16, backgroundColor: '#F0F9F6', borderRadius: 16, borderLeftWidth: 5, borderLeftColor: '#64C59A' },
-  summaryLabel: { fontSize: 15, fontWeight: '600', color: '#2E8A66', marginBottom: 4 },
-  summaryValue: { fontSize: 16, color: '#333', lineHeight: 22 },
-  closeSuccessBtn: { marginHorizontal: 24, marginVertical: 20, backgroundColor: '#64C59A', paddingVertical: 18, borderRadius: 30, alignItems: 'center' },
-  closeSuccessText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  // Success Page Styles
+  summaryContainer: { flexGrow: 1 },
+  // Celebration Styles
+  completionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#F8FDFC',
+  },
+  celebrationEmoji: {
+    fontSize: 60,
+    marginBottom: 20,
+  },
+  completionTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  completionText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  happyEmoji: {
+    fontSize: 40,
+    marginTop: 20,
+  },
 });
