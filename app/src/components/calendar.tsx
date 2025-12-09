@@ -7,16 +7,20 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSession } from '../../src/contexts/SessionContext';
 import { Svg, Path, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
 export default function CalendarScreen() {
   const { session, loading } = useSession();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [completedDays, setCompletedDays] = useState<Set<string>>(new Set());
+  const [mindfulnessSessions, setMindfulnessSessions] = useState<Set<string>>(new Set());
 
   if (loading) {
     return (
@@ -51,6 +55,14 @@ export default function CalendarScreen() {
     });
   };
 
+  // Check if a date is a Thursday (4 = Thursday in JS Date)
+  const isThursday = (date: Date) => date.getDay() === 4;
+
+  // Format date as YYYY-MM-DD string for comparison
+  const formatDateKey = (date: Date) => {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -83,9 +95,12 @@ export default function CalendarScreen() {
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
+      const dateKey = formatDateKey(date);
       const isToday = date.toDateString() === today.toDateString();
       const isPast = date < today && !isToday;
-      const isCompleted = day <= 17; // Mock: days 1–17 completed
+      const isCompleted = completedDays.has(dateKey);
+      const isMindfulnessSession = isThursday(date);
+      const hasMindfulnessSession = isMindfulnessSession && mindfulnessSessions.has(dateKey);
 
       cells.push(
         <TouchableOpacity
@@ -94,13 +109,15 @@ export default function CalendarScreen() {
             styles.dayCell,
             isToday && styles.todayCell,
             isCompleted && styles.completedCell,
+            isMindfulnessSession && styles.mindfulnessDayCell,
           ]}
-          onPress={() => console.log(`Tapped: ${year}-${month + 1}-${day}`)}
+          onPress={() => handleDayPress(date, isMindfulnessSession)}
         >
           <Text style={[
             styles.dayText,
             isToday && styles.todayText,
             isCompleted && styles.completedText,
+            isMindfulnessSession && styles.mindfulnessDayText,
           ]}>
             {day}
           </Text>
@@ -115,6 +132,27 @@ export default function CalendarScreen() {
                 strokeLinejoin="round"
               />
             </Svg>
+          )}
+          {isMindfulnessSession && !isCompleted && (
+            <View style={styles.sessionIndicator}>
+              <Svg width="12" height="12" viewBox="0 0 24 24" fill="#9C27B0">
+                <Circle cx="12" cy="12" r="10" />
+              </Svg>
+            </View>
+          )}
+          {hasMindfulnessSession && !isToday && (
+            <View style={styles.sessionCompletedIndicator}>
+              <Svg width="16" height="16" viewBox="0 0 24 24" fill="#9C27B0">
+                <Path
+                  d="M20 6L9 17L4 12"
+                  stroke="#fff"
+                  strokeWidth="3"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </View>
           )}
         </TouchableOpacity>
       );
@@ -137,17 +175,63 @@ export default function CalendarScreen() {
 
           <View style={styles.grid}>{cells}</View>
 
-          <View style={styles.streakFooter}>
-            <View style={styles.fireBadge}>
-              <Svg width="20" height="20" viewBox="0 0 24 24" fill="#FF9500">
-                <Path d="M8.5 19C8.5 19 7 19 7 17.5C7 15.5 9.5 14.5 9.5 11C9.5 11 10 6 14.5 6.5C17 7 19 9.5 19 13.5C19 17.5 16 19.5 12 19.5C10.5 19.5 8.5 19 8.5 19Z" />
-              </Svg>
-              <Text style={styles.streakText}>12 Day Streak</Text>
+          <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, styles.completedLegend]}></View>
+              <Text style={styles.legendText}>Completed</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, styles.mindfulnessLegend]}></View>
+              <Text style={styles.legendText}>Mindfulness Session</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, styles.todayLegend]}></View>
+              <Text style={styles.legendText}>Today</Text>
             </View>
           </View>
         </View>
       </Animated.View>
     );
+  };
+
+  const handleDayPress = (date: Date, isMindfulnessSession: boolean) => {
+    const dateKey = formatDateKey(date);
+    
+    if (isMindfulnessSession) {
+      // Toggle mindfulness session attendance
+      setMindfulnessSessions(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(dateKey)) {
+          newSet.delete(dateKey);
+        } else {
+          newSet.add(dateKey);
+        }
+        return newSet;
+      });
+      
+      Alert.alert(
+        "Mindfulness Session",
+        `Marked mindfulness session for ${date.toDateString()} as ${mindfulnessSessions.has(dateKey) ? 'not attended' : 'attended'}!`,
+        [{ text: "OK" }]
+      );
+    } else {
+      // Toggle regular day completion
+      setCompletedDays(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(dateKey)) {
+          newSet.delete(dateKey);
+        } else {
+          newSet.add(dateKey);
+        }
+        return newSet;
+      });
+      
+      Alert.alert(
+        "Day Status",
+        `Marked ${date.toDateString()} as ${completedDays.has(dateKey) ? 'not completed' : 'completed'}!`,
+        [{ text: "OK" }]
+      );
+    }
   };
 
   return (
@@ -160,31 +244,51 @@ export default function CalendarScreen() {
       {renderCalendar()}
 
       <View style={styles.eventsSection}>
-        <Text style={styles.sectionTitle}>Upcoming Events</Text>
-        <View style={styles.eventCard}>
-          <View style={styles.eventIcon}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="#9C27B0">
-              <Path d="M12 2L13.09 8.26L22 9.27L16 14.14L17.18 21.02L12 17.77L6.82 21.02L8 14.14L2 9.27L10.91 8.26L12 2Z"/>
-            </Svg>
-          </View>
-          <View style={styles.eventContent}>
-            <Text style={styles.eventTitle}>New Weekly Challenge</Text>
-            <Text style={styles.eventTime}>Starts Monday • 3 days left</Text>
-          </View>
-        </View>
-
-        <View style={styles.eventCard}>
-          <View style={styles.eventIcon}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="#2E8A66">
-              <Path d="M12 8V12L15 15" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-              <Circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="2" fill="none"/>
-            </Svg>
-          </View>
-          <View style={styles.eventContent}>
-            <Text style={styles.eventTitle}>Mindful Breathing Session</Text>
-            <Text style={styles.eventTime}>Thursday, 7:00 PM</Text>
-          </View>
-        </View>
+        <Text style={styles.sectionTitle}>Upcoming Mindfulness Sessions</Text>
+        
+        {/* Generate upcoming Thursday sessions */}
+        {(() => {
+          const upcomingSessions = [];
+          const today = new Date();
+          let checkDate = new Date(today);
+          
+          // Find next 4 Thursdays
+          for (let i = 0; i < 4; i++) {
+            // Move to next Thursday
+            while (checkDate.getDay() !== 4 || checkDate <= today) {
+              checkDate.setDate(checkDate.getDate() + 1);
+            }
+            
+            const dateKey = formatDateKey(checkDate);
+            const isAttended = mindfulnessSessions.has(dateKey);
+            
+            upcomingSessions.push(
+              <View key={i} style={[styles.eventCard, isAttended && styles.eventCardCompleted]}>
+                <View style={styles.eventIcon}>
+                  <Svg width="24" height="24" viewBox="0 0 24 24" fill="#9C27B0">
+                    <Circle cx="12" cy="12" r="10" />
+                  </Svg>
+                </View>
+                <View style={styles.eventContent}>
+                  <Text style={styles.eventTitle}>Mindfulness Session</Text>
+                  <Text style={styles.eventTime}>{checkDate.toDateString()}</Text>
+                </View>
+                <View style={styles.eventStatus}>
+                  {isAttended ? (
+                    <Text style={styles.eventStatusTextCompleted}>Attended</Text>
+                  ) : (
+                    <Text style={styles.eventStatusTextPending}>Pending</Text>
+                  )}
+                </View>
+              </View>
+            );
+            
+            // Move to next day for next iteration
+            checkDate.setDate(checkDate.getDate() + 1);
+          }
+          
+          return upcomingSessions;
+        })()}
       </View>
     </ScrollView>
   );
@@ -211,15 +315,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   calendarCard: {
-    marginHorizontal: 20,
+    marginHorizontal: 24,
     backgroundColor: '#fff',
-    borderRadius: 28,
+    borderRadius: 24,
     padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
   },
   header: {
     flexDirection: 'row',
@@ -231,13 +335,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#F0F9F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   navArrow: {
     fontSize: 20,
     color: '#333',
+    fontWeight: '600',
   },
   monthTitle: {
     fontSize: 22,
@@ -264,10 +369,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginVertical: 4,
+    position: 'relative',
   },
   dayText: {
     fontSize: 16,
     color: '#333',
+    fontWeight: '500',
   },
   todayCell: {
     backgroundColor: '#64C59A',
@@ -284,27 +391,58 @@ const styles = StyleSheet.create({
     color: '#64C59A',
     fontWeight: '600',
   },
+  mindfulnessDayCell: {
+    backgroundColor: '#F5EEF8',
+  },
+  mindfulnessDayText: {
+    color: '#9C27B0',
+    fontWeight: '600',
+  },
   checkIcon: {
     position: 'absolute',
     bottom: -6,
   },
-  streakFooter: {
-    alignItems: 'center',
-    marginTop: 20,
+  sessionIndicator: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
   },
-  fireBadge: {
+  sessionCompletedIndicator: {
+    position: 'absolute',
+    bottom: -6,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF4E5',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
   },
-  streakText: {
-    marginLeft: 8,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FF9500',
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  completedLegend: {
+    backgroundColor: '#64C59A',
+  },
+  mindfulnessLegend: {
+    backgroundColor: '#9C27B0',
+  },
+  todayLegend: {
+    backgroundColor: '#64C59A',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#666',
   },
   eventsSection: {
     padding: 24,
@@ -327,6 +465,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
+  eventCardCompleted: {
+    backgroundColor: '#F0F9F6',
+  },
   eventIcon: {
     width: 48,
     height: 48,
@@ -347,5 +488,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  eventStatus: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  eventStatusTextPending: {
+    color: '#FF9500',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  eventStatusTextCompleted: {
+    color: '#64C59A',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
