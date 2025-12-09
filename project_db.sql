@@ -177,3 +177,177 @@ INSERT INTO weekly_questions (week_id, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10) 
  'In what way did you show kindness to yourself this week?',
  'What is one thing you learned about yourself this week?',
  'How do you plan to take care of your mental health in the coming week?');
+
+ -- Main Questionnaire Tables
+
+-- Table 1: main_question_sets
+-- Purpose: Store each main questionnaire set with 25 questions
+CREATE TABLE IF NOT EXISTS main_question_sets (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    version TEXT UNIQUE NOT NULL, -- Unique identifier for each version (e.g., '2023-Q1')
+    section_a_title TEXT NOT NULL,
+    section_a_instructions TEXT NOT NULL,
+    section_a_scale_min INTEGER NOT NULL,
+    section_a_scale_max INTEGER NOT NULL,
+    section_a_scale_labels TEXT[] NOT NULL, -- Array of labels for the scale
+    section_b_title TEXT NOT NULL,
+    section_b_instructions TEXT NOT NULL,
+    section_b_scale_min INTEGER NOT NULL,
+    section_b_scale_max INTEGER NOT NULL,
+    section_b_scale_labels TEXT[] NOT NULL, -- Array of labels for the scale
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table 2: main_questions
+-- Purpose: Store individual questions for each section
+CREATE TABLE IF NOT EXISTS main_questions (
+    id SERIAL PRIMARY KEY,
+    question_set_id INTEGER REFERENCES main_question_sets(id) ON DELETE CASCADE,
+    section_type TEXT NOT NULL, -- 'A' or 'B'
+    question_id TEXT NOT NULL, -- e.g., 'PSS_01', 'FFMQ_01'
+    question_text TEXT NOT NULL,
+    facet TEXT, -- For FFMQ questions
+    reverse_score BOOLEAN DEFAULT FALSE,
+    sort_order INTEGER NOT NULL, -- Order of questions within section
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table 3: main_questionnaire_responses
+-- Purpose: Store each user's answers to the main questionnaire
+CREATE TABLE IF NOT EXISTS main_questionnaire_responses (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    question_set_id INTEGER REFERENCES main_question_sets(id) ON DELETE CASCADE,
+    -- Section A answers (10 questions)
+    a1 INTEGER,
+    a2 INTEGER,
+    a3 INTEGER,
+    a4 INTEGER,
+    a5 INTEGER,
+    a6 INTEGER,
+    a7 INTEGER,
+    a8 INTEGER,
+    a9 INTEGER,
+    a10 INTEGER,
+    -- Section B answers (15 questions)
+    b1 INTEGER,
+    b2 INTEGER,
+    b3 INTEGER,
+    b4 INTEGER,
+    b5 INTEGER,
+    b6 INTEGER,
+    b7 INTEGER,
+    b8 INTEGER,
+    b9 INTEGER,
+    b10 INTEGER,
+    b11 INTEGER,
+    b12 INTEGER,
+    b13 INTEGER,
+    b14 INTEGER,
+    b15 INTEGER,
+    -- Metadata
+    time_to_complete INTEGER, -- Time in seconds to complete the questionnaire
+    started_at TIMESTAMP WITH TIME ZONE,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS (Row Level Security)
+ALTER TABLE main_question_sets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE main_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE main_questionnaire_responses ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can only access main question sets" 
+    ON main_question_sets 
+    FOR ALL 
+    USING (true);
+
+CREATE POLICY "Users can only access main questions" 
+    ON main_questions 
+    FOR ALL 
+    USING (true);
+
+CREATE POLICY "Users can only access their own main questionnaire responses" 
+    ON main_questionnaire_responses 
+    FOR ALL 
+    USING (user_id = auth.uid());
+
+-- Indexes for better performance
+CREATE INDEX idx_main_question_sets_version ON main_question_sets(version);
+CREATE INDEX idx_main_questions_set_section ON main_questions(question_set_id, section_type);
+CREATE INDEX idx_main_questions_sort_order ON main_questions(sort_order);
+CREATE INDEX idx_main_responses_user_id ON main_questionnaire_responses(user_id);
+CREATE INDEX idx_main_responses_question_set_id ON main_questionnaire_responses(question_set_id);
+CREATE INDEX idx_main_responses_user_question_set ON main_questionnaire_responses(user_id, question_set_id);
+
+-- Grant permissions
+GRANT ALL ON TABLE main_question_sets TO authenticated;
+GRANT ALL ON TABLE main_questions TO authenticated;
+GRANT ALL ON TABLE main_questionnaire_responses TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE main_question_sets_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE main_questions_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE main_questionnaire_responses_id_seq TO authenticated;
+
+-- Sample data for main_question_sets table
+INSERT INTO main_question_sets (
+    title, 
+    description, 
+    version,
+    section_a_title,
+    section_a_instructions,
+    section_a_scale_min,
+    section_a_scale_max,
+    section_a_scale_labels,
+    section_b_title,
+    section_b_instructions,
+    section_b_scale_min,
+    section_b_scale_max,
+    section_b_scale_labels
+) VALUES (
+    'Perceived Stress & Mindfulness Assessment',
+    'Standardized questionnaire measuring perceived stress and mindfulness facets',
+    '2025-Q1',
+    'Part A: Perceived Stress Scale (PSS-10)',
+    'In the last month, how often have you felt...',
+    0,
+    4,
+    ARRAY['Never', 'Almost Never', 'Sometimes', 'Fairly Often', 'Very Often'],
+    'Part B: Five Facet Mindfulness Questionnaire (FFMQ-15)',
+    'Please rate each of the following statements...',
+    1,
+    5,
+    ARRAY['Never or very rarely true', 'Rarely true', 'Sometimes true', 'Often true', 'Very often or always true']
+);
+
+-- Sample data for main_questions table (Section A - PSS-10)
+INSERT INTO main_questions (question_set_id, section_type, question_id, question_text, reverse_score, sort_order) VALUES
+(1, 'A', 'PSS_01', 'In the last month, how often have you been upset because of something that happened unexpectedly?', false, 1),
+(1, 'A', 'PSS_02', 'In the last month, how often have you felt that you were unable to control the important things in your life?', false, 2),
+(1, 'A', 'PSS_03', 'In the last month, how often have you felt nervous and ''stressed''?', false, 3),
+(1, 'A', 'PSS_04', 'In the last month, how often have you felt confident about your ability to handle your personal problems?', true, 4),
+(1, 'A', 'PSS_05', 'In the last month, how often have you felt that things were going your way?', true, 5),
+(1, 'A', 'PSS_06', 'In the last month, how often have you found that you could not cope with all the things that you had to do?', false, 6),
+(1, 'A', 'PSS_07', 'In the last month, how often have you been able to control irritations in your life?', true, 7),
+(1, 'A', 'PSS_08', 'In the last month, how often have you felt that you were on top of things?', true, 8),
+(1, 'A', 'PSS_09', 'In the last month, how often have you been angered because of things that were outside of your control?', false, 9),
+(1, 'A', 'PSS_10', 'In the last month, how often have you felt difficulties were piling up so high that you could not overcome them?', false, 10);
+
+-- Sample data for main_questions table (Section B - FFMQ-15)
+INSERT INTO main_questions (question_set_id, section_type, question_id, question_text, facet, reverse_score, sort_order) VALUES
+(1, 'B', 'FFMQ_01', 'I notice changes in my body, such as whether my breathing slows down or speeds up.', 'Observing', false, 1),
+(1, 'B', 'FFMQ_02', 'I''m good at finding words to describe my feelings.', 'Describing', false, 2),
+(1, 'B', 'FFMQ_03', 'I find myself doing things without paying attention.', 'Acting with Awareness', true, 3),
+(1, 'B', 'FFMQ_04', 'I tell myself I shouldn''t be feeling the way I''m feeling.', 'Non-Judging', true, 4),
+(1, 'B', 'FFMQ_05', 'When I have distressing thoughts or images, I just notice them and let them go.', 'Non-Reactivity', false, 5),
+(1, 'B', 'FFMQ_06', 'I pay attention to sensations, such as the wind in my hair or sun on my face.', 'Observing', false, 6),
+(1, 'B', 'FFMQ_07', 'I can easily put my beliefs, opinions, and expectations into words.', 'Describing', false, 7),
+(1, 'B', 'FFMQ_08', 'I rush through activities without being really attentive to them.', 'Acting with Awareness', true, 8),
+(1, 'B', 'FFMQ_09', 'I make judgments about whether my thoughts are good or bad.', 'Non-Judging', true, 9),
+(1, 'B', 'FFMQ_10', 'When I have distressing thoughts or images, I feel calm soon after.', 'Non-Reactivity', false, 10),
+(1, 'B', 'FFMQ_11', 'I pay attention to sounds, such as clocks ticking, birds chirping, or cars passing.', 'Observing', false, 11),
+(1, 'B', 'FFMQ_12', 'It''s hard for me to find the words to describe what I''m thinking.', 'Describing', true, 12),
+(1, 'B', 'FFMQ_13', 'I get so focused on the goal I want to achieve that I lose touch with what I am doing right now to get there.', 'Acting with Awareness', true, 13),
+(1, 'B', 'FFMQ_14', 'I think some of my emotions are bad or inappropriate and I shouldn''t feel them.', 'Non-Judging', true, 14),
+(1, 'B', 'FFMQ_15', 'When I have distressing thoughts or images, I am able to just notice them without reacting.', 'Non-Reactivity', false, 15);

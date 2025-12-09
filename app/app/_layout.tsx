@@ -157,6 +157,13 @@ export default function RootLayout() {
             href: null, // This hides the tab from the tab bar
           }}
         />
+        {/* Hidden route for main questionnaire */}
+        <Tabs.Screen
+          name="main-questionnaire"
+          options={{
+            href: null, // This hides the tab from the tab bar
+          }}
+        />
       </Tabs>
     </SessionProvider>
   );
