@@ -62,9 +62,10 @@ const BrainAvatar = ({ size = 48 }: { size?: number }) => (
 export default function Dashboard({ session, onNavigateToAboutMe }: { session: any; onNavigateToAboutMe: () => void }) {
   const router = useRouter();
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
-  const [streak] = useState(12);
-  const [completed] = useState(48);
-  const [consistency] = useState(95);
+  const [streak, setStreak] = useState(0);
+  const [completed, setCompleted] = useState(0);
+  const [consistency, setConsistency] = useState(0);
+  const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [showAccountModal, setShowAccountModal] = useState(false);
 
   useEffect(() => {
@@ -73,6 +74,123 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch user progress data
+  useEffect(() => {
+    fetchUserProgress();
+  }, [session]);
+
+  const fetchUserProgress = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      // Fetch daily sliders streak
+      const { data: streakData, error: streakError } = await supabase
+        .from('daily_sliders')
+        .select('created_at')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      
+      if (streakError) throw streakError;
+      
+      // Calculate streak (consecutive days)
+      let currentStreak = 0;
+      if (streakData && streakData.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Create a set of dates with entries
+        const entryDates = new Set();
+        streakData.forEach(entry => {
+          const entryDate = new Date(entry.created_at);
+          entryDate.setHours(0, 0, 0, 0);
+          entryDates.add(entryDate.getTime());
+        });
+        
+        // Start from today and count backwards
+        let currentDate = new Date(today);
+        while (entryDates.has(currentDate.getTime())) {
+          currentStreak++;
+          currentDate.setDate(currentDate.getDate() - 1);
+        }
+      }
+      
+      // Calculate total completed entries in the last 6 months
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
+      const { count: totalCount, error: countError } = await supabase
+        .from('daily_sliders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('created_at', sixMonthsAgo.toISOString());
+      
+      if (countError) throw countError;
+      
+      // For 6-month progress, we want to show actual completed entries
+      // But also calculate percentage for visualization
+      const maxEntries = 180; // Approx 180 days in 6 months
+      const completionCount = totalCount || 0;
+      const completionPercentage = totalCount ? Math.min(100, Math.round((totalCount / maxEntries) * 100)) : 0;
+      
+      // Calculate consistency (percentage of days with entries in the last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { count: recentCount, error: recentCountError } = await supabase
+        .from('daily_sliders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('created_at', thirtyDaysAgo.toISOString());
+      
+      if (recentCountError) throw recentCountError;
+      
+      const consistencyPercentage = recentCount ? Math.min(100, Math.round((recentCount / 30) * 100)) : 0;
+      
+      // Fetch weekly questions progress
+      const sixMonthsAgoForWeekly = new Date();
+      sixMonthsAgoForWeekly.setMonth(sixMonthsAgoForWeekly.getMonth() - 6);
+      
+      const { data: weeklyAnswers, error: weeklyError } = await supabase
+        .from('weekly_answers')
+        .select('submitted_at')
+        .eq('user_id', session.user.id)
+        .gte('submitted_at', sixMonthsAgoForWeekly.toISOString());
+      
+      if (weeklyError) throw weeklyError;
+      
+      // Count unique weeks with submissions in the last 6 months
+      const uniqueWeeks = new Set();
+      if (weeklyAnswers) {
+        weeklyAnswers.forEach(answer => {
+          const date = new Date(answer.submitted_at);
+          const [year, week] = getWeekNumber(date);
+          uniqueWeeks.add(`${year}-W${week.toString().padStart(2, '0')}`);
+        });
+      }
+      
+      const weeklyCompletionCount = uniqueWeeks.size;
+      // Approximate max weeks in 6 months (26 weeks)
+      const maxWeeklyEntries = 26;
+      const weeklyProgressPercentage = weeklyAnswers ? Math.min(100, Math.round((weeklyCompletionCount / maxWeeklyEntries) * 100)) : 0;
+      
+      setStreak(currentStreak);
+      setCompleted(completionCount);
+      setConsistency(consistencyPercentage);
+      setWeeklyProgress(weeklyProgressPercentage);
+    } catch (error) {
+      console.error('Error fetching user progress:', error);
+    }
+  };
+
+  // Helper function to get week number
+  function getWeekNumber(d: Date): [number, number] {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1) / 7);
+    return [d.getUTCFullYear(), weekNo];
+  }
 
   const handleSignOut = async () => {
     setShowAccountModal(false);
@@ -94,7 +212,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MindFlow</Text>
-        <TouchableOpacity onPress={() => setShowAccountModal(true)}>
+        <TouchableOpacity onPress={() => setShowAccountModal(true)} style={styles.avatarButton}>
           <BrainAvatar size={48} />
         </TouchableOpacity>
       </View>
@@ -133,7 +251,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
                   strokeWidth="14"
                   fill="none"
                   strokeDasharray="440"
-                  strokeDashoffset={440 - (440 * streak) / 30}
+                  strokeDashoffset={440 - (440 * Math.min(100, streak)) / 100}
                   strokeLinecap="round"
                   transform="rotate(-90 80 80)"
                 />
@@ -151,90 +269,96 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
               <View style={styles.smallStat}>
                 <Text style={styles.smallNumber}>{completed}</Text>
                 <Text style={styles.smallLabel}>Completed</Text>
+                <Text style={styles.smallSubLabel}>Last 6 Months</Text>
               </View>
               <View style={styles.smallStat}>
                 <Text style={styles.smallNumber}>{consistency}%</Text>
                 <Text style={styles.smallLabel}>Consistency</Text>
+                <Text style={styles.smallSubLabel}>Last 30 Days</Text>
               </View>
             </View>
+          </View>
+          
+          {/* Weekly Progress Bar */}
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBarHeader}>
+              <Text style={styles.progressBarLabel}>Weekly Questions</Text>
+              <Text style={styles.progressBarValue}>{weeklyProgress}%</Text>
+            </View>
+            <View style={styles.progressBarTrack}>
+              <Animated.View 
+                style={[styles.progressBarFill, { width: weeklyProgress > 0 ? `${weeklyProgress}%` : '0%' }]} 
+                entering={FadeIn.duration(600)}
+              />
+            </View>
+            <Text style={styles.progressBarSubtitle}>Completed {Math.floor((weeklyProgress * 26) / 100)} of 26 weeks in the last 6 months</Text>
           </View>
         </Animated.View>
 
         {/* Quick Access */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Access</Text>
-          <View style={styles.grid}>
-            <TouchableOpacity style={[styles.card, styles.cardCalm]} onPress={onNavigateToAboutMe}>
-              <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-                <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-                <Circle cx="12" cy="7" r="4" stroke="#fff" strokeWidth="2.5" />
-              </Svg>
-              <Text style={styles.cardTitle}>About Me</Text>
-              <Text style={styles.cardDesc}>One-time questions</Text>
+          <View style={styles.quickActionsContainer}>
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={onNavigateToAboutMe}
+            >
+              <View style={[styles.actionIconContainer, { backgroundColor: '#64C59A20' }]}>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+                  <Circle cx="12" cy="7" r="4" stroke="#64C59A" strokeWidth="2" />
+                </Svg>
+              </View>
+              <Text style={styles.actionTitle}>About Me</Text>
+              <Text style={styles.actionSubtitle}>One-time questions</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.card, styles.cardWeekly]}
+              style={styles.quickActionButton}
               onPress={() => router.push('/weekly-questions')}
             >
-              <View style={styles.badge}><Text style={styles.badgeText}>Weekly</Text></View>
-              <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-                <Path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="#fff" strokeWidth="2.5" />
-                <Path d="M16 2V6" stroke="#fff" strokeWidth="2.5" />
-                <Path d="M8 2V6" stroke="#fff" strokeWidth="2.5" />
-              </Svg>
-              <Text style={styles.cardTitle}>Weekly Questions</Text>
-              <Text style={styles.cardDesc}>Available this week</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.card, styles.cardDeep]}>
-              <Svg width="40" height="40" viewBox="0 0 24 24" fill="#fff">
-                <Path d="M12 2C13.6569 2 15 3.34315 15 5C15 6.65685 13.6569 8 12 8C10.3431 8 9 6.65685 9 5C9 3.34315 10.3431 2 12 2Z" />
-                <Path d="M12 10C14.2091 10 16 11.7909 16 14C16 16.2091 14.2091 18 12 18C9.79086 18 8 16.2091 8 14C8 11.7909 9.79086 10 12 10Z" />
-                <Path d="M12 20C14.2091 20 16 18.2091 16 16C16 13.7909 14.2091 12 12 12C9.79086 12 8 13.7909 8 16C8 18.2091 9.79086 20 12 20Z" />
-              </Svg>
-              <Text style={styles.cardTitle}>Main Questions</Text>
-              <Text style={styles.cardDesc}>Deeper mindfulness</Text>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#4CAF8520' }]}>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <Path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="#4CAF85" strokeWidth="2" />
+                  <Path d="M16 2V6" stroke="#4CAF85" strokeWidth="2" />
+                  <Path d="M8 2V6" stroke="#4CAF85" strokeWidth="2" />
+                </Svg>
+              </View>
+              <Text style={styles.actionTitle}>Weekly Questions</Text>
+              <Text style={styles.actionSubtitle}>Available this week</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.card, styles.cardDaily]}
+              style={styles.quickActionButton}
               onPress={() => router.push('/daily-sliders')}
             >
-              <Svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-                <Path d="M8 6H21" stroke="#fff" strokeWidth="2.5" />
-                <Path d="M8 12H21" stroke="#fff" strokeWidth="2.5" />
-                <Path d="M8 18H21" stroke="#fff" strokeWidth="2.5" />
-                <Path d="M3 6H3.01" stroke="#fff" strokeWidth="3" />
-                <Path d="M3 12H3.01" stroke="#fff" strokeWidth="3" />
-                <Path d="M3 18H3.01" stroke="#fff" strokeWidth="3" />
-              </Svg>
-              <Text style={styles.cardTitle}>Daily Sliders</Text>
-              <Text style={styles.cardDesc}>Track stress & sleep</Text>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#2E8A6620' }]}>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <Path d="M8 6H21" stroke="#2E8A66" strokeWidth="2" />
+                  <Path d="M8 12H21" stroke="#2E8A66" strokeWidth="2" />
+                  <Path d="M8 18H21" stroke="#2E8A66" strokeWidth="2" />
+                  <Path d="M3 6H3.01" stroke="#2E8A66" strokeWidth="3" />
+                  <Path d="M3 12H3.01" stroke="#2E8A66" strokeWidth="3" />
+                  <Path d="M3 18H3.01" stroke="#2E8A66" strokeWidth="3" />
+                </Svg>
+              </View>
+              <Text style={styles.actionTitle}>Daily Sliders</Text>
+              <Text style={styles.actionSubtitle}>Track stress & sleep</Text>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* This Week */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>This Week</Text>
-          <View style={styles.calendarCard}>
-            {['Wed\n14', 'Thu\n15', 'Fri\n16', 'Sat\n17', 'Sun\n18', 'Mon\n19', 'Tue\n20'].map((d, i) => {
-              const isActive = i >= 3 && i <= 5;
-              return (
-                <View key={i} style={styles.dayItem}>
-                  <Text style={styles.dayLabel}>{d.split('\n')[0]}</Text>
-                  <View style={[styles.dayCircle, isActive && styles.activeDayCircle]}>
-                    <Text style={[styles.dayNumber, isActive && styles.activeDayNumber]}>{d.split('\n')[1]}</Text>
-                  </View>
-                  {isActive && (
-                    <Svg width="20" height="20" viewBox="0 0 24 24" style={styles.checkIcon}>
-                      <Path d="M20 6L9 17L4 12" stroke="#64C59A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                  )}
-                </View>
-              );
-            })}
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => router.push('/progress')}
+            >
+              <View style={[styles.actionIconContainer, { backgroundColor: '#1A5F4A20' }]}>
+                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <Circle cx="12" cy="12" r="10" stroke="#1A5F4A" strokeWidth="2"/>
+                  <Path d="M12 6V12L16 14" stroke="#1A5F4A" strokeWidth="2" strokeLinecap="round" />
+                </Svg>
+              </View>
+              <Text style={styles.actionTitle}>Progress</Text>
+              <Text style={styles.actionSubtitle}>View your stats</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -244,7 +368,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); /* Navigate to Account */ }}>
+            <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); router.push('/account'); }}>
               <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <Circle cx="12" cy="7" r="4" stroke="#333" strokeWidth="2" />
                 <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#333" strokeWidth="2" />
@@ -270,7 +394,23 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 16 },
   headerTitle: { fontSize: 34, fontWeight: '800', color: '#2E8A66' },
-  avatarContainer: { borderRadius: 60, backgroundColor: '#E8F5F1', padding: 8, borderWidth: 4, borderColor: '#fff', shadowColor: '#64C59A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 15 },
+  avatarButton: { 
+    padding: 4,
+    borderRadius: 30,
+    backgroundColor: '#fff',
+    shadowColor: '#64C59A', 
+    shadowOffset: { width: 0, height: 8 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 20, 
+    elevation: 15 
+  },
+  avatarContainer: { 
+    borderRadius: 60, 
+    backgroundColor: '#E8F5F1', 
+    padding: 8, 
+    borderWidth: 4, 
+    borderColor: '#fff' 
+  },
   tipCard: { marginHorizontal: 24, marginTop: 20, borderRadius: 32, padding: 32, shadowColor: '#64C59A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 25, elevation: 20 },
   tipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   tipLabel: { color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 10 },
@@ -280,7 +420,7 @@ const styles = StyleSheet.create({
   activeDot: { backgroundColor: '#fff', width: 24 },
   section: { paddingHorizontal: 24, marginTop: 32 },
   sectionTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginBottom: 20 },
-  progressGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  progressGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   ringCard: { position: 'relative' },
   ringCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
   ringNumber: { fontSize: 38, fontWeight: '800', color: '#2E8A66', marginTop: 8 },
@@ -289,24 +429,52 @@ const styles = StyleSheet.create({
   smallStat: { backgroundColor: '#fff', padding: 20, borderRadius: 28, width: 130, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 10 },
   smallNumber: { fontSize: 36, fontWeight: '800', color: '#2E8A66' },
   smallLabel: { fontSize: 13, color: '#666', marginTop: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { width: (width - 72) / 2, backgroundColor: '#fff', borderRadius: 32, padding: 28, marginBottom: 20, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 25, elevation: 16 },
-  cardCalm: { backgroundColor: '#64C59A' },
-  cardWeekly: { backgroundColor: '#2E8A66' },
-  cardDeep: { backgroundColor: '#1A5F4A' },
-  cardDaily: { backgroundColor: '#4CAF85' },
-  badge: { position: 'absolute', top: 16, right: 16, backgroundColor: '#FF9500', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  cardTitle: { color: '#fff', fontSize: 19, fontWeight: '700', marginTop: 20 },
-  cardDesc: { color: '#fff', fontSize: 14, opacity: 0.9, marginTop: 8, textAlign: 'center', lineHeight: 20 },
-  calendarCard: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 32, paddingVertical: 24, paddingHorizontal: 12, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 20, elevation: 12 },
-  dayItem: { flex: 1, alignItems: 'center' },
-  dayLabel: { fontSize: 12, color: '#999', marginBottom: 8 },
-  dayCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center' },
-  activeDayCircle: { backgroundColor: '#64C59A' },
-  dayNumber: { fontSize: 17, fontWeight: '600', color: '#666' },
-  activeDayNumber: { color: '#fff', fontWeight: '700' },
-  checkIcon: { position: 'absolute', bottom: -12 },
+  smallSubLabel: { fontSize: 11, color: '#999' },
+  // Progress bar styles
+  progressBarContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginTop: 20, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 10 },
+  progressBarHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  progressBarLabel: { fontSize: 16, fontWeight: '600', color: '#333' },
+  progressBarValue: { fontSize: 16, fontWeight: '700', color: '#2E8A66' },
+  progressBarTrack: { height: 12, backgroundColor: '#E8F5F1', borderRadius: 6, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: '#64C59A', borderRadius: 6 },
+  progressBarSubtitle: { fontSize: 12, color: '#666', textAlign: 'center', marginTop: 8 },
+  // Quick Actions Styles
+  quickActionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  quickActionButton: {
+    width: (width - 72) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  actionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  actionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 6,
+  },
+  actionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 20, paddingHorizontal: 24, paddingBottom: 40 },
   modalHandle: { width: 50, height: 5, backgroundColor: '#ddd', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },

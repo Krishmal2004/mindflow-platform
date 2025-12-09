@@ -181,13 +181,23 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
   async function fetchData() {
     try {
       setLoading(true);
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('about_me_profiles')
         .select('*')
         .eq('id', session?.user.id)
         .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
       if (profile) {
-        setData(prev => ({ ...prev, ...profile }));
+        // Ensure age is properly parsed as a number
+        const profileData = {
+          ...profile,
+          age: profile.age !== null ? Number(profile.age) : null
+        };
+        setData(prev => ({ ...prev, ...profileData }));
         if (profile.is_completed) {
           setProfileCompleted(true);
         }
@@ -210,30 +220,52 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     try {
       setSaving(true);
       const hobbiesToSave = [...selectedHobbies.filter(h => h !== 'Other'), ...(otherHobby.trim() ? [otherHobby.trim()] : [])].join(', ');
+      
+      // Ensure age is properly formatted as an integer
+      const ageValue = data.age !== null ? parseInt(data.age.toString(), 10) : null;
+      
       const updateData = {
         ...data,
+        age: ageValue,
         hobbies_interests: hobbiesToSave,
         completion_percentage: completionPercentage,
         is_completed: true,
       };
-      await supabase.from('about_me_profiles').upsert({
+      
+      console.log('Saving data:', { id: session?.user.id, ...updateData });
+      
+      const { error } = await supabase.from('about_me_profiles').upsert({
         id: session?.user.id,
         ...updateData
+      }, {
+        onConflict: 'id'
       });
-      setData(updateData);
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      setData(updateData as any);
       setShowCelebration(true);
       setTimeout(() => {
         setShowCelebration(false);
         setProfileCompleted(true);
       }, 5000);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'Failed to save profile');
+      console.error('Save error:', e);
+      Alert.alert('Error', e.message || 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
   }
   const update = (key: keyof AboutMeData, value: any) => {
-    setData(prev => ({ ...prev, [key]: value }));
+    // Ensure age is always a number or null
+    if (key === 'age') {
+      setData(prev => ({ ...prev, [key]: value === '' || value === null ? null : Number(value) }));
+    } else {
+      setData(prev => ({ ...prev, [key]: value }));
+    }
   };
   const toggleHobby = (hobby: string) => {
     setSelectedHobbies(prev => {
@@ -421,7 +453,7 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
               <TextInput
                 style={styles.textInput}
                 value={data.age?.toString() || ''}
-                onChangeText={t => update('age', parseInt(t) || null)}
+                onChangeText={t => update('age', t ? parseInt(t, 10) : null)}
                 placeholder="e.g. 21"
                 keyboardType="numeric"
               />
