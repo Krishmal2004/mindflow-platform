@@ -267,7 +267,7 @@ export default function WeeklyQuestions() {
               <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Reflection</Text>
+          <Text style={styles.headerTitle}>Weekly Whispers</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.loadingContainer}>
@@ -288,12 +288,12 @@ export default function WeeklyQuestions() {
               <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Reflection</Text>
+          <Text style={styles.headerTitle}>Weekly Whispers</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.completionContainer}>
           <Text style={styles.completionTitle}>No Questions Yet</Text>
-          <Text style={styles.completionText}>Weekly reflection questions will appear here when available.</Text>
+          <Text style={styles.completionText}>Weekly whispers questions will appear here when available.</Text>
           <Text style={styles.completionText}>Check back soon!</Text>
           <TouchableOpacity style={styles.refreshButton} onPress={fetchWeeklyQuestions}>
             <Text style={styles.refreshButtonText}>Refresh</Text>
@@ -310,9 +310,9 @@ export default function WeeklyQuestions() {
         <View style={styles.completionContainer}>
           <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Great Job Today!</Text>
-            <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-            <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
+            <Text style={styles.completionTitle}>Great Job For This Week!</Text>
+            <Text style={styles.completionText}>You've completed your Weekly Whisper routine.</Text>
+            <Text style={styles.completionText}>You're all set. Let's meet again Next Week!</Text>
             <Text style={styles.happyEmoji}>😊</Text>
           </Animated.View>
         </View>
@@ -328,7 +328,7 @@ export default function WeeklyQuestions() {
             <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Weekly Reflection</Text>
+        <Text style={styles.headerTitle}>Weekly Whispers</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -337,9 +337,9 @@ export default function WeeklyQuestions() {
           <View style={styles.completionContainer}>
             <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
               <Text style={styles.celebrationEmoji}>🎉</Text>
-              <Text style={styles.completionTitle}>Great Job Today!</Text>
-              <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-              <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
+              <Text style={styles.completionTitle}>Great Job For This Week!</Text>
+              <Text style={styles.completionText}>You've completed your Weekly Whisper routine.</Text>
+              <Text style={styles.completionText}>You're all set. Let's meet again Next Week!</Text>
               <Text style={styles.happyEmoji}>😊</Text>
             </Animated.View>
           </View>
@@ -390,7 +390,7 @@ export default function WeeklyQuestions() {
               {submitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.submitButtonText}>Submit Reflection</Text>
+                <Text style={styles.submitButtonText}>Submit Whisper</Text>
               )}
             </TouchableOpacity>
           </>

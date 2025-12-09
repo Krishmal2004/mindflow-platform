@@ -15,6 +15,7 @@ import Animated, { FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated'
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { useRouter } from 'expo-router';
 // Custom SVG Icons
 const Icons = {
   school: () => (
@@ -124,6 +125,7 @@ const hobbiesOptions = [
   "Other"
 ];
 export default function AboutMe({ session, onBack }: { session: Session; onBack: () => void }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [declarationChecked, setDeclarationChecked] = useState(false);
@@ -307,13 +309,25 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     return (
       <View style={styles.container}>
         {/* Header */}
-        <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-            <Text style={styles.backText}>←</Text>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile Complete</Text>
-          <Text style={styles.headerSubtitle}>Here's your summary</Text>
-        </LinearGradient>
+          <View style={{ width: 24 }} />
+        </View>
+        
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <Text style={styles.progressInfoText}>Your profile is 100% complete</Text>
+          <View style={styles.progressBar}>
+            <Animated.View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
+          </View>
+          <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
+        </View>
+        
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
           <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
             <Text style={styles.helpTitle}>Your Profile Overview</Text>
@@ -355,22 +369,29 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
       </View>
     );
   }
+
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>About Me</Text>
-        <Text style={styles.headerSubtitle}>One-time background questions</Text>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <Animated.View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
-          </View>
-          <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
+        <View style={{ width: 24 }} />
+      </View>
+      
+      {/* Progress Bar */}
+      <View style={styles.progressBarContainer}>
+        <Text style={styles.progressInfoText}>Complete your profile to get started</Text>
+        <View style={styles.progressBar}>
+          <Animated.View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
         </View>
-      </LinearGradient>
+        <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
+      </View>
+      
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
           <Text style={styles.helpTitle}>Help us know you better</Text>
@@ -501,17 +522,58 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
-  backBtn: { position: 'absolute', left: 20, top: 60 },
-  backText: { fontSize: 28, color: '#fff' },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginTop: 10 },
-  headerSubtitle: { fontSize: 16, color: '#E8F5F1', marginTop: 6 },
-  progressContainer: { marginTop: 20, width: '100%', alignItems: 'center' },
-  progressBar: { height: 10, width: '85%', backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 10, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 10 },
-  progressText: { marginTop: 10, color: '#fff', fontSize: 15, fontWeight: '600' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
+  },
+  backButton: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+  },
+  progressBarContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#64C59A',
+    borderRadius: 4,
+  },
+  progressText: {
+    textAlign: 'right',
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  progressInfoText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
   helpCard: { margin: 20, backgroundColor: '#E8F5F1', borderRadius: 20, padding: 20 },
   helpTitle: { fontSize: 18, fontWeight: '700', color: '#2E8A66', marginBottom: 8 },
   helpText: { fontSize: 15, color: '#444', lineHeight: 22 },

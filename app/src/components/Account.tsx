@@ -316,8 +316,17 @@ export default function Account({ session }: { session: Session }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
   header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10 },
-  title: { fontSize: 34, fontWeight: '800', color: '#2E8A66' },
-  subtitle: { fontSize: 16, color: '#666', marginTop: 6 },
+  title: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#2E8A66',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 22,
+  },
   profileCard: {
     marginHorizontal: 24,
     marginTop: 20,

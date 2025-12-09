@@ -9,11 +9,12 @@ import {
   Dimensions,
   Modal,
   Alert,
+  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withTiming, useAnimatedProps } from 'react-native-reanimated';
+import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Pattern } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
@@ -31,32 +32,47 @@ const MINDFULNESS_TIPS = [
   "This too shall pass. Breathe through it."
 ];
 
-// Reusable Brain Avatar Component (same as Account screen)
+// Enhanced Brain Avatar with more mindful, calm design (added subtle glow and patterns)
 const BrainAvatar = ({ size = 48 }: { size?: number }) => (
-  <View style={[styles.avatarContainer, { width: size + 16, height: size + 16 }]}>
+  <View style={[styles.avatarContainer, { width: size + 20, height: size + 20 }]}>
     <Svg width={size} height={size} viewBox="0 0 120 120">
       <Defs>
         <SvgLinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor="#64C59A" />
-          <Stop offset="100%" stopColor="#4CAF85" />
+          <Stop offset="0%" stopColor="#A8E6CF" />
+          <Stop offset="100%" stopColor="#64C59A" />
         </SvgLinearGradient>
+        <Pattern id="pattern" patternUnits="userSpaceOnUse" width="20" height="20">
+          <Path d="M5 10 C5 5, 15 5, 15 10 C15 15, 5 15, 5 10" fill="none" stroke="#A8E6CF" strokeWidth="0.5" opacity="0.3" />
+        </Pattern>
       </Defs>
-      <Circle cx="60" cy="60" r="58" fill="url(#grad)" opacity="0.15" />
+      <Circle cx="60" cy="60" r="58" fill="url(#grad)" opacity="0.2" />
+      <Circle cx="60" cy="60" r="58" fill="url(#pattern)" opacity="0.1" />
       <Path
-        d="M60 20 C40 20, 30 35, 30 55 C30 75, 45 90, 60 90 C75 90, 90 75, 90 55 C90 35, 80 20, 60 20 Z"
+        d="M60 20 C35 20, 25 40, 30 60 C35 80, 50 95, 60 95 C70 95, 85 80, 90 60 C95 40, 85 20, 60 20 Z"
         stroke="#64C59A"
         strokeWidth="4"
         fill="none"
+        opacity="0.8"
       />
-      <Path d="M45 40 Q40 50, 45 60 Q40 70, 45 80" stroke="#64C59A" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <Path d="M38 45 Q35 55, 38 65 Q35 75, 38 82" stroke="#64C59A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
-      <Path d="M75 40 Q80 50, 75 60 Q80 70, 75 80" stroke="#64C59A" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <Path d="M82 45 Q85 55, 82 65 Q85 75, 82 82" stroke="#64C59A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
-      <Circle cx="60" cy="48" r="8" fill="#64C59A" opacity="0.25" />
-      <Circle cx="60" cy="48" r="4" fill="#64C59A" />
-      <Circle cx="60" cy="60" r="48" stroke="#64C59A" strokeWidth="1.5" fill="none" opacity="0.3" />
+      <Path d="M45 40 Q40 55, 45 70 Q40 85, 45 95" stroke="#A8E6CF" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.6" />
+      <Path d="M38 45 Q35 60, 38 75 Q35 90, 38 95" stroke="#A8E6CF" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.4" />
+      <Path d="M75 40 Q80 55, 75 70 Q80 85, 75 95" stroke="#A8E6CF" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.6" />
+      <Path d="M82 45 Q85 60, 82 75 Q85 90, 82 95" stroke="#A8E6CF" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.4" />
+      <Circle cx="60" cy="50" r="10" fill="#A8E6CF" opacity="0.3" />
+      <Circle cx="60" cy="50" r="5" fill="#64C59A" />
+      <Circle cx="60" cy="65" r="50" stroke="#A8E6CF" strokeWidth="1.5" fill="none" opacity="0.4" />
     </Svg>
   </View>
+);
+
+// Custom subtle background pattern component
+const CalmBackground = () => (
+  <ImageBackground
+    source={{ uri: 'https://example.com/subtle-zen-pattern.png' }} // Replace with a real subtle pattern URL or local asset (e.g., waves or leaves)
+    style={StyleSheet.absoluteFillObject}
+    resizeMode="repeat"
+    imageStyle={{ opacity: 0.05 }}
+  />
 );
 
 export default function Dashboard({ session, onNavigateToAboutMe }: { session: any; onNavigateToAboutMe: () => void }) {
@@ -66,7 +82,26 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
   const [completed, setCompleted] = useState(0);
   const [consistency, setConsistency] = useState(0);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
+  const [mainQuestionnaireProgress, setMainQuestionnaireProgress] = useState(0);
   const [showAccountModal, setShowAccountModal] = useState(false);
+
+  // Animations for progress
+  const streakProgress = useSharedValue(0);
+  const consistencyProgress = useSharedValue(0);
+  const weeklyProgressAnim = useSharedValue(0);
+  const mainProgressAnim = useSharedValue(0);
+
+  // Create animated SVG components
+  const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+  // Animated props for circles
+  const animatedPropsStreak = useAnimatedProps(() => ({
+    strokeDashoffset: 440 * (1 - Math.min(1, streakProgress.value / 100)),
+  }));
+
+  const animatedPropsConsistency = useAnimatedProps(() => ({
+    strokeDashoffset: 440 * (1 - consistencyProgress.value / 100),
+  }));
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -75,14 +110,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch user progress data
   useEffect(() => {
     fetchUserProgress();
   }, [session]);
 
   const fetchUserProgress = async () => {
     if (!session?.user?.id) return;
-    
     try {
       // Fetch daily sliders streak
       const { data: streakData, error: streakError } = await supabase
@@ -90,15 +123,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
         .select('created_at')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
-      
       if (streakError) throw streakError;
-      
       // Calculate streak (consecutive days)
       let currentStreak = 0;
       if (streakData && streakData.length > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
         // Create a set of dates with entries
         const entryDates = new Set();
         streakData.forEach(entry => {
@@ -106,7 +136,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
           entryDate.setHours(0, 0, 0, 0);
           entryDates.add(entryDate.getTime());
         });
-        
         // Start from today and count backwards
         let currentDate = new Date(today);
         while (entryDates.has(currentDate.getTime())) {
@@ -114,51 +143,39 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
           currentDate.setDate(currentDate.getDate() - 1);
         }
       }
-      
       // Calculate total completed entries in the last 6 months
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      
       const { count: totalCount, error: countError } = await supabase
         .from('daily_sliders')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', session.user.id)
         .gte('created_at', sixMonthsAgo.toISOString());
-      
       if (countError) throw countError;
-      
       // For 6-month progress, we want to show actual completed entries
       // But also calculate percentage for visualization
       const maxEntries = 180; // Approx 180 days in 6 months
       const completionCount = totalCount || 0;
       const completionPercentage = totalCount ? Math.min(100, Math.round((totalCount / maxEntries) * 100)) : 0;
-      
       // Calculate consistency (percentage of days with entries in the last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
       const { count: recentCount, error: recentCountError } = await supabase
         .from('daily_sliders')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', session.user.id)
         .gte('created_at', thirtyDaysAgo.toISOString());
-      
       if (recentCountError) throw recentCountError;
-      
       const consistencyPercentage = recentCount ? Math.min(100, Math.round((recentCount / 30) * 100)) : 0;
-      
       // Fetch weekly questions progress
       const sixMonthsAgoForWeekly = new Date();
       sixMonthsAgoForWeekly.setMonth(sixMonthsAgoForWeekly.getMonth() - 6);
-      
       const { data: weeklyAnswers, error: weeklyError } = await supabase
         .from('weekly_answers')
         .select('submitted_at')
         .eq('user_id', session.user.id)
         .gte('submitted_at', sixMonthsAgoForWeekly.toISOString());
-      
       if (weeklyError) throw weeklyError;
-      
       // Count unique weeks with submissions in the last 6 months
       const uniqueWeeks = new Set();
       if (weeklyAnswers) {
@@ -168,16 +185,35 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
           uniqueWeeks.add(`${year}-W${week.toString().padStart(2, '0')}`);
         });
       }
-      
       const weeklyCompletionCount = uniqueWeeks.size;
       // Approximate max weeks in 6 months (26 weeks)
       const maxWeeklyEntries = 26;
       const weeklyProgressPercentage = weeklyAnswers ? Math.min(100, Math.round((weeklyCompletionCount / maxWeeklyEntries) * 100)) : 0;
-      
+      // Fetch main questionnaire progress
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const { count: mainQuestionnaireCount, error: mainQuestionnaireError } = await supabase
+        .from('main_questionnaire_responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('submitted_at', oneYearAgo.toISOString());
+      if (mainQuestionnaireError) throw mainQuestionnaireError;
+      // For main questionnaire progress, we want to show actual completed entries
+      // Assuming a target of 4 main questionnaires per year (one per quarter)
+      const maxMainQuestionnaires = 4;
+      const mainQuestionnaireCompletionCount = mainQuestionnaireCount || 0;
+      const mainQuestionnaireProgressPercentage = mainQuestionnaireCount ?
+      Math.min(100, Math.round((mainQuestionnaireCount / maxMainQuestionnaires) * 100)) : 0;
+      setMainQuestionnaireProgress(mainQuestionnaireProgressPercentage);
       setStreak(currentStreak);
       setCompleted(completionCount);
       setConsistency(consistencyPercentage);
       setWeeklyProgress(weeklyProgressPercentage);
+      // After setting states, animate with corrected values
+      streakProgress.value = withTiming(currentStreak > 10 ? 100 : currentStreak * 10, { duration: 1000 });
+      consistencyProgress.value = withTiming(consistencyPercentage, { duration: 1000 });
+      weeklyProgressAnim.value = withTiming(weeklyProgressPercentage, { duration: 1000 });
+      mainProgressAnim.value = withTiming(mainQuestionnaireProgressPercentage, { duration: 1000 });
     } catch (error) {
       console.error('Error fetching user progress:', error);
     }
@@ -209,6 +245,13 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
 
   return (
     <View style={styles.container}>
+      <CalmBackground />
+      <LinearGradient
+        colors={['#F8FDFC', '#E8F5F1']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MindFlow</Text>
@@ -216,13 +259,18 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
           <BrainAvatar size={48} />
         </TouchableOpacity>
       </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Daily Mindfulness Tip */}
-        <Animated.View entering={FadeIn.duration(800)}>
-          <LinearGradient colors={['#64C59A', '#4CAF85']} style={styles.tipCard}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+        {/* Daily Mindfulness Tip - Enhanced with softer gradient and subtle pattern */}
+        <Animated.View entering={FadeIn.duration(1000)}>
+          <LinearGradient colors={['#A8E6CF', '#64C59A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tipCard}>
+            <Svg style={StyleSheet.absoluteFillObject} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" opacity={0.1}>
+              <Pattern id="tipPattern" patternUnits="userSpaceOnUse" width="20" height="20">
+                <Circle cx="10" cy="10" r="2" fill="#fff" />
+              </Pattern>
+              <Circle cx="50" cy="50" r="50" fill="url(#tipPattern)" />
+            </Svg>
             <View style={styles.tipHeader}>
-              <Svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+              <Svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
                 <Path d="M12 2L13.09 8.26L22 9.27L16 14.14L17.18 21.02L12 17.77L6.82 21.02L8 14.14L2 9.27L10.91 8.26L12 2Z" />
               </Svg>
               <Text style={styles.tipLabel}>Daily Mindfulness Tip</Text>
@@ -235,136 +283,210 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
             </View>
           </LinearGradient>
         </Animated.View>
-
-        {/* Progress Section */}
-        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Progress</Text>
-          <View style={styles.progressGrid}>
-            <View style={styles.ringCard}>
-              <Svg width="160" height="160" viewBox="0 0 160 160">
-                <Circle cx="80" cy="80" r="70" stroke="#E8F5E9" strokeWidth="14" fill="none" />
-                <Circle
-                  cx="80"
-                  cy="80"
-                  r="70"
-                  stroke="#64C59A"
-                  strokeWidth="14"
-                  fill="none"
-                  strokeDasharray="440"
-                  strokeDashoffset={440 - (440 * Math.min(100, streak)) / 100}
-                  strokeLinecap="round"
-                  transform="rotate(-90 80 80)"
-                />
+        {/* Enhanced Your Journey Section */}
+        <Animated.View entering={FadeInDown.delay(300).duration(800)} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Journey</Text>
+            <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/progress')}>
+              <Text style={styles.viewAllText}>Explore More</Text>
+              <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <Path d="M9 18L15 12L9 6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
-              <View style={styles.ringCenter}>
-                <Svg width="32" height="32" viewBox="0 0 24 24" fill="#FF9500">
-                  <Path d="M8.5 19C8.5 19 7 19 7 17.5C7 15.5 9.5 14.5 9.5 11C9.5 11 10 6 14.5 6.5C17 7 19 9.5 19 13.5C19 17.5 16 19.5 12 19.5C10.5 19.5 8.5 19 8.5 19Z" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Enhanced Circular Progress Indicators */}
+          <View style={styles.enhancedProgressGrid}>
+            {/* Streak Progress with Enhanced Visuals */}
+            <View style={styles.enhancedProgressItem}>
+              <View style={styles.circularProgressContainer}>
+                <Svg width="160" height="160" viewBox="0 0 160 160">
+                  <Circle cx="80" cy="80" r="70" stroke="#E8F5F1" strokeWidth="12" fill="none" />
+                  <AnimatedCircle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="#64C59A"
+                    strokeWidth="12"
+                    fill="none"
+                    strokeDasharray="440"
+                    strokeLinecap="round"
+                    transform="rotate(-90 80 80)"
+                    animatedProps={animatedPropsStreak}
+                  />
+                  <Circle cx="80" cy="80" r="50" fill="#F8FDFC" />
                 </Svg>
-                <Text style={styles.ringNumber}>{streak}</Text>
-                <Text style={styles.ringLabel}>Day Streak</Text>
+                <View style={styles.progressCenter}>
+                  <Text style={styles.enhancedProgressNumber}>{streak}</Text>
+                  <Text style={styles.enhancedProgressLabel}>Day Streak</Text>
+                </View>
+              </View>
+              <View style={styles.progressDetail}>
+                <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <Path d="M12 2L13.09 8.26L22 9.27L16 14.14L17.18 21.02L12 17.77L6.82 21.02L8 14.14L2 9.27L10.91 8.26L12 2Z" stroke="#64C59A" strokeWidth="2" />
+                </Svg>
+                <Text style={styles.progressDetailText}>Keep it up!</Text>
               </View>
             </View>
-
-            <View style={styles.smallStats}>
-              <View style={styles.smallStat}>
-                <Text style={styles.smallNumber}>{completed}</Text>
-                <Text style={styles.smallLabel}>Completed</Text>
-                <Text style={styles.smallSubLabel}>Last 6 Months</Text>
+            
+            {/* Consistency Progress with Enhanced Visuals */}
+            <View style={styles.enhancedProgressItem}>
+              <View style={styles.circularProgressContainer}>
+                <Svg width="160" height="160" viewBox="0 0 160 160">
+                  <Circle cx="80" cy="80" r="70" stroke="#E8F5F1" strokeWidth="12" fill="none" />
+                  <AnimatedCircle
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    stroke="#4CAF85"
+                    strokeWidth="12"
+                    fill="none"
+                    strokeDasharray="440"
+                    strokeLinecap="round"
+                    transform="rotate(-90 80 80)"
+                    animatedProps={animatedPropsConsistency}
+                  />
+                  <Circle cx="80" cy="80" r="50" fill="#F8FDFC" />
+                </Svg>
+                <View style={styles.progressCenter}>
+                  <Text style={styles.enhancedProgressNumber}>{consistency}%</Text>
+                  <Text style={styles.enhancedProgressLabel}>Consistency</Text>
+                </View>
               </View>
-              <View style={styles.smallStat}>
-                <Text style={styles.smallNumber}>{consistency}%</Text>
-                <Text style={styles.smallLabel}>Consistency</Text>
-                <Text style={styles.smallSubLabel}>Last 30 Days</Text>
+              <View style={styles.progressDetail}>
+                <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <Path d="M9 12L11 14L15 10" stroke="#4CAF85" strokeWidth="2" strokeLinecap="round" />
+                  <Circle cx="12" cy="12" r="10" stroke="#4CAF85" strokeWidth="2" />
+                </Svg>
+                <Text style={styles.progressDetailText}>Monthly Goal</Text>
               </View>
             </View>
           </View>
           
-          {/* Weekly Progress Bar */}
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarHeader}>
-              <Text style={styles.progressBarLabel}>Weekly Questions</Text>
-              <Text style={styles.progressBarValue}>{weeklyProgress}%</Text>
+          {/* Detailed Progress Bars with Icons and Values */}
+          <View style={styles.detailedProgressContainer}>
+            <View style={styles.detailedProgressBar}>
+              <View style={styles.progressBarHeader}>
+                <View style={styles.progressBarIconLabel}>
+                  <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <Path d="M19 4H5C3.9 4 3 4.9 3 6V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V6C21 4.9 20.1 4 19 4Z" stroke="#64C59A" strokeWidth="2" />
+                    <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" />
+                    <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" />
+                  </Svg>
+                  <Text style={styles.progressBarTitle}>Weekly Reflections</Text>
+                </View>
+                <Text style={styles.progressBarValue}>{weeklyProgress}%</Text>
+              </View>
+              <View style={styles.progressBarTrack}>
+                <Animated.View style={[styles.progressBarFill, { width: `${weeklyProgress}%`, backgroundColor: '#64C59A' }]} />
+              </View>
+              <Text style={styles.progressBarSubtitle}>{Math.floor((weeklyProgress * 26) / 100)}/26 weeks completed</Text>
             </View>
-            <View style={styles.progressBarTrack}>
-              <Animated.View 
-                style={[styles.progressBarFill, { width: weeklyProgress > 0 ? `${weeklyProgress}%` : '0%' }]} 
-                entering={FadeIn.duration(600)}
-              />
+            
+            <View style={styles.detailedProgressBar}>
+              <View style={styles.progressBarHeader}>
+                <View style={styles.progressBarIconLabel}>
+                  <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <Circle cx="12" cy="12" r="9" stroke="#4CAF85" strokeWidth="2" />
+                    <Path d="M12 8V12L15 15" stroke="#4CAF85" strokeWidth="2" strokeLinecap="round" />
+                  </Svg>
+                  <Text style={styles.progressBarTitle}>Main Questionnaires</Text>
+                </View>
+                <Text style={styles.progressBarValue}>{mainQuestionnaireProgress}%</Text>
+              </View>
+              <View style={styles.progressBarTrack}>
+                <Animated.View style={[styles.progressBarFill, { width: `${mainQuestionnaireProgress}%`, backgroundColor: '#4CAF85' }]} />
+              </View>
+              <Text style={styles.progressBarSubtitle}>{Math.floor((mainQuestionnaireProgress * 4) / 100)}/4 sessions completed</Text>
             </View>
-            <Text style={styles.progressBarSubtitle}>Completed {Math.floor((weeklyProgress * 26) / 100)} of 26 weeks in the last 6 months</Text>
+          </View>
+          
+          {/* Journey Summary Card */}
+          <View style={styles.journeySummaryCard}>
+            <View style={styles.summaryHeader}>
+              <Text style={styles.summaryTitle}>Journey Summary</Text>
+              <View style={styles.summaryBadge}>
+                <Text style={styles.summaryBadgeText}>6 Months</Text>
+              </View>
+            </View>
+            <View style={styles.summaryStats}>
+              <View style={styles.summaryStatItem}>
+                <Text style={styles.summaryStatValue}>{completed}</Text>
+                <Text style={styles.summaryStatLabel}>Daily Entries</Text>
+              </View>
+              <View style={styles.summaryStatItem}>
+                <Text style={styles.summaryStatValue}>{Math.floor((weeklyProgress * 26) / 100)}</Text>
+                <Text style={styles.summaryStatLabel}>Weekly Surveys</Text>
+              </View>
+              <View style={styles.summaryStatItem}>
+                <Text style={styles.summaryStatValue}>{Math.floor((mainQuestionnaireProgress * 4) / 100)}</Text>
+                <Text style={styles.summaryStatLabel}>Deep Dives</Text>
+              </View>
+            </View>
+            <View style={styles.summaryFooter}>
+              <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+                <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
+              </Svg>
+              <Text style={styles.summaryFooterText}>Updated just now</Text>
+            </View>
           </View>
         </Animated.View>
-
-        {/* Quick Access */}
+        {/* Quick Access - Enhanced with custom icons and softer colors */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
+          <Text style={styles.sectionTitle}>Gentle Paths</Text>
           <View style={styles.quickActionsContainer}>
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={onNavigateToAboutMe}
-            >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#64C59A20' }]}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                  <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                  <Circle cx="12" cy="7" r="4" stroke="#64C59A" strokeWidth="2" />
+            <TouchableOpacity style={styles.quickActionButton} onPress={onNavigateToAboutMe}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#A8E6CF20' }]}>
+                <Svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                  <Circle cx="12" cy="6" r="4" stroke="#64C59A" strokeWidth="2" opacity="0.8" />
+                  <Path d="M20 20C20 17.5 18 16 15.5 16H8.5C6 16 4 17.5 4 20" stroke="#64C59A" strokeWidth="2" />
                 </Svg>
               </View>
               <Text style={styles.actionTitle}>About Me</Text>
-              <Text style={styles.actionSubtitle}>One-time questions</Text>
+              <Text style={styles.actionSubtitle}>Inner-Self Reflections</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => router.push('/weekly-questions')}
-            >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#4CAF8520' }]}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                  <Path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="#4CAF85" strokeWidth="2" />
+            <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/weekly-questions')}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#64C59A20' }]}>
+                <Svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                  <Path d="M19 4H5C3.9 4 3 4.9 3 6V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V6C21 4.9 20.1 4 19 4Z" stroke="#4CAF85" strokeWidth="2" />
                   <Path d="M16 2V6" stroke="#4CAF85" strokeWidth="2" />
                   <Path d="M8 2V6" stroke="#4CAF85" strokeWidth="2" />
                 </Svg>
               </View>
-              <Text style={styles.actionTitle}>Weekly Questions</Text>
-              <Text style={styles.actionSubtitle}>Available this week</Text>
+              <Text style={styles.actionTitle}>Weekly Whispers</Text>
+              <Text style={styles.actionSubtitle}>Gentle Check-ins</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => router.push('/daily-sliders')}
-            >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#2E8A6620' }]}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/daily-sliders')}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#4CAF8520' }]}>
+                <Svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                   <Path d="M8 6H21" stroke="#2E8A66" strokeWidth="2" />
                   <Path d="M8 12H21" stroke="#2E8A66" strokeWidth="2" />
                   <Path d="M8 18H21" stroke="#2E8A66" strokeWidth="2" />
-                  <Path d="M3 6H3.01" stroke="#2E8A66" strokeWidth="3" />
-                  <Path d="M3 12H3.01" stroke="#2E8A66" strokeWidth="3" />
-                  <Path d="M3 18H3.01" stroke="#2E8A66" strokeWidth="3" />
+                  <Circle cx="3" cy="6" r="2" fill="#2E8A66" />
+                  <Circle cx="3" cy="12" r="2" fill="#2E8A66" />
+                  <Circle cx="3" cy="18" r="2" fill="#2E8A66" />
                 </Svg>
               </View>
               <Text style={styles.actionTitle}>Daily Sliders</Text>
-              <Text style={styles.actionSubtitle}>Track stress & sleep</Text>
+              <Text style={styles.actionSubtitle}>Balance Stress & Rest</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => router.push('/progress')}
-            >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#1A5F4A20' }]}>
-                <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                  <Circle cx="12" cy="12" r="10" stroke="#1A5F4A" strokeWidth="2"/>
-                  <Path d="M12 6V12L16 14" stroke="#1A5F4A" strokeWidth="2" strokeLinecap="round" />
+            <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/main-questionnaire')}>
+              <View style={[styles.actionIconContainer, { backgroundColor: '#2E8A6620' }]}>
+                <Svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                  <Circle cx="12" cy="12" r="9" stroke="#1A5F4A" strokeWidth="2" opacity="0.7" />
+                  <Path d="M9 12H15" stroke="#1A5F4A" strokeWidth="2" />
+                  <Path d="M12 9V15" stroke="#1A5F4A" strokeWidth="2" />
                 </Svg>
               </View>
-              <Text style={styles.actionTitle}>Progress</Text>
-              <Text style={styles.actionSubtitle}>View your stats</Text>
+              <Text style={styles.actionTitle}>Core Insights</Text>
+              <Text style={styles.actionSubtitle}>PSS & FFMQ Harmony</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-
-      {/* Account Modal */}
-      <Modal visible={showAccountModal} transparent animationType="slide">
+      {/* Account Modal - Keep similar, add softer transitions */}
+      <Modal visible={showAccountModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
@@ -377,7 +499,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
             </TouchableOpacity>
             <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
               <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <Path d="M9 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H9" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                <Path d="M9 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H9" stroke="#EF4444" strokeWidth="2" />
                 <Path d="M16 17L20 12L16 7" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
                 <Path d="M20 12H8" stroke="#EF4444" strokeWidth="2" />
               </Svg>
@@ -390,96 +512,253 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
   );
 }
 
+// Custom Wave Progress Component for mindful wave animation
+const WaveProgress = ({ progress, color }: { progress: any; color: string }) => {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -100 + progress.value }],
+  }));
+
+  return (
+    <View style={styles.waveTrack}>
+      <Animated.View style={[styles.waveFill, animatedStyle, { backgroundColor: color }]} />
+      <Svg style={StyleSheet.absoluteFillObject} viewBox="0 0 100 10" preserveAspectRatio="none">
+        <Path d="M0 5 Q25 0, 50 5 Q75 10, 100 5 L100 10 L0 10 Z" fill={color} opacity={0.3} />
+      </Svg>
+    </View>
+  );
+};
+
+// Styles updates for calm, professional look
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FDFC' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 16 },
-  headerTitle: { fontSize: 34, fontWeight: '800', color: '#2E8A66' },
-  avatarButton: { 
-    padding: 4,
-    borderRadius: 30,
+  container: { flex: 1, backgroundColor: 'transparent' }, // Transparent for gradient/bg
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 28, paddingTop: 64, paddingBottom: 20, zIndex: 1 },
+  headerTitle: { fontSize: 36, fontWeight: '900', color: '#2E8A66', letterSpacing: 0.5 },
+  avatarButton: {
+    padding: 6,
+    borderRadius: 32,
     backgroundColor: '#fff',
-    shadowColor: '#64C59A', 
-    shadowOffset: { width: 0, height: 8 }, 
-    shadowOpacity: 0.3, 
-    shadowRadius: 20, 
-    elevation: 15 
+    shadowColor: '#A8E6CF',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    elevation: 20,
   },
-  avatarContainer: { 
-    borderRadius: 60, 
-    backgroundColor: '#E8F5F1', 
-    padding: 8, 
-    borderWidth: 4, 
-    borderColor: '#fff' 
+  avatarContainer: {
+    borderRadius: 64,
+    backgroundColor: '#F8FDFC',
+    padding: 10,
+    borderWidth: 3,
+    borderColor: '#fff',
+    overflow: 'hidden',
   },
-  tipCard: { marginHorizontal: 24, marginTop: 20, borderRadius: 32, padding: 32, shadowColor: '#64C59A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 25, elevation: 20 },
-  tipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  tipLabel: { color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 10 },
-  tipText: { color: '#fff', fontSize: 20, lineHeight: 30, fontWeight: '500' },
-  tipDots: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.4)', marginHorizontal: 5 },
-  activeDot: { backgroundColor: '#fff', width: 24 },
-  section: { paddingHorizontal: 24, marginTop: 32 },
-  sectionTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginBottom: 20 },
-  progressGrid: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  ringCard: { position: 'relative' },
-  ringCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
-  ringNumber: { fontSize: 38, fontWeight: '800', color: '#2E8A66', marginTop: 8 },
-  ringLabel: { fontSize: 14, color: '#666', marginTop: 4 },
-  smallStats: { gap: 16 },
-  smallStat: { backgroundColor: '#fff', padding: 20, borderRadius: 28, width: 130, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 10 },
-  smallNumber: { fontSize: 36, fontWeight: '800', color: '#2E8A66' },
-  smallLabel: { fontSize: 13, color: '#666', marginTop: 4 },
-  smallSubLabel: { fontSize: 11, color: '#999' },
-  // Progress bar styles
-  progressBarContainer: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginTop: 20, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, elevation: 10 },
-  progressBarHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  progressBarLabel: { fontSize: 16, fontWeight: '600', color: '#333' },
-  progressBarValue: { fontSize: 16, fontWeight: '700', color: '#2E8A66' },
-  progressBarTrack: { height: 12, backgroundColor: '#E8F5F1', borderRadius: 6, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#64C59A', borderRadius: 6 },
-  progressBarSubtitle: { fontSize: 12, color: '#666', textAlign: 'center', marginTop: 8 },
-  // Quick Actions Styles
-  quickActionsContainer: {
-    flexDirection: 'row',
+  tipCard: { marginHorizontal: 28, marginTop: 24, borderRadius: 40, padding: 36, shadowColor: '#64C59A', shadowOffset: { width: 0, height: 15 }, shadowOpacity: 0.2, shadowRadius: 30, elevation: 25, overflow: 'hidden' },
+  tipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  tipLabel: { color: '#fff', fontSize: 16, fontWeight: '700', marginLeft: 12, opacity: 0.9 },
+  tipText: { color: '#fff', fontSize: 22, lineHeight: 32, fontWeight: '500', textAlign: 'center' },
+  tipDots: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: 6 },
+  activeDot: { backgroundColor: '#fff', width: 28 },
+  section: { paddingHorizontal: 28, marginTop: 36 },
+  sectionTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', opacity: 0.9 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  viewAllButton: { flexDirection: 'row', alignItems: 'center' },
+  viewAllText: { fontSize: 17, color: '#64C59A', fontWeight: '700', marginRight: 10 },
+  enhancedProgressGrid: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: 32,
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
   },
-  quickActionButton: {
-    width: (width - 72) / 2,
+  enhancedProgressItem: { 
+    width: '48%',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  circularProgressContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  enhancedProgressNumber: { 
+    fontSize: 36, 
+    fontWeight: '900', 
+    color: '#2E8A66' 
+  },
+  enhancedProgressLabel: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginTop: 4, 
+    fontWeight: '600',
+    textAlign: 'center'
+  },
+  progressDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  progressDetailText: {
+    fontSize: 13,
+    color: '#2E8A66',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  detailedProgressContainer: {
+    marginBottom: 32,
+  },
+  detailedProgressBar: {
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 15,
   },
-  actionIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
+  progressBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  actionTitle: {
+  progressBarIconLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressBarTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#333',
-    marginBottom: 6,
+    marginLeft: 12,
   },
-  actionSubtitle: {
+  progressBarValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#64C59A',
+  },
+  progressBarTrack: {
+    height: 12,
+    backgroundColor: '#E8F5F1',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#64C59A',
+    borderRadius: 6,
+  },
+  progressBarSubtitle: {
     fontSize: 14,
     color: '#666',
-    lineHeight: 20,
+    textAlign: 'left',
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 20, paddingHorizontal: 24, paddingBottom: 40 },
-  modalHandle: { width: 50, height: 5, backgroundColor: '#ddd', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
-  modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18 },
-  logoutRow: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 28 },
-  modalText: { marginLeft: 16, fontSize: 18, color: '#333', fontWeight: '500' },
-  logoutText: { color: '#EF4444', fontWeight: '600' },
+  journeySummaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  summaryTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#333',
+  },
+  summaryBadge: {
+    backgroundColor: '#64C59A20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  summaryBadgeText: {
+    color: '#64C59A',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  summaryStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  summaryStatValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#2E8A66',
+    marginBottom: 4,
+  },
+  summaryStatLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  summaryFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryFooterText: {
+    fontSize: 14,
+    color: '#64C59A',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  progressCenter: { 
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    bottom: 0, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  waveTrack: { 
+    height: 20, 
+    backgroundColor: '#E8F5F1', 
+    borderRadius: 10, 
+    overflow: 'hidden', 
+    position: 'relative' 
+  },
+  waveFill: { 
+    height: '100%', 
+    width: '200%', 
+    backgroundColor: '#64C59A' 
+  },
+  quickActionsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  quickActionButton: {
+    width: (width - 84) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 32,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#A8E6CF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  actionIconContainer: { width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  actionTitle: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 8 },
+  actionSubtitle: { fontSize: 15, color: '#666', lineHeight: 22, opacity: 0.8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, paddingTop: 24, paddingHorizontal: 28, paddingBottom: 48 },
+  modalHandle: { width: 60, height: 6, backgroundColor: '#eee', borderRadius: 3, alignSelf: 'center', marginBottom: 28 },
+  modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 20 },
+  logoutRow: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#f5f5f5', paddingTop: 32 },
+  modalText: { marginLeft: 20, fontSize: 19, color: '#333', fontWeight: '600' },
+  logoutText: { color: '#EF4444', fontWeight: '700' },
 });
