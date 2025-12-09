@@ -83,9 +83,9 @@ CREATE POLICY "Users can only access their own daily sliders data"
     USING (user_id = auth.uid());
 
 -- Create indexes for better query performance
-CREATE INDEX idx_daily_sliders_user_id ON daily_sliders(user_id);
-CREATE INDEX idx_daily_sliders_created_at ON daily_sliders(created_at);
-CREATE INDEX idx_daily_sliders_user_date ON daily_sliders(user_id, DATE(created_at));
+-- CREATE INDEX idx_daily_sliders_user_id ON daily_sliders(user_id);
+-- CREATE INDEX idx_daily_sliders_created_at ON daily_sliders(created_at);
+-- CREATE INDEX idx_daily_sliders_user_date ON daily_sliders(user_id, DATE(created_at));
 
 -- Grant necessary permissions
 GRANT ALL ON TABLE daily_sliders TO authenticated;
@@ -162,3 +162,18 @@ GRANT ALL ON TABLE weekly_questions TO authenticated;
 GRANT ALL ON TABLE weekly_answers TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE weekly_questions_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
+
+
+-- Sample data for weekly_questions table
+INSERT INTO weekly_questions (week_id, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10) VALUES
+('2025-W50', 
+ 'What is one thing you are grateful for this week?',
+ 'Describe a moment this week when you felt truly present.',
+ 'What challenge did you face this week, and how did you handle it?',
+ 'Which of your values guided you most this week?',
+ 'What activity brought you the most joy this week?',
+ 'How have your relationships influenced your well-being this week?',
+ 'What is one habit you would like to develop or improve?',
+ 'In what way did you show kindness to yourself this week?',
+ 'What is one thing you learned about yourself this week?',
+ 'How do you plan to take care of your mental health in the coming week?');
