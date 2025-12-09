@@ -19,8 +19,11 @@ const { width } = Dimensions.get('window');
 // Stress level emojis from low to high
 const STRESS_EMOJIS = ['😊', '🙂', '😐', '😕', '😟', '😧', '😨', '😰', '😱', '😵'];
 
-// Mood faces from good to bad (6 levels)
-const MOOD_FACES = ['😄', '😊', '🙂', '😐', '😕', '😢'];
+// Mood faces from bad to good (5 levels)
+const MOOD_FACES = ['😢', '😐', '🙂', '😊', '😄'];
+
+// Sleep quality emojis from poor to excellent (5 levels)
+const SLEEP_QUALITY_EMOJIS = ['😫', '😪', '🛌', '😴', '🥱']; // Adjusted: poor to best
 
 // Factors influencing stress
 const STRESS_FACTORS = [
@@ -40,6 +43,56 @@ for (let hour = 0; hour < 24; hour++) {
   }
 }
 
+// Custom Icons
+const Icons = {
+  stress: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M8 15C8.91212 16.2144 10.3643 17 12 17C13.6357 17 15.0879 16.2144 16 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Circle cx="8.5" cy="10.5" r="1.5" fill="#64C59A"/>
+      <Circle cx="15.5" cy="10.5" r="1.5" fill="#64C59A"/>
+    </Svg>
+  ),
+  mood: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M8 14C8.91212 15.2144 10.3643 16 12 16C13.6357 16 15.0879 15.2144 16 14" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Circle cx="9" cy="9" r="1" fill="#64C59A"/>
+      <Circle cx="15" cy="9" r="1" fill="#64C59A"/>
+    </Svg>
+  ),
+  sleep: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M20 20H4V4" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M5 13H13V21" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M11 3H21V13H11V3Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M3 11H5V13H3V11Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  ),
+  factors: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M12 6V18" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M6 12H18" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  schedule: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  relaxation: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M8 15C8.91212 16.2144 10.3643 17 12 17C13.6357 17 15.0879 16.2144 16 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Circle cx="9" cy="9" r="1" fill="#64C59A"/>
+      <Circle cx="15" cy="9" r="1" fill="#64C59A"/>
+    </Svg>
+  ),
+};
+
 export default function DailySliders() {
   const router = useRouter();
   const { session } = useSession();
@@ -47,6 +100,8 @@ export default function DailySliders() {
   // State variables
   const [stressLevel, setStressLevel] = useState<number | null>(null);
   const [moodLevel, setMoodLevel] = useState<number | null>(null);
+  const [sleepQuality, setSleepQuality] = useState<number | null>(null);
+  const [relaxationLevel, setRelaxationLevel] = useState<number | null>(null);
   const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
   const [sleepStart, setSleepStart] = useState<string | null>(null);
   const [wakeUp, setWakeUp] = useState<string | null>(null);
@@ -55,13 +110,14 @@ export default function DailySliders() {
   const [entryId, setEntryId] = useState<number | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showEditAfterExercise, setShowEditAfterExercise] = useState(false);
+  const [showRelaxationSlider, setShowRelaxationSlider] = useState(false);
 
   const stressAnimation = useRef(new Animated.Value(0)).current;
-  const breathingScale = useRef(new Animated.Value(1)).current;
+  const breathingAnimation = useRef(new Animated.Value(0)).current; // For custom animation
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [breathingTime, setBreathingTime] = useState(0);
   const [isBreathing, setIsBreathing] = useState(false);
-  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold1' | 'exhale' | 'hold2'>('inhale');
 
   // Check if user has already submitted today
   useEffect(() => {
@@ -82,14 +138,14 @@ export default function DailySliders() {
       if (error) throw error;
       if (data && data.length > 0) {
         setAlreadySubmittedToday(true);
-        setEntryId(data[0].id); // Store entry ID for potential editing
+        setEntryId(data[0].id);
       }
     } catch (error) {
       console.error('Error checking daily submission:', error);
     }
   };
 
-  // Animate stress circle based on stress level
+  // Animate stress circle
   useEffect(() => {
     if (stressLevel !== null) {
       Animated.timing(stressAnimation, {
@@ -100,82 +156,83 @@ export default function DailySliders() {
     }
   }, [stressLevel]);
 
-  // Toggle factor selection
+  // Toggle factor
   const toggleFactor = (factor: string) => {
-    if (selectedFactors.includes(factor)) {
-      setSelectedFactors(selectedFactors.filter(f => f !== factor));
-    } else {
-      setSelectedFactors([...selectedFactors, factor]);
-    }
+    setSelectedFactors(prev => prev.includes(factor) ? prev.filter(f => f !== factor) : [...prev, factor]);
   };
 
-  // Get stress color based on level
+  // Get stress color
   const getStressColor = () => {
     if (stressLevel === null) return '#64C59A';
-    if (stressLevel <= 3) return '#10B981'; // Green for low stress
-    if (stressLevel <= 6) return '#FBBF24'; // Yellow for medium stress
-    return '#EF4444'; // Red for high stress
+    if (stressLevel <= 3) return '#10B981';
+    if (stressLevel <= 6) return '#FBBF24';
+    return '#EF4444';
   };
 
-  // Get stress emoji based on level
-  const getStressEmoji = () => {
-    if (stressLevel === null) return '😐';
-    return STRESS_EMOJIS[stressLevel - 1] || '😐';
-  };
+  // Get stress emoji
+  const getStressEmoji = () => STRESS_EMOJIS[stressLevel ? stressLevel - 1 : 2] || '😐';
 
-  // Get mood face based on level
-  const getMoodFace = () => {
-    if (moodLevel === null) return '😐';
-    return MOOD_FACES[moodLevel - 1] || '😐';
-  };
+  // Get mood face - now 1 bad, 5 good
+  const getMoodFace = () => MOOD_FACES[moodLevel ? moodLevel - 1 : 2] || '😐';
 
-  // Submit initial wellness data
+  // Get sleep quality emoji - 1 poor, 5 excellent
+  const getSleepQualityEmoji = () => SLEEP_QUALITY_EMOJIS[sleepQuality ? sleepQuality - 1 : 2] || '😐';
+
+  // Get relaxation emoji
+  const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 10 - relaxationLevel : 2] || '😐';
+
+  // Submit wellness data
   const submitWellnessData = async (isEdit = false) => {
     if (!session?.user?.id) {
       Alert.alert('Authentication Error', 'Please log in to submit data.');
       return;
     }
-    if (stressLevel === null || moodLevel === null || selectedFactors.length === 0 ||
+    if (stressLevel === null || moodLevel === null || sleepQuality === null || selectedFactors.length === 0 ||
       sleepStart === null || wakeUp === null) {
       Alert.alert('Incomplete Form', 'Please complete all fields before submitting.');
       return;
     }
     setIsSubmitting(true);
     try {
+      let data;
       if (isEdit && entryId) {
-        // Update existing entry
         const { error } = await supabase
           .from('daily_sliders')
           .update({
             stress_level: stressLevel,
-            mood: moodLevel, // Changed from mood_level to mood to match schema
+            mood: moodLevel,
+            sleep_quality: sleepQuality,
             feelings: selectedFactors.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
           })
           .eq('id', entryId);
         if (error) throw error;
-        setShowEditAfterExercise(true);
       } else {
-        // Insert new entry
-        const { data, error } = await supabase
+        const { data: insertData, error } = await supabase
           .from('daily_sliders')
           .insert({
             user_id: session.user.id,
             stress_level: stressLevel,
-            mood: moodLevel, // Changed from mood_level to mood to match schema
+            mood: moodLevel,
+            sleep_quality: sleepQuality,
             feelings: selectedFactors.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
+            // Adding the missing fields with default values
+            exercise_duration: 0,
+            completed_exercise_time: 0,
+            relaxation_level: null,
             created_at: new Date().toISOString(),
           })
           .select();
         if (error) throw error;
-        if (data && data.length > 0) {
-          setEntryId(data[0].id);
-          setShowEditAfterExercise(true);
-        }
+        data = insertData;
       }
+      if (!isEdit && data && data.length > 0) {
+        setEntryId(data[0].id);
+      }
+      setShowEditAfterExercise(true);
     } catch (error) {
       Alert.alert('Submission Error', 'Failed to save data. Please try again.');
       console.error(error);
@@ -184,133 +241,110 @@ export default function DailySliders() {
     }
   };
 
-  // Start breathing exercise
+  // Start breathing
   const startBreathingExercise = () => {
     setIsBreathing(true);
     setBreathingTime(0);
     setBreathingPhase('inhale');
-    // Animate breathing circle
     animateBreathing();
-    // Start timer
     timerRef.current = setInterval(() => {
       setBreathingTime(prev => {
         const newTime = prev + 1;
-        // Update breathing phase every 8 seconds (4 inhale, 4 hold, 4 exhale)
-        const phaseIndex = Math.floor(newTime / 8) % 3;
-        const phases: Array<'inhale' | 'hold' | 'exhale'> = ['inhale', 'hold', 'exhale'];
-        setBreathingPhase(phases[phaseIndex]);
-        // Check if exercise is complete (4 minutes)
-        if (newTime >= 240) { // 4 minutes = 240 seconds
+        const cycleTime = newTime % 16;
+        if (cycleTime < 4) setBreathingPhase('inhale');
+        else if (cycleTime < 8) setBreathingPhase('hold1');
+        else if (cycleTime < 12) setBreathingPhase('exhale');
+        else setBreathingPhase('hold2');
+        if (newTime >= 240) {
           finishBreathingExercise();
-          return newTime;
+          return prev;
         }
         return newTime;
       });
     }, 1000) as unknown as NodeJS.Timeout;
   };
 
-  // Animate breathing
+  // Custom breathing animation - using opacity or color change instead of scale
   const animateBreathing = () => {
     Animated.loop(
       Animated.sequence([
-        // Inhale - expand (4 seconds)
-        Animated.timing(breathingScale, {
-          toValue: 1.6,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-        // Hold (4 seconds)
-        Animated.timing(breathingScale, {
-          toValue: 1.6,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
-        // Exhale - contract (4 seconds)
-        Animated.timing(breathingScale, {
-          toValue: 1,
-          duration: 4000,
-          useNativeDriver: true,
-        }),
+        Animated.timing(breathingAnimation, { toValue: 1, duration: 4000, useNativeDriver: true }), // Inhale
+        Animated.timing(breathingAnimation, { toValue: 1, duration: 4000, useNativeDriver: true }), // Hold1
+        Animated.timing(breathingAnimation, { toValue: 0, duration: 4000, useNativeDriver: true }), // Exhale
+        Animated.timing(breathingAnimation, { toValue: 0, duration: 4000, useNativeDriver: true }), // Hold2
       ])
     ).start();
   };
 
-  // Stop breathing exercise
+  // Stop breathing
   const stopBreathingExercise = () => {
     setIsBreathing(false);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    breathingScale.stopAnimation();
+    if (timerRef.current) clearInterval(timerRef.current);
+    breathingAnimation.stopAnimation();
+    setShowRelaxationSlider(true);
   };
 
-  // Submit final wellness data after breathing exercise
-  const submitFinalWellnessData = async () => {
-    if (!session?.user?.id || !entryId) {
-      Alert.alert('Authentication Error', 'Please log in to submit data.');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    try {
-      // Update entry with exercise data and mark as complete
-      const { error } = await supabase
-        .from('daily_sliders')
-        .update({
-          exercise_duration: 4, // Fixed to 4 minutes
-          completed_exercise_time: breathingTime,
-        })
-        .eq('id', entryId);
-        
-      if (error) throw error;
-      
-      // Mark as completed for today
-      setAlreadySubmittedToday(true);
-      setShowCompletion(true);
-      // Removed setShowEditAfterExercise call
-    } catch (error) {
-      Alert.alert('Submission Error', 'Failed to save data. Please try again.');
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-      stopBreathingExercise();
-    }
-  };
-
-  // Finish breathing exercise
-  const finishBreathingExercise = () => {
-    stopBreathingExercise();
-    updateEntryWithExerciseData();
-    // Set showCompletion to true to show the final submit button
+  // Finish breathing
+  const finishBreathingExercise = async () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    breathingAnimation.stopAnimation();
+    await updateEntryWithExerciseData();
     setShowCompletion(true);
-    setShowEditAfterExercise(false);
+    setAlreadySubmittedToday(true);
+    setIsBreathing(false);
   };
 
-  // Update entry with exercise data
+  // Update with exercise
   const updateEntryWithExerciseData = async () => {
     if (!entryId || !session?.user?.id) return;
     try {
       const { error } = await supabase
         .from('daily_sliders')
         .update({
-          exercise_duration: 4, // Fixed to 4 minutes
-          completed_exercise_time: breathingTime,
+          exercise_duration: 4,
+          completed_exercise_time: Math.floor(breathingTime / 60), // Convert to minutes
         })
         .eq('id', entryId);
       if (error) throw error;
-      // We no longer setAlreadySubmittedToday here since we want the final submit button
     } catch (error) {
-      Alert.alert('Update Error', 'Failed to update exercise data. Please try again.');
+      Alert.alert('Update Error', 'Failed to update exercise data.');
       console.error(error);
     }
   };
 
-  // Get breathing instruction
+  // Submit relaxation
+  const submitRelaxationAndFinal = async () => {
+    if (relaxationLevel === null) {
+      Alert.alert('Incomplete', 'Please select your relaxation level.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('daily_sliders')
+        .update({
+          relaxation_level: relaxationLevel,
+        })
+        .eq('id', entryId);
+      if (error) throw error;
+      setShowCompletion(true);
+      setAlreadySubmittedToday(true);
+      setShowRelaxationSlider(false);
+    } catch (error) {
+      Alert.alert('Submission Error', 'Failed to save data.');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Breathing instruction
   const getBreathingInstruction = () => {
     switch (breathingPhase) {
       case 'inhale': return 'Breathe In...';
-      case 'hold': return 'Hold...';
+      case 'hold1': return 'Hold...';
       case 'exhale': return 'Breathe Out...';
+      case 'hold2': return 'Hold...';
       default: return 'Breathe';
     }
   };
@@ -322,19 +356,28 @@ export default function DailySliders() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Stress circle scale interpolation - big at 1 (green), small at 5 (yellow), big at 10 (red)
+  // Stress circle interpolation
   const stressCircleScale = stressAnimation.interpolate({
     inputRange: [1, 5, 10],
     outputRange: [1.3, 0.7, 1.3],
     extrapolate: 'clamp',
   });
-
   const stressCircleOpacity = stressAnimation.interpolate({
     inputRange: [1, 10],
     outputRange: [0.8, 0.8],
   });
 
-  // If already submitted today and not doing breathing
+  // Breathing animation interpolation - e.g., opacity for custom element
+  const breathingOpacity = breathingAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.5, 1],
+  });
+  const breathingColor = breathingAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#EF4444', '#10B981'],
+    extrapolate: 'clamp',
+  });
+
   if (alreadySubmittedToday && !isBreathing) {
     return (
       <View style={styles.container}>
@@ -358,10 +401,13 @@ export default function DailySliders() {
     );
   }
 
-  // Breathing exercise screen
   if (isBreathing) {
     return (
       <View style={styles.container}>
+        <Svg style={styles.backgroundSvg} width={width} height="100%" viewBox="0 0 375 812" fill="none">
+          <Path d="M0 0C0 0 100 50 187.5 50C275 50 375 0 375 0V812H0V0Z" fill="#F0F9F6" opacity="0.5"/>
+          <Path d="M0 100C50 150 150 50 187.5 50C225 50 325 150 375 100" fill="#E8F5F1" opacity="0.3"/>
+        </Svg>
         <View style={styles.header}>
           <TouchableOpacity onPress={stopBreathingExercise} style={styles.backButton}>
             <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -376,26 +422,23 @@ export default function DailySliders() {
           <View style={styles.circleContainer}>
             <Animated.View
               style={[
-                styles.breathingCircle,
+                styles.breathingElement,
                 {
-                  backgroundColor: getStressColor(),
-                  transform: [{ scale: breathingScale }],
+                  opacity: breathingOpacity,
+                  backgroundColor: breathingColor,
                 }
               ]}
-            />
-            <View style={styles.instructionContainer}>
-              <Text style={[styles.instructionText, { color: getStressColor() }]}>
-                {getBreathingInstruction()}
-              </Text>
-            </View>
+            >
+              <Text style={styles.instructionText}>{getBreathingInstruction()}</Text>
+            </Animated.View>
           </View>
           <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: getStressColor() }]}
-            onPress={submitFinalWellnessData}
+            style={[styles.submitButton, styles.longButton, { backgroundColor: getStressColor() }]}
+            onPress={stopBreathingExercise}
             disabled={isSubmitting}
           >
             <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Finish Breathing Exercise & Submit'}
+              {isSubmitting ? 'Submitting...' : 'Finish Breathing Exercise'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -403,7 +446,79 @@ export default function DailySliders() {
     );
   }
 
-  // Main form (or edit form after exercise)
+  if (showRelaxationSlider) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Relaxation Level</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.section}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <Icons.relaxation />
+              </View>
+              <View style={styles.questionText}>
+                <Text style={styles.sectionTitle}>Relaxation Level</Text>
+                <Text style={styles.sectionSubtitle}>How relaxed do you feel after the exercise? (1-10)</Text>
+              </View>
+            </View>
+            <View style={styles.stressVisualContainer}>
+              <Text style={[styles.stressEmoji, { fontSize: 60 }]}>
+                {getRelaxationEmoji()}
+              </Text>
+            </View>
+            <View style={styles.sliderContainer}>
+              <View style={styles.track}>
+                <View
+                  style={[
+                    styles.trackFill,
+                    {
+                      width: relaxationLevel ? `${relaxationLevel * 10}%` : '0%',
+                      backgroundColor: getStressColor()
+                    }
+                  ]}
+                />
+              </View>
+              <View style={styles.thumbContainer}>
+                {[...Array(10)].map((_, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.thumb,
+                      relaxationLevel === i + 1 && styles.thumbActive,
+                      relaxationLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
+                    ]}
+                    onPress={() => setRelaxationLevel(i + 1)}
+                  />
+                ))}
+              </View>
+              <View style={styles.labels}>
+                <Text style={styles.label}>Stressed</Text>
+                <Text style={styles.label}>Relaxed</Text>
+              </View>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.submitButton, styles.longButton, { backgroundColor: getStressColor() }]}
+            onPress={submitRelaxationAndFinal}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Submitting...' : 'Submit Relaxation Level'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -418,8 +533,15 @@ export default function DailySliders() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Stress Level Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Stress Level</Text>
-          <Text style={styles.sectionSubtitle}>How stressed do you feel today? (1-10)</Text>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.stress />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Stress Level</Text>
+              <Text style={styles.sectionSubtitle}>How stressed do you feel today? (1-10)</Text>
+            </View>
+          </View>
           <View style={styles.stressVisualContainer}>
             <Animated.View
               style={[
@@ -473,11 +595,17 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-
         {/* Mood Selector Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mood Level</Text>
-          <Text style={styles.sectionSubtitle}>How is your mood today? (1 Good - 6 Bad)</Text>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.mood />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Mood Level</Text>
+              <Text style={styles.sectionSubtitle}>How is your mood today? (1 Bad - 5 Good)</Text>
+            </View>
+          </View>
           <View style={styles.stressVisualContainer}>
             <Text style={[styles.stressEmoji, { fontSize: 60 }]}>
               {getMoodFace()}
@@ -489,39 +617,45 @@ export default function DailySliders() {
                 style={[
                   styles.trackFill,
                   {
-                    width: moodLevel ? `${moodLevel * (100 / 6)}%` : '0%',
+                    width: moodLevel ? `${(moodLevel * 100) / 5}%` : '0%',
                     backgroundColor: getStressColor()
                   }
                 ]}
               />
             </View>
             <View style={styles.thumbContainer}>
-              {[...Array(6)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
                     styles.thumb,
-                    { width: width / 7 }, // Adjust for 6 levels
+                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
                     moodLevel === i + 1 && styles.thumbActive,
                     moodLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setMoodLevel(i + 1)}
                 >
-                  <Text style={styles.moodThumbEmoji}>{MOOD_FACES[i]}</Text>
+                  <Text style={[styles.moodThumbEmoji, { textAlign: 'center' }]}>{MOOD_FACES[i]}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <View style={styles.labels}>
-              <Text style={styles.label}>Good</Text>
               <Text style={styles.label}>Bad</Text>
+              <Text style={styles.label}>Good</Text>
             </View>
           </View>
         </View>
-
         {/* Factors Influencing Stress */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Factors Influencing Stress</Text>
-          <Text style={styles.sectionSubtitle}>Select all that apply</Text>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.factors />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Factors Influencing Stress</Text>
+              <Text style={styles.sectionSubtitle}>Select all that apply</Text>
+            </View>
+          </View>
           <View style={styles.factorsContainer}>
             {STRESS_FACTORS.map((factor) => (
               <TouchableOpacity
@@ -543,11 +677,17 @@ export default function DailySliders() {
             ))}
           </View>
         </View>
-
         {/* Sleep Schedule */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sleep Schedule</Text>
-          <Text style={styles.sectionSubtitle}>When did you sleep and wake up?</Text>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.schedule />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Sleep Schedule</Text>
+              <Text style={styles.sectionSubtitle}>When did you sleep and wake up?</Text>
+            </View>
+          </View>
           <View style={styles.sleepScheduleContainer}>
             <View style={styles.timeColumn}>
               <Text style={styles.timeLabel}>Sleep Start</Text>
@@ -597,7 +737,54 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-
+        {/* Sleep Quality Section - moved after schedule */}
+        <View style={styles.section}>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.sleep />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Sleep Quality</Text>
+              <Text style={styles.sectionSubtitle}>How was your sleep quality? (1 Poor - 5 Excellent)</Text>
+            </View>
+          </View>
+          <View style={styles.stressVisualContainer}>
+            <Text style={[styles.stressEmoji, { fontSize: 60 }]}>
+              {getSleepQualityEmoji()}
+            </Text>
+          </View>
+          <View style={styles.sliderContainer}>
+            <View style={styles.track}>
+              <View
+                style={[
+                  styles.trackFill,
+                  {
+                    width: sleepQuality ? `${(sleepQuality * 100) / 5}%` : '0%',
+                    backgroundColor: getStressColor()
+                  }
+                ]}
+              />
+            </View>
+            <View style={styles.thumbContainer}>
+              {[...Array(5)].map((_, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.thumb,
+                    { width: width / 6 - 10 },
+                    sleepQuality === i + 1 && styles.thumbActive,
+                    sleepQuality === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
+                  ]}
+                  onPress={() => setSleepQuality(i + 1)}
+                />
+              ))}
+            </View>
+            <View style={styles.labels}>
+              <Text style={styles.label}>Poor</Text>
+              <Text style={styles.label}>Excellent</Text>
+            </View>
+          </View>
+        </View>
         {/* Submit Button */}
         {!showCompletion && !isBreathing && (
           showEditAfterExercise ? (
@@ -624,7 +811,7 @@ export default function DailySliders() {
             <Text style={styles.celebrationEmoji}>🎉</Text>
             <Text style={styles.completionTitle}>Great Job Today!</Text>
             <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-            <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
+            <Text style={styles.completionText}>You’re all set. Let’s meet again tomorrow!</Text>
             <Text style={styles.happyEmoji}>😊</Text>
           </View>
         )}
@@ -637,6 +824,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FDFC',
+  },
+  backgroundSvg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   header: {
     flexDirection: 'row',
@@ -692,11 +884,25 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
+  },
+  questionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F0F9F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  questionText: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 20,
@@ -780,6 +986,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     margin: 6,
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
   },
   factorTagSelected: {
     backgroundColor: '#64C59A',
@@ -812,6 +1020,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
   },
   timeOptionSelected: {
     backgroundColor: '#64C59A',
@@ -830,6 +1040,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     alignItems: 'center',
     marginBottom: 24,
+  },
+  longButton: {
+    paddingHorizontal: 40, // Make button longer
   },
   submitButtonText: {
     fontSize: 18,
@@ -853,31 +1066,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 60,
   },
-  breathingCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: '#64C59A',
-    opacity: 0.7,
-  },
-  instructionContainer: {
-    position: 'absolute',
-    alignItems: 'center',
+  breathingElement: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   instructionText: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#64C59A',
-  },
-  stopButton: {
-    backgroundColor: '#EF4444',
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-  },
-  stopButtonText: {
-    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
   },
