@@ -310,9 +310,9 @@ export default function WeeklyQuestions() {
         <View style={styles.completionContainer}>
           <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Great Job!</Text>
-            <Text style={styles.completionText}>You've completed your weekly reflection.</Text>
-            <Text style={styles.completionText}>Thank you for taking this mindful moment.</Text>
+            <Text style={styles.completionTitle}>Great Job Today!</Text>
+            <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
+            <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
             <Text style={styles.happyEmoji}>😊</Text>
           </Animated.View>
         </View>
@@ -336,11 +336,11 @@ export default function WeeklyQuestions() {
         {alreadySubmitted ? (
           <View style={styles.completionContainer}>
             <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
-              <Text style={styles.celebrationEmoji}>Well done</Text>
-              <Text style={styles.completionTitle}>You've Completed This Week!</Text>
-              <Text style={styles.completionText}>Your answers have been saved.</Text>
-              <Text style={styles.completionText}>See you next week with new questions.</Text>
-              <Text style={styles.happyEmoji}>Take care</Text>
+              <Text style={styles.celebrationEmoji}>🎉</Text>
+              <Text style={styles.completionTitle}>Great Job Today!</Text>
+              <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
+              <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
+              <Text style={styles.happyEmoji}>😊</Text>
             </Animated.View>
           </View>
         ) : (
