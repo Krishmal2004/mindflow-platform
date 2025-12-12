@@ -80,7 +80,7 @@ export default function ProgressScreen() {
       // Check which weeks have submissions
       const { data: weeklyAnswers, error: weeklyError } = await supabase
         .from('weekly_answers')
-        .select('question_set_id, submitted_at')
+        .select('week_id, submitted_at')
         .eq('user_id', session?.user?.id)
         .gte('submitted_at', twelveWeeksAgo.toISOString());
 
@@ -90,9 +90,9 @@ export default function ProgressScreen() {
       const submittedWeeks = new Set();
       if (weeklyAnswers) {
         weeklyAnswers.forEach(answer => {
-          const date = new Date(answer.submitted_at);
-          const [year, week] = getWeekNumber(date);
-          submittedWeeks.add(`${year}-W${week.toString().padStart(2, '0')}`);
+          // Extract week from week_id (format: YYYY-WNN-WQ)
+          const weekPart = answer.week_id.split('-').slice(0, 2).join('-');
+          submittedWeeks.add(weekPart);
         });
       }
 
