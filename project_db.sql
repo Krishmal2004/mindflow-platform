@@ -92,32 +92,20 @@ GRANT ALL ON TABLE daily_sliders TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE daily_sliders_id_seq TO authenticated;
 GRANT ALL ON TABLE about_me_profiles TO authenticated;
 
--- Weekly Questions Tables
 
--- Table 1: weekly_questions
--- Purpose: Store each weekly question set
-CREATE TABLE IF NOT EXISTS weekly_questions (
-    id SERIAL PRIMARY KEY,
-    week_id TEXT UNIQUE NOT NULL, -- Unique identifier for each week's set (e.g., '2023-W45')
-    q1 TEXT NOT NULL,
-    q2 TEXT NOT NULL,
-    q3 TEXT NOT NULL,
-    q4 TEXT NOT NULL,
-    q5 TEXT NOT NULL,
-    q6 TEXT NOT NULL,
-    q7 TEXT NOT NULL,
-    q8 TEXT NOT NULL,
-    q9 TEXT NOT NULL,
-    q10 TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Updated Weekly Answers Table (without weekly_questions table)
+-- Purpose: Store each user's answers with week identifiers
 
--- Table 2: weekly_answers
--- Purpose: Store each user's answers
+-- Drop existing tables and policies
+DROP TABLE IF EXISTS weekly_questions;
+DROP TABLE IF EXISTS weekly_answers;
+
+-- Create the updated weekly_answers table
 CREATE TABLE IF NOT EXISTS weekly_answers (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    question_set_id INTEGER REFERENCES weekly_questions(id) ON DELETE CASCADE,
+    week_id TEXT NOT NULL, -- Format: YYYY-WNN-WQ (e.g., 2025-W50-WQ)
+    voice_recording_id INTEGER REFERENCES voice_recordings(id) ON DELETE SET NULL, -- Reference to voice recording
     a1 TEXT,
     a2 TEXT,
     a3 TEXT,
@@ -132,18 +120,11 @@ CREATE TABLE IF NOT EXISTS weekly_answers (
 );
 
 -- Enable RLS (Row Level Security)
-ALTER TABLE weekly_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE weekly_answers ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Users can only access weekly questions" ON weekly_questions;
 DROP POLICY IF EXISTS "Users can only access their own weekly answers" ON weekly_answers;
-
--- RLS Policies
-CREATE POLICY "Users can only access weekly questions" 
-    ON weekly_questions 
-    FOR ALL 
-    USING (true);
 
 -- RLS Policies (optimized to avoid re-evaluation of auth.uid())
 CREATE POLICY "Users can only access their own weekly answers" 
@@ -152,33 +133,19 @@ CREATE POLICY "Users can only access their own weekly answers"
     USING (user_id = (SELECT auth.uid()));
 
 -- Indexes for better performance
-CREATE INDEX idx_weekly_questions_week_id ON weekly_questions(week_id);
 CREATE INDEX idx_weekly_answers_user_id ON weekly_answers(user_id);
-CREATE INDEX idx_weekly_answers_question_set_id ON weekly_answers(question_set_id);
-CREATE INDEX idx_weekly_answers_user_question_set ON weekly_answers(user_id, question_set_id);
+CREATE INDEX idx_weekly_answers_week_id ON weekly_answers(week_id);
+CREATE INDEX idx_weekly_answers_user_week ON weekly_answers(user_id, week_id);
 
 -- Grant permissions
-GRANT ALL ON TABLE weekly_questions TO authenticated;
 GRANT ALL ON TABLE weekly_answers TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE weekly_questions_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
 
+-- Insert sample data for the fixed weekly questions
+-- Note: These questions are now fixed and stored in the application code, not in the database
+-- Sample data would be inserted through the application
 
--- Sample data for weekly_questions table
-INSERT INTO weekly_questions (week_id, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10) VALUES
-('2025-W50', 
- 'What is one thing you are grateful for this week?',
- 'Describe a moment this week when you felt truly present.',
- 'What challenge did you face this week, and how did you handle it?',
- 'Which of your values guided you most this week?',
- 'What activity brought you the most joy this week?',
- 'How have your relationships influenced your well-being this week?',
- 'What is one habit you would like to develop or improve?',
- 'In what way did you show kindness to yourself this week?',
- 'What is one thing you learned about yourself this week?',
- 'How do you plan to take care of your mental health in the coming week?');
-
- -- Main Questionnaire Tables
+-- Main Questionnaire Tables
 
 -- Table 1: main_question_sets
 -- Purpose: Store each main questionnaire set with 25 questions
@@ -351,3 +318,47 @@ INSERT INTO main_questions (question_set_id, section_type, question_id, question
 (1, 'B', 'FFMQ_13', 'I get so focused on the goal I want to achieve that I lose touch with what I am doing right now to get there.', 'Acting with Awareness', true, 13),
 (1, 'B', 'FFMQ_14', 'I think some of my emotions are bad or inappropriate and I shouldn''t feel them.', 'Non-Judging', true, 14),
 (1, 'B', 'FFMQ_15', 'When I have distressing thoughts or images, I am able to just notice them without reacting.', 'Non-Reactivity', false, 15);
+
+-- Table for storing voice recording metadata
+CREATE TABLE IF NOT EXISTS voice_recordings (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    week_number INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    file_key TEXT NOT NULL, -- Key to locate the file in R2 bucket
+    file_url TEXT, -- Public URL to access the file
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE voice_recordings ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can only access their own voice recordings" 
+    ON voice_recordings 
+    FOR ALL 
+    USING (user_id = auth.uid());
+
+-- Indexes for better performance
+CREATE INDEX idx_voice_recordings_user_id ON voice_recordings(user_id);
+CREATE INDEX idx_voice_recordings_week_year ON voice_recordings(week_number, year);
+
+-- Grant permissions
+GRANT ALL ON TABLE voice_recordings TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE voice_recordings_id_seq TO authenticated;
+
+-- Function to automatically update the updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Trigger to automatically update the updated_at column
+CREATE TRIGGER update_voice_recordings_updated_at 
+    BEFORE UPDATE ON voice_recordings 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
