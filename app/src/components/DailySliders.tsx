@@ -8,11 +8,24 @@ import {
   Dimensions,
   Animated,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
-import Svg, { Path, Circle, G } from 'react-native-svg';
+import Svg, { Path, Circle, G, Line, Rect } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
+
+// Conditional import for expo-av to avoid bundling issues
+let Audio: any;
+let FileSystem: any;
+try {
+  const expoAv = require('expo-av');
+  Audio = expoAv.Audio;
+  const expoFs = require('expo-file-system');
+  FileSystem = expoFs;
+} catch (e) {
+  console.log('Audio features not available');
+}
 
 const { width } = Dimensions.get('window');
 
@@ -33,13 +46,25 @@ const STRESS_FACTORS = [
 ];
 
 // Time options for sleep schedule (30-minute intervals)
-const TIME_OPTIONS: string[] = [];
+// Sleep start times from 18:00 (6:00 PM) onwards
+const SLEEP_START_OPTIONS: string[] = [];
+for (let hour = 18; hour < 24; hour++) {
+  for (let minute = 0; minute < 60; minute += 30) {
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const displayMinute = minute.toString().padStart(2, '0');
+    SLEEP_START_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
+  }
+}
+
+// Wake up times from 00:00 (12:00 AM) onwards
+const WAKE_UP_OPTIONS: string[] = [];
 for (let hour = 0; hour < 24; hour++) {
   for (let minute = 0; minute < 60; minute += 30) {
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     const displayMinute = minute.toString().padStart(2, '0');
-    TIME_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
+    WAKE_UP_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
   }
 }
 
@@ -91,6 +116,24 @@ const Icons = {
       <Circle cx="15" cy="9" r="1" fill="#64C59A"/>
     </Svg>
   ),
+  voice: () => (
+    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="#64C59A" strokeWidth="2"/>
+      <Line x1="12" y1="19" x2="12" y2="23" stroke="#64C59A" strokeWidth="2"/>
+      <Line x1="8" y1="23" x2="16" y2="23" stroke="#64C59A" strokeWidth="2"/>
+    </Svg>
+  ),
+  play: () => (
+    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <Path d="M5 3L19 12L5 21V3Z" fill="#64C59A" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  ),
+  stop: () => (
+    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <Rect x="6" y="6" width="12" height="12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  ),
 };
 
 export default function DailySliders() {
@@ -110,19 +153,138 @@ export default function DailySliders() {
   const [entryId, setEntryId] = useState<number | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showEditAfterExercise, setShowEditAfterExercise] = useState(false);
-  const [showRelaxationSlider, setShowRelaxationSlider] = useState(false);
+  const [researchId, setResearchId] = useState<string | null>(null);
+  const [showVoiceRecording, setShowVoiceRecording] = useState(false);
+  const [recording, setRecording] = useState<any | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedUri, setRecordedUri] = useState<string | null>(null);
+  const [sound, setSound] = useState<any | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [weeklyVoiceUrl, setWeeklyVoiceUrl] = useState<string | null>(null);
 
   const stressAnimation = useRef(new Animated.Value(0)).current;
-  const breathingAnimation = useRef(new Animated.Value(0)).current; // For custom animation
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [breathingTime, setBreathingTime] = useState(0);
-  const [isBreathing, setIsBreathing] = useState(false);
-  const [breathingPhase, setBreathingPhase] = useState<'inhale' | 'hold1' | 'exhale' | 'hold2'>('inhale');
 
   // Check if user has already submitted today
   useEffect(() => {
     checkDailySubmission();
+    getUserResearchId();
+    loadWeeklyVoice();
+    
+    // Cleanup function
+    return () => {
+      if (sound) {
+        sound.unloadAsync().catch((err: any) => console.log('Error unloading sound:', err));
+      }
+    };
   }, [session]);
+
+  const getUserResearchId = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('researchID')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data && data.researchID) {
+        setResearchId(data.researchID);
+        // Show voice recording feature only for users with research ID ending in .ex
+        if (data.researchID.endsWith('.ex')) {
+          setShowVoiceRecording(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching research ID:', error);
+    }
+  };
+
+  const loadWeeklyVoice = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      // Get current week number and year
+      const currentDate = new Date();
+      const year = currentDate.getFullYear();
+      
+      // Calculate week number
+      const startDate = new Date(year, 0, 1);
+      const days = Math.floor((currentDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+      const weekNumber = Math.ceil((days + startDate.getDay() + 1) / 7);
+      
+      // Construct the file key based on your R2 structure
+      // Format: SessionRecord/V2025-W50.mp3 for week 50 of 2025
+      const fileKey = `SessionRecord/V${year}-W${weekNumber.toString().padStart(2, '0')}.mp3`;
+      
+      console.log('Loading voice for week:', weekNumber, 'year:', year);
+      console.log('Constructed file key:', fileKey);
+      
+      // Try to get existing voice recording for this week from database first
+      const { data, error } = await supabase
+        .from('voice_recordings')
+        .select('file_url')
+        .eq('week_number', weekNumber)
+        .eq('year', year)
+        .limit(1);
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0 && data[0].file_url) {
+        console.log('Found URL in database:', data[0].file_url);
+        // Validate URL before setting it
+        try {
+          new URL(data[0].file_url);
+          setWeeklyVoiceUrl(data[0].file_url);
+        } catch (urlError) {
+          console.error('Invalid URL from database:', data[0].file_url);
+        }
+      } else {
+        // If no database entry, construct URL based on R2 structure
+        const r2BaseUrl = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
+        console.log('R2 Base URL from env:', r2BaseUrl);
+        
+        if (r2BaseUrl) {
+          // Ensure base URL formatting is correct
+          let baseUrl = r2BaseUrl;
+          // Remove trailing slash if present
+          if (baseUrl.endsWith('/')) {
+            baseUrl = baseUrl.slice(0, -1);
+          }
+          
+          // Ensure fileKey starts with /
+          let formattedFileKey = fileKey;
+          if (!formattedFileKey.startsWith('/')) {
+            formattedFileKey = '/' + formattedFileKey;
+          }
+          
+          const constructedUrl = `${baseUrl}${formattedFileKey}`;
+          
+          console.log('Base URL:', baseUrl);
+          console.log('File key:', formattedFileKey);
+          console.log('Constructed URL:', constructedUrl);
+          
+          // Validate the constructed URL
+          try {
+            new URL(constructedUrl);
+            setWeeklyVoiceUrl(constructedUrl);
+          } catch (urlError) {
+            console.error('Invalid constructed URL:', constructedUrl);
+            console.error('URL error:', urlError);
+          }
+        } else {
+          console.log('R2_PUBLIC_URL environment variable not set');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading weekly voice:', error);
+      setWeeklyVoiceUrl(null); // Reset URL on error
+    }
+  };
 
   const checkDailySubmission = async () => {
     if (!session?.user?.id) return;
@@ -181,6 +343,168 @@ export default function DailySliders() {
   // Get relaxation emoji
   const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 10 - relaxationLevel : 2] || '😐';
 
+  // Voice recording functions
+  const startRecording = async () => {
+    if (!Audio) return;
+    
+    try {
+      if (Platform.OS === 'android') {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+      }
+      
+      const { recording } = await Audio.Recording.createAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.m4a',
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {
+          mimeType: 'audio/webm',
+          bitsPerSecond: 128000,
+        },
+      });
+      
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recording', err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      
+      if (uri) {
+        setRecordedUri(uri);
+      }
+      
+      setIsRecording(false);
+      setRecording(null);
+    } catch (err) {
+      console.error('Failed to stop recording', err);
+    }
+  };
+
+  const playRecording = async () => {
+    if (!weeklyVoiceUrl || !Audio) {
+      Alert.alert('Playback Error', 'No audio file available to play.');
+      return;
+    }
+    
+    // Validate URL format
+    try {
+      new URL(weeklyVoiceUrl);
+    } catch (urlError) {
+      console.error('Invalid URL format:', weeklyVoiceUrl);
+      Alert.alert('Playback Error', 'Invalid audio file URL.');
+      return;
+    }
+    
+    try {
+      // Unload any existing sound
+      if (sound) {
+        await sound.unloadAsync();
+        setSound(null);
+      }
+      
+      // Set audio mode for playback
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        playThroughEarpieceAndroid: false
+      });
+      
+      console.log('Attempting to play audio from URL:', weeklyVoiceUrl);
+      
+      // Create and load the sound directly
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: weeklyVoiceUrl },
+        { shouldPlay: true }
+      );
+      
+      setSound(newSound);
+      setIsPlaying(true);
+      
+      // Set up playback status update listener
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.isLoaded) {
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            newSound.unloadAsync();
+          }
+        } else if (status.error) {
+          console.error('Playback error:', status.error);
+          setIsPlaying(false);
+          // Provide more detailed error information
+          let errorMsg = `Failed to play audio: ${status.error}`;
+          if (status.error.includes('400') || status.error.includes('404')) {
+            errorMsg = 'Audio file not found or inaccessible. Please check if the file exists in the storage.';
+          }
+          Alert.alert('Playback Error', errorMsg);
+        }
+      });
+      
+      // Play the sound
+      await newSound.playAsync();
+    } catch (err: any) {
+      console.error('Failed to play recording:', err);
+      setIsPlaying(false);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to play the audio. Please try again.';
+      if (err.message) {
+        errorMessage = `Playback failed: ${err.message}`;
+      }
+      
+      // Handle specific error codes
+      if (err.code === 'E_NETWORK_ERROR') {
+        errorMessage = 'Network error: Unable to connect to the audio server. Please check your internet connection.';
+      } else if (err.code === 'E_CONTENT_NOT_FOUND') {
+        errorMessage = 'Audio file not found. The file may not exist or the URL may be incorrect.';
+      } else if (err.code === 'E_UNSUPPORTED_FORMAT') {
+        errorMessage = 'Unsupported audio format. The file may be corrupted or in an unsupported format.';
+      } else if (errorMessage.includes('400') || errorMessage.includes('404')) {
+        errorMessage = 'Unable to access the audio file. It may not exist in the storage or there may be permission issues.';
+      }
+      
+      Alert.alert('Playback Error', errorMessage);
+    }
+  };
+
+  const stopPlaying = async () => {
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setIsPlaying(false);
+        setSound(null);
+      } catch (err) {
+        console.error('Failed to stop playing', err);
+      }
+    }
+  };
+
   // Submit wellness data
   const submitWellnessData = async (isEdit = false) => {
     if (!session?.user?.id) {
@@ -205,6 +529,7 @@ export default function DailySliders() {
             feelings: selectedFactors.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
+            relaxation_level: relaxationLevel, // Add relaxation level to the update
           })
           .eq('id', entryId);
         if (error) throw error;
@@ -219,10 +544,7 @@ export default function DailySliders() {
             feelings: selectedFactors.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
-            // Adding the missing fields with default values
-            exercise_duration: 0,
-            completed_exercise_time: 0,
-            relaxation_level: null,
+            relaxation_level: relaxationLevel, // Add relaxation level to the insert
             created_at: new Date().toISOString(),
           })
           .select();
@@ -232,128 +554,14 @@ export default function DailySliders() {
       if (!isEdit && data && data.length > 0) {
         setEntryId(data[0].id);
       }
-      setShowEditAfterExercise(true);
+      setShowCompletion(true);
+      setAlreadySubmittedToday(true);
     } catch (error) {
       Alert.alert('Submission Error', 'Failed to save data. Please try again.');
       console.error(error);
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Start breathing
-  const startBreathingExercise = () => {
-    setIsBreathing(true);
-    setBreathingTime(0);
-    setBreathingPhase('inhale');
-    animateBreathing();
-    timerRef.current = setInterval(() => {
-      setBreathingTime(prev => {
-        const newTime = prev + 1;
-        const cycleTime = newTime % 16;
-        if (cycleTime < 4) setBreathingPhase('inhale');
-        else if (cycleTime < 8) setBreathingPhase('hold1');
-        else if (cycleTime < 12) setBreathingPhase('exhale');
-        else setBreathingPhase('hold2');
-        if (newTime >= 240) {
-          finishBreathingExercise();
-          return prev;
-        }
-        return newTime;
-      });
-    }, 1000) as unknown as NodeJS.Timeout;
-  };
-
-  // Custom breathing animation - using opacity or color change instead of scale
-  const animateBreathing = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathingAnimation, { toValue: 1, duration: 4000, useNativeDriver: true }), // Inhale
-        Animated.timing(breathingAnimation, { toValue: 1, duration: 4000, useNativeDriver: true }), // Hold1
-        Animated.timing(breathingAnimation, { toValue: 0, duration: 4000, useNativeDriver: true }), // Exhale
-        Animated.timing(breathingAnimation, { toValue: 0, duration: 4000, useNativeDriver: true }), // Hold2
-      ])
-    ).start();
-  };
-
-  // Stop breathing
-  const stopBreathingExercise = () => {
-    setIsBreathing(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-    breathingAnimation.stopAnimation();
-    setShowRelaxationSlider(true);
-  };
-
-  // Finish breathing
-  const finishBreathingExercise = async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    breathingAnimation.stopAnimation();
-    await updateEntryWithExerciseData();
-    setShowCompletion(true);
-    setAlreadySubmittedToday(true);
-    setIsBreathing(false);
-  };
-
-  // Update with exercise
-  const updateEntryWithExerciseData = async () => {
-    if (!entryId || !session?.user?.id) return;
-    try {
-      const { error } = await supabase
-        .from('daily_sliders')
-        .update({
-          exercise_duration: 4,
-          completed_exercise_time: Math.floor(breathingTime / 60), // Convert to minutes
-        })
-        .eq('id', entryId);
-      if (error) throw error;
-    } catch (error) {
-      Alert.alert('Update Error', 'Failed to update exercise data.');
-      console.error(error);
-    }
-  };
-
-  // Submit relaxation
-  const submitRelaxationAndFinal = async () => {
-    if (relaxationLevel === null) {
-      Alert.alert('Incomplete', 'Please select your relaxation level.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from('daily_sliders')
-        .update({
-          relaxation_level: relaxationLevel,
-        })
-        .eq('id', entryId);
-      if (error) throw error;
-      setShowCompletion(true);
-      setAlreadySubmittedToday(true);
-      setShowRelaxationSlider(false);
-    } catch (error) {
-      Alert.alert('Submission Error', 'Failed to save data.');
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Breathing instruction
-  const getBreathingInstruction = () => {
-    switch (breathingPhase) {
-      case 'inhale': return 'Breathe In...';
-      case 'hold1': return 'Hold...';
-      case 'exhale': return 'Breathe Out...';
-      case 'hold2': return 'Hold...';
-      default: return 'Breathe';
-    }
-  };
-
-  // Format time
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Stress circle interpolation
@@ -367,18 +575,14 @@ export default function DailySliders() {
     outputRange: [0.8, 0.8],
   });
 
-  // Breathing animation interpolation - e.g., opacity for custom element
-  const breathingOpacity = breathingAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 1],
-  });
-  const breathingColor = breathingAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#EF4444', '#10B981'],
-    extrapolate: 'clamp',
-  });
+  const getWeekNumber = () => {
+    const date = new Date();
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  };
 
-  if (alreadySubmittedToday && !isBreathing) {
+  if (alreadySubmittedToday) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -394,127 +598,9 @@ export default function DailySliders() {
           <Text style={styles.celebrationEmoji}>🎉</Text>
           <Text style={styles.completionTitle}>Great Job Today!</Text>
           <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-          <Text style={styles.completionText}>You’re all set. Let’s meet again tomorrow!</Text>
+          <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
           <Text style={styles.happyEmoji}>😊</Text>
         </View>
-      </View>
-    );
-  }
-
-  if (isBreathing) {
-    return (
-      <View style={styles.container}>
-        <Svg style={styles.backgroundSvg} width={width} height="100%" viewBox="0 0 375 812" fill="none">
-          <Path d="M0 0C0 0 100 50 187.5 50C275 50 375 0 375 0V812H0V0Z" fill="#F0F9F6" opacity="0.5"/>
-          <Path d="M0 100C50 150 150 50 187.5 50C225 50 325 150 375 100" fill="#E8F5F1" opacity="0.3"/>
-        </Svg>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={stopBreathingExercise} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Breathing Exercise</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.breathingContainer}>
-          <Text style={styles.timerText}>{formatTime(breathingTime)}</Text>
-          <View style={styles.circleContainer}>
-            <Animated.View
-              style={[
-                styles.breathingElement,
-                {
-                  opacity: breathingOpacity,
-                  backgroundColor: breathingColor,
-                }
-              ]}
-            >
-              <Text style={styles.instructionText}>{getBreathingInstruction()}</Text>
-            </Animated.View>
-          </View>
-          <TouchableOpacity
-            style={[styles.submitButton, styles.longButton, { backgroundColor: getStressColor() }]}
-            onPress={stopBreathingExercise}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Finish Breathing Exercise'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  if (showRelaxationSlider) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Relaxation Level</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.section}>
-            <View style={styles.questionHeader}>
-              <View style={styles.iconCircle}>
-                <Icons.relaxation />
-              </View>
-              <View style={styles.questionText}>
-                <Text style={styles.sectionTitle}>Relaxation Level</Text>
-                <Text style={styles.sectionSubtitle}>How relaxed do you feel after the exercise? (1-10)</Text>
-              </View>
-            </View>
-            <View style={styles.stressVisualContainer}>
-              <Text style={[styles.stressEmoji, { fontSize: 60 }]}>
-                {getRelaxationEmoji()}
-              </Text>
-            </View>
-            <View style={styles.sliderContainer}>
-              <View style={styles.track}>
-                <View
-                  style={[
-                    styles.trackFill,
-                    {
-                      width: relaxationLevel ? `${relaxationLevel * 10}%` : '0%',
-                      backgroundColor: getStressColor()
-                    }
-                  ]}
-                />
-              </View>
-              <View style={styles.thumbContainer}>
-                {[...Array(10)].map((_, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={[
-                      styles.thumb,
-                      relaxationLevel === i + 1 && styles.thumbActive,
-                      relaxationLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
-                    ]}
-                    onPress={() => setRelaxationLevel(i + 1)}
-                  />
-                ))}
-              </View>
-              <View style={styles.labels}>
-                <Text style={styles.label}>Stressed</Text>
-                <Text style={styles.label}>Relaxed</Text>
-              </View>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.submitButton, styles.longButton, { backgroundColor: getStressColor() }]}
-            onPress={submitRelaxationAndFinal}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Submit Relaxation Level'}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
       </View>
     );
   }
@@ -692,7 +778,7 @@ export default function DailySliders() {
             <View style={styles.timeColumn}>
               <Text style={styles.timeLabel}>Sleep Start</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll}>
-                {TIME_OPTIONS.map((time) => (
+                {SLEEP_START_OPTIONS.map((time) => (
                   <TouchableOpacity
                     key={time}
                     style={[
@@ -715,7 +801,7 @@ export default function DailySliders() {
             <View style={styles.timeColumn}>
               <Text style={styles.timeLabel}>Wake Up</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll}>
-                {TIME_OPTIONS.map((time) => (
+                {WAKE_UP_OPTIONS.map((time) => (
                   <TouchableOpacity
                     key={time}
                     style={[
@@ -785,33 +871,133 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
+        {/* Voice Recording Section - only shown for .ex users */}
+        {showVoiceRecording && (
+          <View style={styles.section}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <Icons.voice />
+              </View>
+              <View style={styles.questionText}>
+                <Text style={styles.sectionTitle}>Weekly Voice Guidance</Text>
+                <Text style={styles.sectionSubtitle}>Listen to this week's mindfulness guidance</Text>
+              </View>
+            </View>
+            
+            {weeklyVoiceUrl ? (
+              <View style={styles.voicePlayerCard}>
+                <View style={styles.voicePlayerHeader}>
+                  <Text style={styles.voicePlayerTitle}>Mindfulness Session</Text>
+                  <Text style={styles.voicePlayerWeek}>Week {getWeekNumber()}</Text>
+                </View>
+                
+                <View style={styles.voicePlayerControls}>
+                  <TouchableOpacity 
+                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : '#64C59A' }]}
+                    onPress={isPlaying ? stopPlaying : playRecording}
+                  >
+                    {isPlaying ? (
+                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <Rect x="6" y="6" width="4" height="12" fill="white"/>
+                        <Rect x="14" y="6" width="4" height="12" fill="white"/>
+                      </Svg>
+                    ) : (
+                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <Path d="M8 5V19L19 12L8 5Z" fill="white"/>
+                      </Svg>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={styles.voiceProgressInfo}>
+                    <Text style={styles.voiceStatus}>
+                      {isPlaying ? 'Playing...' : 'Tap play to begin'}
+                    </Text>
+                    <Text style={styles.voiceDuration}>~5 min</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.voiceProgressBar}>
+                  <View style={[styles.voiceProgressFill, { width: isPlaying ? '60%' : '0%' }]} />
+                </View>
+                
+                <View style={styles.voicePlayerFooter}>
+                  <Text style={styles.voicePlayerTip}>🎧 Use headphones for best experience</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.voicePlaceholder}>
+                <Text style={styles.voicePlaceholderText}>
+                  Your research coordinator will upload this week's voice guidance soon.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+        {/* Relaxation Level Section - moved after Sleep Quality */}
+        <View style={styles.section}>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.relaxation />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Relaxation Level</Text>
+              <Text style={styles.sectionSubtitle}>How relaxed do you feel right now? (1-10)</Text>
+            </View>
+          </View>
+          <View style={styles.stressVisualContainer}>
+            <Text style={[styles.stressEmoji, { fontSize: 60 }]}>
+              {getRelaxationEmoji()}
+            </Text>
+          </View>
+          <View style={styles.sliderContainer}>
+            <View style={styles.track}>
+              <View
+                style={[
+                  styles.trackFill,
+                  {
+                    width: relaxationLevel ? `${relaxationLevel * 10}%` : '0%',
+                    backgroundColor: getStressColor()
+                  }
+                ]}
+              />
+            </View>
+            <View style={styles.thumbContainer}>
+              {[...Array(10)].map((_, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.thumb,
+                    relaxationLevel === i + 1 && styles.thumbActive,
+                    relaxationLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
+                  ]}
+                  onPress={() => setRelaxationLevel(i + 1)}
+                />
+              ))}
+            </View>
+            <View style={styles.labels}>
+              <Text style={styles.label}>Stressed</Text>
+              <Text style={styles.label}>Relaxed</Text>
+            </View>
+          </View>
+        </View>
         {/* Submit Button */}
-        {!showCompletion && !isBreathing && (
-          showEditAfterExercise ? (
-            <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: getStressColor() }]}
-              onPress={startBreathingExercise}
-            >
-              <Text style={styles.submitButtonText}>Start 4-Minute Breathing Exercise</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.submitButton, { backgroundColor: getStressColor() }]}
-              onPress={() => submitWellnessData(false)}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.submitButtonText}>
-                {isSubmitting ? 'Submitting...' : 'Submit Wellness Data'}
-              </Text>
-            </TouchableOpacity>
-          )
+        {!showCompletion && (
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: getStressColor() }]}
+            onPress={() => submitWellnessData(false)}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Submitting...' : 'Submit Wellness Data'}
+            </Text>
+          </TouchableOpacity>
         )}
         {showCompletion && (
           <View style={styles.completionContainer}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
             <Text style={styles.completionTitle}>Great Job Today!</Text>
             <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-            <Text style={styles.completionText}>You’re all set. Let’s meet again tomorrow!</Text>
+            <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
             <Text style={styles.happyEmoji}>😊</Text>
           </View>
         )}
@@ -824,11 +1010,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FDFC',
-  },
-  backgroundSvg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
   },
   header: {
     flexDirection: 'row',
@@ -1041,41 +1222,105 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  longButton: {
-    paddingHorizontal: 40, // Make button longer
-  },
   submitButtonText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#fff',
   },
-  breathingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
+  voicePlayerCard: {
+    backgroundColor: '#F0F9F6',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
   },
-  timerText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
+  voicePlayerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  circleContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 60,
-  },
-  breathingElement: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  instructionText: {
-    fontSize: 24,
+  voicePlayerTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: '#333',
+  },
+  voicePlayerWeek: {
+    fontSize: 14,
+    color: '#64C59A',
+    fontWeight: '600',
+    backgroundColor: '#E8F5F1',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  voicePlayerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  voiceControlButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  voiceProgressInfo: {
+    flex: 1,
+  },
+  voiceStatus: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  voiceDuration: {
+    fontSize: 14,
+    color: '#666',
+  },
+  voiceProgressBar: {
+    height: 6,
+    backgroundColor: '#E8F5F1',
+    borderRadius: 3,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  voiceProgressFill: {
+    height: '100%',
+    backgroundColor: '#64C59A',
+    borderRadius: 3,
+  },
+  voicePlayerFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5F1',
+    paddingTop: 15,
+  },
+  voicePlayerTip: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  voicePlaceholder: {
+    backgroundColor: '#F0F9F6',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  voicePlaceholderText: {
+    fontSize: 16,
+    color: '#64C59A',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
