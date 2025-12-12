@@ -20,11 +20,26 @@ Participants can track their:
 
 After submitting their ratings, participants can engage in guided breathing exercises (4-minute sessions) with visual breathing cues. Post-exercise, they rate their relaxation level to complete the mindfulness session.
 
+#### 1.1 Voice Guidance (Experimental Group Only)
+Participants with research IDs ending in ".ex" have access to weekly voice guidance:
+- Listen to mindfulness guidance recordings uploaded by research coordinators
+- Access to weekly themed audio sessions for enhanced mindfulness practice
+- Playback controls with visual progress indicators
+- Automatic URL construction for weekly guidance files stored in Cloudflare R2
+
 ### 2. Weekly Questions (Weekly Whispers)
 Participants receive thought-provoking questions each week to encourage deeper reflection on their mindfulness journey. The feature includes:
 - 10 weekly questions that change periodically
 - Text-based responses for each question
 - Progress tracking and completion celebrations
+
+#### 2.1 Vocal Biomarker Capture
+As part of the weekly questionnaire process, participants are required to complete a vocal biomarker capture:
+- Read a standardized passage aloud for vocal analysis
+- Audio recording with duration validation (15-45 seconds)
+- WAV format recording with quality settings
+- Upload to Cloudflare R2 storage for research analysis
+- Database metadata storage linking recordings to questionnaire responses
 
 ### 3. Main Questionnaire
 A comprehensive assessment tool featuring standardized psychological scales:
@@ -55,6 +70,7 @@ Visual dashboard showing participant engagement metrics:
 - **UI Components**: Custom SVG icons, animated elements with Reanimated
 - **State Management**: React Context API for session management
 - **Storage**: AsyncStorage for local data caching
+- **Audio**: Expo AV for recording and playback
 
 ### Backend
 - **Database**: Supabase (PostgreSQL)
@@ -64,15 +80,30 @@ Visual dashboard showing participant engagement metrics:
 
 ### Database Schema
 
-#### Core Tables
+The application uses Supabase PostgreSQL with the following key tables:
+
 1. `profiles` - User profile information
-2. `daily_entries` - Journal-style entries with optional media
-3. `daily_sliders` - Quantitative daily wellness metrics
-4. `weekly_questions` - Periodic reflection questions
-5. `weekly_answers` - Participant responses to weekly questions
-6. `main_question_sets` - Versions of main questionnaires
-7. `main_questions` - Individual questions in main assessments
-8. `main_questionnaire_responses` - Participant responses to main questionnaires
+2. `about_me_profiles` - Detailed user background information
+3. `daily_sliders` - Daily wellness assessments
+4. `weekly_answers` - Weekly reflection responses
+5. `main_question_sets` - Standardized questionnaire versions
+6. `main_questions` - Individual questions within questionnaires
+7. `main_questionnaire_responses` - User responses to main questionnaires
+8. `voice_recordings` - Metadata for audio recordings
+
+### Key Tables Structure
+
+#### 4. `weekly_answers`
+- Purpose: Store participant responses to weekly reflection questions
+- Structure: Fixed set of 10 weekly questions with user responses
+- Fields: user_id, week_id (format: YYYY-WNN-WQ), a1-a10 (text responses), submitted_at
+- Refresh: Questions reset every Monday at 00:00 AM
+
+#### 8. `voice_recordings`
+- Purpose: Store metadata for participant voice recordings
+- Structure: Voice recording metadata for both vocal biomarker capture and weekly guidance
+- Fields: id, user_id, week_number, year, file_key, file_url, created_at, updated_at
+- RLS Policies: Row-level security ensures users can only access their own recordings
 
 ## Getting Started
 
