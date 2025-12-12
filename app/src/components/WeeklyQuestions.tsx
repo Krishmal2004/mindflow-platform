@@ -14,6 +14,7 @@ import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import VocalBiomarkerCapture from './VocalBiomarkerCapture';
 
 // Custom SVG Icons for Weekly Questions
 const WeeklyIcons = {
@@ -78,28 +79,26 @@ const WeeklyIcons = {
   ),
   mentalHealth: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M12 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3 21 5 21H19C20.1046 21 21 20.1046 21 19V12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <Path d="M18 3V9" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <Path d="M15 6H21" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </Svg>
   ),
 };
 
-interface WeeklyQuestionSet {
-  id: number;
-  week_id: string;
-  q1: string;
-  q2: string;
-  q3: string;
-  q4: string;
-  q5: string;
-  q6: string;
-  q7: string;
-  q8: string;
-  q9: string;
-  q10: string;
-  created_at: string;
-}
+// Fixed weekly questions - same every week
+const FIXED_QUESTIONS = [
+  'What is one thing you are grateful for this week?',
+  'Describe a moment this week when you felt truly present.',
+  'What challenge did you face this week, and how did you handle it?',
+  'Which of your values guided you most this week?',
+  'What activity brought you the most joy this week?',
+  'How have your relationships influenced your well-being this week?',
+  'What is one habit you would like to develop or improve?',
+  'In what way did you show kindness to yourself this week?',
+  'What is one thing you learned about yourself this week?',
+  'How do you plan to take care of your mental health in the coming week?'
+];
 
 // Map questions to icons
 const questionIcons = [
@@ -124,77 +123,61 @@ function getWeekNumber(d: Date): [number, number] {
   return [date.getUTCFullYear(), weekNo];
 }
 
+// Get formatted week ID (e.g., 2025-W50-WQ)
+function getCurrentWeekId(): string {
+  const [year, week] = getWeekNumber(new Date());
+  return `${year}-W${week.toString().padStart(2, '0')}-WQ`;
+}
+
 export default function WeeklyQuestions() {
   const router = useRouter();
   const { session } = useSession();
 
-  const [questions, setQuestions] = useState<WeeklyQuestionSet | null>(null);
   const [answers, setAnswers] = useState<string[]>(Array(10).fill(''));
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [noQuestionsAvailable, setNoQuestionsAvailable] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [currentWeekId, setCurrentWeekId] = useState('');
+  const [voiceRecordingId, setVoiceRecordingId] = useState<number | null>(null);
+  const [showVocalCapture, setShowVocalCapture] = useState(true);
 
   useEffect(() => {
     if (session?.user) {
-      fetchWeeklyQuestions();
+      const weekId = getCurrentWeekId();
+      setCurrentWeekId(weekId);
+      checkIfAlreadySubmitted(weekId);
     }
   }, [session]);
 
-  const fetchWeeklyQuestions = async () => {
+  const checkIfAlreadySubmitted = async (weekId: string) => {
     if (!session?.user?.id) return;
 
     try {
       setLoading(true);
-      const [year, week] = getWeekNumber(new Date());
-      const currentWeekId = `${year}-W${week.toString().padStart(2, '0')}`;
-
-      // Step 1: Try to get current week's questions
-      let { data: questionSet, error } = await supabase
-        .from('weekly_questions')
-        .select('*')
-        .eq('week_id', currentWeekId)
-        .single();
-
-      // Step 2: If not found, get the latest available set
-      if (!questionSet || error?.code === 'PGRST116') {
-        const { data, error: fallbackError } = await supabase
-          .from('weekly_questions')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        questionSet = data;
-        error = fallbackError;
-      }
-
-      if (error && error.code !== 'PGRST116') throw error;
-      if (!questionSet) {
-        setNoQuestionsAvailable(true);
-        return;
-      }
-
-      setQuestions(questionSet);
-      setNoQuestionsAvailable(false);
-
-      // Check if user already answered this exact question set
-      const { data: existing } = await supabase
+      
+      // Check if user already answered for this week
+      const { data: existing, error } = await supabase
         .from('weekly_answers')
         .select('id')
         .eq('user_id', session.user.id)
-        .eq('question_set_id', questionSet.id)
+        .eq('week_id', weekId)
         .maybeSingle();
 
+      if (error) throw error;
+      
       setAlreadySubmitted(!!existing);
-
     } catch (err: any) {
-      console.error('Error loading weekly questions:', err);
-      Alert.alert('Error', err.message || 'Failed to load questions. Please try again.');
+      console.error('Error checking submission status:', err);
+      Alert.alert('Error', err.message || 'Failed to check submission status. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVocalCaptureComplete = (recordingId: number) => {
+    setVoiceRecordingId(recordingId);
+    setShowVocalCapture(false);
   };
 
   const handleAnswerChange = (index: number, text: string) => {
@@ -204,7 +187,7 @@ export default function WeeklyQuestions() {
   };
 
   const handleSubmit = async () => {
-    if (!questions || !session?.user?.id) return;
+    if (!session?.user?.id || !currentWeekId) return;
 
     const emptyAnswer = answers.findIndex(a => a.trim() === '');
     if (emptyAnswer !== -1) {
@@ -217,7 +200,8 @@ export default function WeeklyQuestions() {
     try {
       const { error } = await supabase.from('weekly_answers').insert({
         user_id: session.user.id,
-        question_set_id: questions.id,
+        week_id: currentWeekId,
+        voice_recording_id: voiceRecordingId,
         a1: answers[0],
         a2: answers[1],
         a3: answers[2],
@@ -278,31 +262,6 @@ export default function WeeklyQuestions() {
     );
   }
 
-  // No Questions Available
-  if (noQuestionsAvailable || !questions) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Whispers</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionTitle}>No Questions Yet</Text>
-          <Text style={styles.completionText}>Weekly whispers questions will appear here when available.</Text>
-          <Text style={styles.completionText}>Check back soon!</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={fetchWeeklyQuestions}>
-            <Text style={styles.refreshButtonText}>Refresh</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   // Celebration Screen (similar to AboutMe)
   if (showCelebration) {
     return (
@@ -332,70 +291,72 @@ export default function WeeklyQuestions() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {alreadySubmitted ? (
-          <View style={styles.completionContainer}>
-            <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
-              <Text style={styles.celebrationEmoji}>🎉</Text>
-              <Text style={styles.completionTitle}>Great Job For This Week!</Text>
-              <Text style={styles.completionText}>You've completed your Weekly Whisper routine.</Text>
-              <Text style={styles.completionText}>You're all set. Let's meet again Next Week!</Text>
-              <Text style={styles.happyEmoji}>😊</Text>
-            </Animated.View>
-          </View>
-        ) : (
-          <>
-            <Animated.View entering={FadeInDown.delay(100)} style={styles.weekInfoContainer}>
-              <Text style={styles.weekInfo}>Week {questions.week_id}</Text>
-            </Animated.View>
+      {showVocalCapture ? (
+        <VocalBiomarkerCapture onComplete={handleVocalCaptureComplete} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          {alreadySubmitted ? (
+            <View style={styles.completionContainer}>
+              <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
+                <Text style={styles.celebrationEmoji}>🎉</Text>
+                <Text style={styles.completionTitle}>Great Job For This Week!</Text>
+                <Text style={styles.completionText}>You've completed your Weekly Whisper routine.</Text>
+                <Text style={styles.completionText}>You're all set. Let's meet again Next Week!</Text>
+                <Text style={styles.happyEmoji}>😊</Text>
+              </Animated.View>
+            </View>
+          ) : (
+            <>
+              <Animated.View entering={FadeInDown.delay(100)} style={styles.weekInfoContainer}>
+                <Text style={styles.weekInfo}>Week {currentWeekId.split('-')[1]}</Text>
+              </Animated.View>
 
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
-              const qKey = `q${num}` as keyof WeeklyQuestionSet;
-              const index = num - 1;
-              const IconComponent = questionIcons[index];
-              
-              return (
-                <Animated.View 
-                  key={num} 
-                  entering={FadeInDown.delay(150 + index * 60)} 
-                  style={styles.questionContainer}
-                >
-                  <View style={styles.questionHeader}>
-                    <View style={styles.iconCircle}>
-                      <IconComponent />
+              {FIXED_QUESTIONS.map((question, index) => {
+                const IconComponent = questionIcons[index];
+                
+                return (
+                  <Animated.View 
+                    key={index + 1} 
+                    entering={FadeInDown.delay(150 + index * 60)} 
+                    style={styles.questionContainer}
+                  >
+                    <View style={styles.questionHeader}>
+                      <View style={styles.iconCircle}>
+                        <IconComponent />
+                      </View>
+                      <View style={styles.questionTextContainer}>
+                        <Text style={styles.questionNumber}>Question {index + 1}</Text>
+                        <Text style={styles.questionText}>{question}</Text>
+                      </View>
                     </View>
-                    <View style={styles.questionTextContainer}>
-                      <Text style={styles.questionNumber}>Question {num}</Text>
-                      <Text style={styles.questionText}>{questions[qKey] as string}</Text>
-                    </View>
-                  </View>
-                  <TextInput
-                    style={styles.answerInput}
-                    multiline
-                    placeholder="Your thoughtful answer..."
-                    value={answers[index]}
-                    onChangeText={(text) => handleAnswerChange(index, text)}
-                    editable={!submitting}
-                    textAlignVertical="top"
-                  />
-                </Animated.View>
-              );
-            })}
+                    <TextInput
+                      style={styles.answerInput}
+                      multiline
+                      placeholder="Your thoughtful answer..."
+                      value={answers[index]}
+                      onChangeText={(text) => handleAnswerChange(index, text)}
+                      editable={!submitting}
+                      textAlignVertical="top"
+                    />
+                  </Animated.View>
+                );
+              })}
 
-            <TouchableOpacity
-              style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-              onPress={handleSubmit}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Submit Whisper</Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
+              <TouchableOpacity
+                style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitButtonText}>Submit Whisper</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
