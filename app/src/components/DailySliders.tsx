@@ -9,6 +9,7 @@ import {
   Animated,
   Alert,
   Platform,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
@@ -46,8 +47,9 @@ const STRESS_FACTORS = [
 ];
 
 // Time options for sleep schedule (30-minute intervals)
-// Sleep start times from 18:00 (6:00 PM) onwards
+// Sleep start times from 18:00 (6:00 PM) to 06:00 (6:00 AM)
 const SLEEP_START_OPTIONS: string[] = [];
+// Add times from 6:00 PM to 11:30 PM
 for (let hour = 18; hour < 24; hour++) {
   for (let minute = 0; minute < 60; minute += 30) {
     const period = hour >= 12 ? 'PM' : 'AM';
@@ -56,9 +58,20 @@ for (let hour = 18; hour < 24; hour++) {
     SLEEP_START_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
   }
 }
+// Add times from 12:00 AM to 6:00 AM
+for (let hour = 0; hour <= 6; hour++) {
+  for (let minute = 0; minute < 60; minute += 30) {
+    if (hour === 6 && minute > 0) break; // Stop at 6:00 AM
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const displayMinute = minute.toString().padStart(2, '0');
+    SLEEP_START_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
+  }
+}
 
-// Wake up times from 00:00 (12:00 AM) onwards
+// Wake up times from 00:00 (12:00 AM) onwards until 12:00 PM
 const WAKE_UP_OPTIONS: string[] = [];
+// Add times from 12:00 AM to 11:30 PM
 for (let hour = 0; hour < 24; hour++) {
   for (let minute = 0; minute < 60; minute += 30) {
     const period = hour >= 12 ? 'PM' : 'AM';
@@ -146,6 +159,7 @@ export default function DailySliders() {
   const [sleepQuality, setSleepQuality] = useState<number | null>(null);
   const [relaxationLevel, setRelaxationLevel] = useState<number | null>(null);
   const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
+  const [otherFactor, setOtherFactor] = useState<string>(''); // New state for "Other" text input
   const [sleepStart, setSleepStart] = useState<string | null>(null);
   const [wakeUp, setWakeUp] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -205,14 +219,13 @@ export default function DailySliders() {
     if (!session?.user?.id) return;
     
     try {
-      // Get current week number and year
+      // Get current week number and year using ISO week numbering (Monday as first day of week)
       const currentDate = new Date();
-      const year = currentDate.getFullYear();
-      
-      // Calculate week number
-      const startDate = new Date(year, 0, 1);
-      const days = Math.floor((currentDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
-      const weekNumber = Math.ceil((days + startDate.getDay() + 1) / 7);
+      const date = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
+      date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      const weekNumber = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+      const year = date.getUTCFullYear();
       
       // Construct the file key based on your R2 structure
       // Format: SessionRecord/V2025-W50.mp3 for week 50 of 2025
@@ -320,7 +333,20 @@ export default function DailySliders() {
 
   // Toggle factor
   const toggleFactor = (factor: string) => {
-    setSelectedFactors(prev => prev.includes(factor) ? prev.filter(f => f !== factor) : [...prev, factor]);
+    if (factor === 'Other') {
+      // For "Other" factor, we need special handling
+      if (selectedFactors.includes('Other')) {
+        // If already selected, deselect it and clear the text
+        setSelectedFactors(prev => prev.filter(f => f !== 'Other'));
+        setOtherFactor('');
+      } else {
+        // If not selected, select it
+        setSelectedFactors(prev => [...prev, 'Other']);
+      }
+    } else {
+      // For regular factors
+      setSelectedFactors(prev => prev.includes(factor) ? prev.filter(f => f !== factor) : [...prev, factor]);
+    }
   };
 
   // Get stress color
@@ -340,7 +366,7 @@ export default function DailySliders() {
   // Get sleep quality emoji - 1 poor, 5 excellent
   const getSleepQualityEmoji = () => SLEEP_QUALITY_EMOJIS[sleepQuality ? sleepQuality - 1 : 2] || '😐';
 
-  // Get relaxation emoji
+  // Get relaxation emoji - 1 stressed, 10 relaxed
   const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 10 - relaxationLevel : 2] || '😐';
 
   // Voice recording functions
@@ -437,10 +463,13 @@ export default function DailySliders() {
       
       console.log('Attempting to play audio from URL:', weeklyVoiceUrl);
       
-      // Create and load the sound directly
+      // Create and load the sound directly with proper options
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: weeklyVoiceUrl },
-        { shouldPlay: true }
+        { 
+          shouldPlay: true,
+          progressUpdateIntervalMillis: 1000 // Update progress every second
+        }
       );
       
       setSound(newSound);
@@ -511,7 +540,16 @@ export default function DailySliders() {
       Alert.alert('Authentication Error', 'Please log in to submit data.');
       return;
     }
-    if (stressLevel === null || moodLevel === null || sleepQuality === null || selectedFactors.length === 0 ||
+    
+    // Prepare factors list including "Other" if selected
+    let factorsToSubmit = [...selectedFactors];
+    if (selectedFactors.includes('Other') && otherFactor.trim()) {
+      // Replace "Other" with the actual text entered by the user
+      factorsToSubmit = factorsToSubmit.filter(f => f !== 'Other');
+      factorsToSubmit.push(`Other: ${otherFactor.trim()}`);
+    }
+    
+    if (stressLevel === null || moodLevel === null || sleepQuality === null || factorsToSubmit.length === 0 ||
       sleepStart === null || wakeUp === null) {
       Alert.alert('Incomplete Form', 'Please complete all fields before submitting.');
       return;
@@ -526,7 +564,7 @@ export default function DailySliders() {
             stress_level: stressLevel,
             mood: moodLevel,
             sleep_quality: sleepQuality,
-            feelings: selectedFactors.join(','),
+            feelings: factorsToSubmit.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
             relaxation_level: relaxationLevel, // Add relaxation level to the update
@@ -541,7 +579,7 @@ export default function DailySliders() {
             stress_level: stressLevel,
             mood: moodLevel,
             sleep_quality: sleepQuality,
-            feelings: selectedFactors.join(','),
+            feelings: factorsToSubmit.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
             relaxation_level: relaxationLevel, // Add relaxation level to the insert
@@ -576,10 +614,12 @@ export default function DailySliders() {
   });
 
   const getWeekNumber = () => {
-    const date = new Date();
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    const d = new Date();
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    return weekNo;
   };
 
   if (alreadySubmittedToday) {
@@ -608,6 +648,17 @@ export default function DailySliders() {
 
   return (
     <View style={styles.container}>
+      {/* Professional Header with Custom Icons */}
+      <View style={styles.professionalHeader}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Daily Wellness Check</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+      
       <ScrollView contentContainerStyle={styles.content}>
         {/* Stress Level Section */}
         <View style={styles.section}>
@@ -660,11 +711,14 @@ export default function DailySliders() {
                   key={i}
                   style={[
                     styles.thumb,
+                    { width: width / 11 - 10, justifyContent: 'center', alignItems: 'center' },
                     stressLevel === i + 1 && styles.thumbActive,
                     stressLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setStressLevel(i + 1)}
-                />
+                >
+                  <Text style={[styles.moodThumbEmoji, { textAlign: 'center' }]}>{STRESS_EMOJIS[i]}</Text>
+                </TouchableOpacity>
               ))}
             </View>
             <View style={styles.labels}>
@@ -673,6 +727,7 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
+        
         {/* Mood Selector Section */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
@@ -723,6 +778,7 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
+        
         {/* Factors Influencing Stress */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
@@ -730,7 +786,7 @@ export default function DailySliders() {
               <Icons.factors />
             </View>
             <View style={styles.questionText}>
-              <Text style={styles.sectionTitle}>Factors Influencing Stress</Text>
+              <Text style={styles.sectionTitle}>Factors Influencing To This Mood</Text>
               <Text style={styles.sectionSubtitle}>Select all that apply</Text>
             </View>
           </View>
@@ -753,7 +809,37 @@ export default function DailySliders() {
                 </Text>
               </TouchableOpacity>
             ))}
+            {/* Other option */}
+            <TouchableOpacity
+              style={[
+                styles.factorTag,
+                selectedFactors.includes('Other') && styles.factorTagSelected,
+                selectedFactors.includes('Other') && { backgroundColor: getStressColor() }
+              ]}
+              onPress={() => toggleFactor('Other')}
+            >
+              <Text style={[
+                styles.factorText,
+                selectedFactors.includes('Other') && styles.factorTextSelected
+              ]}>
+                Other
+              </Text>
+            </TouchableOpacity>
           </View>
+          
+          {/* Text input for "Other" factor */}
+          {selectedFactors.includes('Other') && (
+            <View style={styles.otherFactorContainer}>
+              <Text style={styles.otherFactorLabel}>Please specify:</Text>
+              <TextInput
+                style={styles.otherFactorInput}
+                placeholder="Enter other factor..."
+                value={otherFactor}
+                onChangeText={setOtherFactor}
+                multiline
+              />
+            </View>
+          )}
         </View>
         {/* Sleep Schedule */}
         <View style={styles.section}>
@@ -849,12 +935,14 @@ export default function DailySliders() {
                   key={i}
                   style={[
                     styles.thumb,
-                    { width: width / 6 - 10 },
+                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
                     sleepQuality === i + 1 && styles.thumbActive,
                     sleepQuality === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setSleepQuality(i + 1)}
-                />
+                >
+                  <Text style={[styles.moodThumbEmoji, { textAlign: 'center' }]}>{SLEEP_QUALITY_EMOJIS[i]}</Text>
+                </TouchableOpacity>
               ))}
             </View>
             <View style={styles.labels}>
@@ -959,11 +1047,14 @@ export default function DailySliders() {
                   key={i}
                   style={[
                     styles.thumb,
+                    { width: width / 11 - 10, justifyContent: 'center', alignItems: 'center' },
                     relaxationLevel === i + 1 && styles.thumbActive,
                     relaxationLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setRelaxationLevel(i + 1)}
-                />
+                >
+                  <Text style={[styles.moodThumbEmoji, { textAlign: 'center' }]}>{STRESS_EMOJIS[9 - i]}</Text>
+                </TouchableOpacity>
               ))}
             </View>
             <View style={styles.labels}>
@@ -1003,7 +1094,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FDFC',
   },
-  header: {
+  // Professional Header Styles
+  professionalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1011,14 +1103,26 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  backButton: {
+  headerBackButton: {
     padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: '#333',
+  },
+  headerSpacer: {
+    width: 24,
   },
   content: {
     padding: 24,
@@ -1172,6 +1276,28 @@ const styles = StyleSheet.create({
   factorTextSelected: {
     color: '#fff',
   },
+  // New styles for "Other" factor
+  otherFactorContainer: {
+    marginTop: 20,
+    width: '100%',
+  },
+  otherFactorLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  otherFactorInput: {
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#FAFEFD',
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
   sleepScheduleContainer: {
     flexDirection: 'column',
   },
@@ -1314,30 +1440,5 @@ const styles = StyleSheet.create({
     color: '#64C59A',
     textAlign: 'center',
     fontStyle: 'italic',
-  },
-  // Professional Header Styles
-  professionalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  headerBackButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-  },
-  headerSpacer: {
-    width: 24,
   },
 });

@@ -291,6 +291,16 @@ export default function MainQuestionnaire() {
   if (loading) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2E8A66" />
           <Text style={styles.loadingText}>Loading your questionnaire...</Text>
@@ -303,6 +313,16 @@ export default function MainQuestionnaire() {
   if (!questionSet) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.completionContainer}>
           <Text style={styles.completionTitle}>No Questionnaire Available</Text>
           <Text style={styles.completionText}>Main questionnaire is not available at this time.</Text>
@@ -319,6 +339,16 @@ export default function MainQuestionnaire() {
   if (showCelebration) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.completionContainer}>
           <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
@@ -336,6 +366,16 @@ export default function MainQuestionnaire() {
   if (alreadySubmitted) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.completionContainer}>
           <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
@@ -353,6 +393,16 @@ export default function MainQuestionnaire() {
   if (showStartScreen) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <ScrollView contentContainerStyle={styles.content}>
           <Animated.View entering={FadeInDown.delay(100)} style={styles.startCard}>
             <Text style={styles.startTitle}>Main Questionnaire</Text>
@@ -401,6 +451,16 @@ export default function MainQuestionnaire() {
   if (!currentSection) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <ScrollView contentContainerStyle={styles.content}>
           <Animated.View entering={FadeInDown.delay(100)} style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Choose a Section</Text>
@@ -451,6 +511,16 @@ export default function MainQuestionnaire() {
   if (currentSection === 'A') {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire - Part A</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.timerContainer}>
             <Text style={styles.timerText}>Time: {getTimeSpent()}s</Text>
@@ -542,6 +612,16 @@ export default function MainQuestionnaire() {
   if (currentSection === 'B') {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Main Questionnaire - Part B</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.timerContainer}>
             <Text style={styles.timerText}>Time: {getTimeSpent()}s</Text>
@@ -647,7 +727,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FDFC',
   },
-  header: {
+  // Professional Header Styles
+  professionalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -657,14 +738,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  backButton: {
+  headerBackButton: {
     padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: '#333',
+  },
+  headerSpacer: {
+    width: 24,
   },
   content: {
     padding: 24,

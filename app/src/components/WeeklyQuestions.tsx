@@ -140,7 +140,7 @@ export default function WeeklyQuestions() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [currentWeekId, setCurrentWeekId] = useState('');
   const [voiceRecordingId, setVoiceRecordingId] = useState<number | null>(null);
-  const [showVocalCapture, setShowVocalCapture] = useState(true);
+  const [showVocalCapture, setShowVocalCapture] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -166,7 +166,11 @@ export default function WeeklyQuestions() {
 
       if (error) throw error;
       
-      setAlreadySubmitted(!!existing);
+      const isSubmitted = !!existing;
+      setAlreadySubmitted(isSubmitted);
+      
+      // Only show vocal capture if user hasn't submitted yet
+      setShowVocalCapture(!isSubmitted);
     } catch (err: any) {
       console.error('Error checking submission status:', err);
       Alert.alert('Error', err.message || 'Failed to check submission status. Please try again.');
