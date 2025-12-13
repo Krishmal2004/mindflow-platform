@@ -15,8 +15,10 @@ import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { useRouter } from 'expo-router';
 
 export default function Account({ session }: { session: Session }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -97,7 +99,15 @@ export default function Account({ session }: { session: Session }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Navigate to the Auth screen
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to sign out');
+    }
   }
 
   if (loading) {

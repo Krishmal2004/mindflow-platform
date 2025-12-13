@@ -245,14 +245,15 @@ export default function WeeklyQuestions() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
             <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Whispers</Text>
-          <View style={{ width: 24 }} />
+          <Text style={styles.headerTitle}>Weekly Reflection</Text>
+          <View style={styles.headerSpacer} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2E8A66" />
@@ -266,6 +267,16 @@ export default function WeeklyQuestions() {
   if (showCelebration) {
     return (
       <View style={styles.container}>
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Weekly Reflection</Text>
+          <View style={styles.headerSpacer} />
+        </View>
         <View style={styles.completionContainer}>
           <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
@@ -281,14 +292,15 @@ export default function WeeklyQuestions() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      {/* Professional Header */}
+      <View style={styles.professionalHeader}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
           <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Weekly Whispers</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Weekly Reflection</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {showVocalCapture ? (
@@ -366,25 +378,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FDFC',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-  },
+
   content: {
     padding: 24,
   },
@@ -517,5 +511,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  // Professional Header Styles
+  professionalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  headerBackButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+  },
+  headerSpacer: {
+    width: 24,
   },
 });

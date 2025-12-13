@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withTiming, useAnimatedProps } from 'react-native-reanimated';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Pattern } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
+import { Session } from '@supabase/supabase-js';
 
 const { width } = Dimensions.get('window');
 
@@ -75,7 +76,7 @@ const CalmBackground = () => (
   />
 );
 
-export default function Dashboard({ session, onNavigateToAboutMe }: { session: any; onNavigateToAboutMe: () => void }) {
+export default function Dashboard({ session, onNavigateToAboutMe }: { session: Session; onNavigateToAboutMe: () => void }) {
   const router = useRouter();
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -446,7 +447,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: a
               <Text style={styles.actionTitle}>About Me</Text>
               <Text style={styles.actionSubtitle}>Inner-Self Reflections</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/weekly-questions')}>
+            <TouchableOpacity style={styles.quickActionButton} onPress={() => router.push('/weekly-whispers')}>
               <View style={[styles.actionIconContainer, { backgroundColor: '#64C59A20' }]}>
                 <Svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                   <Path d="M19 4H5C3.9 4 3 4.9 3 6V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V6C21 4.9 20.1 4 19 4Z" stroke="#4CAF85" strokeWidth="2" />
