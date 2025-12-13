@@ -123,7 +123,6 @@ CREATE TABLE IF NOT EXISTS weekly_answers (
 ALTER TABLE weekly_answers ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Users can only access weekly questions" ON weekly_questions;
 DROP POLICY IF EXISTS "Users can only access their own weekly answers" ON weekly_answers;
 
 -- RLS Policies (optimized to avoid re-evaluation of auth.uid())
@@ -144,6 +143,7 @@ GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
 -- Insert sample data for the fixed weekly questions
 -- Note: These questions are now fixed and stored in the application code, not in the database
 -- Sample data would be inserted through the application
+
 
 -- Main Questionnaire Tables
 
@@ -362,3 +362,34 @@ CREATE TRIGGER update_voice_recordings_updated_at
     BEFORE UPDATE ON voice_recordings 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+DROP TABLE IF EXISTS admins;
+
+
+-- Admin table (for users who are already in auth.users)
+CREATE TABLE IF NOT EXISTS admins (
+    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,  -- plain text password
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE
+);
+
+-- Enable RLS
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Only the admin themselves (via auth.uid()) or postgres can access
+CREATE POLICY "Admins can only access their own record"
+    ON admins
+    FOR ALL
+    USING (id = auth.uid() OR CURRENT_USER = 'postgres');
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
+CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
+
+-- Grant permissions
+GRANT ALL ON TABLE admins TO postgres;
+
+-- Optional: Auto-create admin record when a user is marked as admin
+-- (But typically, you'd insert into admins manually when promoting a user)
