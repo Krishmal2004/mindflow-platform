@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   ImageBackground,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -87,6 +88,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [missedDates, setMissedDates] = useState<string[]>([]); // New state for missed dates
   const [totalPossibleDays, setTotalPossibleDays] = useState(0); // New state for total possible days
+  const [refreshing, setRefreshing] = useState(false); // New state for pull-to-refresh
 
   // Animations for progress
   const streakProgress = useSharedValue(0);
@@ -117,6 +119,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     fetchUserProgress();
   }, [session]);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchUserProgress();
+    setRefreshing(false);
+  };
+
   const fetchUserProgress = async () => {
     if (!session?.user?.id) return;
     try {
@@ -128,12 +136,11 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .order('created_at', { ascending: false });
       if (streakError) throw streakError;
       
-      // Calculate streak (consecutive days) - CORRECTED VERSION
+      // Calculate streak (consecutive days)
       let currentStreak = 0;
       if (streakData && streakData.length > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
         // Create a set of dates with entries
         const entryDates = new Set();
         streakData.forEach(entry => {
@@ -141,7 +148,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           entryDate.setHours(0, 0, 0, 0);
           entryDates.add(entryDate.getTime());
         });
-        
         // Start from today and count backwards
         let currentDate = new Date(today);
         while (entryDates.has(currentDate.getTime())) {
@@ -320,7 +326,13 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           <BrainAvatar size={48} />
         </TouchableOpacity>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 60 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Daily Mindfulness Tip - Enhanced with softer gradient and subtle pattern */}
         <Animated.View entering={FadeIn.duration(1000)}>
           <LinearGradient colors={['#A8E6CF', '#64C59A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tipCard}>
@@ -763,6 +775,45 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'left',
   },
+  // Add new styles for missed dates
+  missedDatesContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5F1',
+  },
+  missedDatesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginBottom: 8,
+  },
+  missedDatesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  missedDateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  missedDateText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  moreDatesText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
   journeySummaryCard: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -869,44 +920,4 @@ const styles = StyleSheet.create({
   logoutRow: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#f5f5f5', paddingTop: 32 },
   modalText: { marginLeft: 20, fontSize: 19, color: '#333', fontWeight: '600' },
   logoutText: { color: '#EF4444', fontWeight: '700' },
-  
-  // Add new styles for missed dates
-  missedDatesContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E8F5F1',
-  },
-  missedDatesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-    marginBottom: 8,
-  },
-  missedDatesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  missedDateItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  missedDateText: {
-    fontSize: 12,
-    color: '#EF4444',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  moreDatesText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-    marginTop: 8,
-  },
 });

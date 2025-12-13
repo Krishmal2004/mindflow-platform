@@ -1,5 +1,5 @@
 // app/calendar.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSession } from '../../src/contexts/SessionContext';
 import { Svg, Path, Circle } from 'react-native-svg';
@@ -16,28 +17,69 @@ import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
+// Define the calendar event interface
+interface CalendarEvent {
+  id: number;
+  title: string;
+  description: string;
+  event_date: string; // YYYY-MM-DD format
+  event_time: string; // HH:MM:SS format
+  is_completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function CalendarScreen() {
   const { session, loading } = useSession();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [completedDays, setCompletedDays] = useState<Set<string>>(new Set());
-  const [mindfulnessSessions, setMindfulnessSessions] = useState<Set<string>>(new Set());
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // State for calendar events
+  const [refreshing, setRefreshing] = useState(false); // State for pull-to-refresh
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Loading Calendar...</Text>
-      </View>
-    );
-  }
+  useEffect(() => {
+    fetchCalendarEvents();
+  }, [currentDate]);
 
-  if (!session) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Calendar</Text>
-        <Text style={styles.subtitle}>Please sign in to view your mindfulness journey</Text>
-      </View>
-    );
-  }
+  // Function to fetch calendar events from the database
+  const fetchCalendarEvents = async () => {
+    try {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth(); // 0-indexed
+      
+      // Get the first day of the month
+      const firstDay = new Date(year, month, 1);
+      // Get the last day of the month
+      const lastDay = new Date(year, month + 1, 0);
+      
+      // Extend the range to include days from previous/next months shown in the calendar
+      const startDate = new Date(firstDay);
+      startDate.setDate(firstDay.getDate() - firstDay.getDay()); // Start from Sunday of the week containing the 1st
+      
+      const endDate = new Date(lastDay);
+      endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay())); // End on Saturday of the week containing the last day
+      
+      // Fetch all calendar events for the date range
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .gte('event_date', startDate.toISOString().split('T')[0])
+        .lte('event_date', endDate.toISOString().split('T')[0])
+        .order('event_date', { ascending: true });
+
+      if (error) throw error;
+      
+      setCalendarEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      Alert.alert('Error', 'Failed to fetch calendar events');
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCalendarEvents();
+    setRefreshing(false);
+  };
 
   const goToPreviousMonth = () => {
     setCurrentDate(prev => {
@@ -55,12 +97,21 @@ export default function CalendarScreen() {
     });
   };
 
-  // Check if a date is a Thursday (4 = Thursday in JS Date)
-  const isThursday = (date: Date) => date.getDay() === 4;
-
   // Format date as YYYY-MM-DD string for comparison
   const formatDateKey = (date: Date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  // Get events for a specific date
+  const getEventsForDate = (date: Date) => {
+    const dateKey = formatDateKey(date);
+    return calendarEvents.filter(event => event.event_date === dateKey);
+  };
+
+  // Check if a date has a mindfulness session
+  const isMindfulnessSession = (date: Date) => {
+    const events = getEventsForDate(date);
+    return events.some(event => event.title.startsWith('Mindfulness Session'));
   };
 
   const renderCalendar = () => {
@@ -99,8 +150,9 @@ export default function CalendarScreen() {
       const isToday = date.toDateString() === today.toDateString();
       const isPast = date < today && !isToday;
       const isCompleted = completedDays.has(dateKey);
-      const isMindfulnessSession = isThursday(date);
-      const hasMindfulnessSession = isMindfulnessSession && mindfulnessSessions.has(dateKey);
+      const hasMindfulnessSession = isMindfulnessSession(date);
+      const events = getEventsForDate(date);
+      const hasEvents = events.length > 0;
 
       cells.push(
         <TouchableOpacity
@@ -109,15 +161,16 @@ export default function CalendarScreen() {
             styles.dayCell,
             isToday && styles.todayCell,
             isCompleted && styles.completedCell,
-            isMindfulnessSession && styles.mindfulnessDayCell,
+            hasMindfulnessSession && styles.mindfulnessDayCell,
+            hasEvents && !hasMindfulnessSession && styles.hasEventsCell,
           ]}
-          onPress={() => handleDayPress(date, isMindfulnessSession)}
+          onPress={() => handleDayPress(date)}
         >
           <Text style={[
             styles.dayText,
             isToday && styles.todayText,
             isCompleted && styles.completedText,
-            isMindfulnessSession && styles.mindfulnessDayText,
+            hasMindfulnessSession && styles.mindfulnessDayText,
           ]}>
             {day}
           </Text>
@@ -133,25 +186,16 @@ export default function CalendarScreen() {
               />
             </Svg>
           )}
-          {isMindfulnessSession && !isCompleted && (
+          {hasMindfulnessSession && !isCompleted && (
             <View style={styles.sessionIndicator}>
               <Svg width="12" height="12" viewBox="0 0 24 24" fill="#9C27B0">
                 <Circle cx="12" cy="12" r="10" />
               </Svg>
             </View>
           )}
-          {hasMindfulnessSession && !isToday && (
-            <View style={styles.sessionCompletedIndicator}>
-              <Svg width="16" height="16" viewBox="0 0 24 24" fill="#9C27B0">
-                <Path
-                  d="M20 6L9 17L4 12"
-                  stroke="#fff"
-                  strokeWidth="3"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
+          {hasEvents && !isCompleted && !hasMindfulnessSession && (
+            <View style={styles.eventIndicator}>
+              <View style={styles.eventDot} />
             </View>
           )}
         </TouchableOpacity>
@@ -188,54 +232,71 @@ export default function CalendarScreen() {
               <View style={[styles.legendColor, styles.todayLegend]}></View>
               <Text style={styles.legendText}>Today</Text>
             </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendColor, styles.eventLegend]}></View>
+              <Text style={styles.legendText}>Events</Text>
+            </View>
           </View>
         </View>
       </Animated.View>
     );
   };
 
-  const handleDayPress = (date: Date, isMindfulnessSession: boolean) => {
+  const handleDayPress = (date: Date) => {
     const dateKey = formatDateKey(date);
     
-    if (isMindfulnessSession) {
-      // Toggle mindfulness session attendance
-      setMindfulnessSessions(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(dateKey)) {
-          newSet.delete(dateKey);
-        } else {
-          newSet.add(dateKey);
-        }
-        return newSet;
-      });
-      
+    // Show events for the selected date
+    const events = getEventsForDate(date);
+    if (events.length > 0) {
+      const eventMessages = events.map(e => `${e.title}${e.description ? `\n${e.description}` : ''}`).join('\n\n');
       Alert.alert(
-        "Mindfulness Session",
-        `Marked mindfulness session for ${date.toDateString()} as ${mindfulnessSessions.has(dateKey) ? 'not attended' : 'attended'}!`,
+        `Events on ${date.toDateString()}`,
+        eventMessages,
         [{ text: "OK" }]
       );
-    } else {
-      // Toggle regular day completion
-      setCompletedDays(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(dateKey)) {
-          newSet.delete(dateKey);
-        } else {
-          newSet.add(dateKey);
-        }
-        return newSet;
-      });
-      
-      Alert.alert(
-        "Day Status",
-        `Marked ${date.toDateString()} as ${completedDays.has(dateKey) ? 'not completed' : 'completed'}!`,
-        [{ text: "OK" }]
-      );
+      return;
     }
+    
+    // Toggle regular day completion
+    setCompletedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dateKey)) {
+        newSet.delete(dateKey);
+      } else {
+        newSet.add(dateKey);
+      }
+      return newSet;
+    });
+    
+    Alert.alert(
+      "Day Status",
+      `Marked ${date.toDateString()} as ${completedDays.has(dateKey) ? 'not completed' : 'completed'}!`,
+      [{ text: "OK" }]
+    );
+  };
+
+  // Filter mindfulness sessions for the upcoming section
+  const getUpcomingMindfulnessSessions = () => {
+    const today = new Date();
+    const upcomingSessions = calendarEvents
+      .filter(event => 
+        event.title.startsWith('Mindfulness Session') && 
+        new Date(event.event_date) >= today
+      )
+      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+      .slice(0, 4);
+    
+    return upcomingSessions;
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <View style={styles.headerSection}>
         <Text style={styles.title}>Calendar</Text>
         <Text style={styles.subtitle}>Your mindfulness journey, day by day</Text>
@@ -246,48 +307,46 @@ export default function CalendarScreen() {
       <View style={styles.eventsSection}>
         <Text style={styles.sectionTitle}>Upcoming Mindfulness Sessions</Text>
         
-        {/* Generate upcoming Thursday sessions */}
+        {/* Show upcoming mindfulness sessions from events */}
         {(() => {
-          const upcomingSessions = [];
-          const today = new Date();
-          let checkDate = new Date(today);
+          const upcomingSessions = getUpcomingMindfulnessSessions();
           
-          // Find next 4 Thursdays
-          for (let i = 0; i < 4; i++) {
-            // Move to next Thursday
-            while (checkDate.getDay() !== 4 || checkDate <= today) {
-              checkDate.setDate(checkDate.getDate() + 1);
-            }
+          if (upcomingSessions.length === 0) {
+            return (
+              <View style={styles.noEventsContainer}>
+                <Text style={styles.noEventsText}>No upcoming mindfulness sessions</Text>
+              </View>
+            );
+          }
+          
+          return upcomingSessions.map((event, index) => {
+            const eventDate = new Date(event.event_date);
+            const isCompleted = event.is_completed;
             
-            const dateKey = formatDateKey(checkDate);
-            const isAttended = mindfulnessSessions.has(dateKey);
-            
-            upcomingSessions.push(
-              <View key={i} style={[styles.eventCard, isAttended && styles.eventCardCompleted]}>
+            return (
+              <View key={event.id} style={[styles.eventCard, isCompleted && styles.eventCardCompleted]}>
                 <View style={styles.eventIcon}>
                   <Svg width="24" height="24" viewBox="0 0 24 24" fill="#9C27B0">
                     <Circle cx="12" cy="12" r="10" />
                   </Svg>
                 </View>
                 <View style={styles.eventContent}>
-                  <Text style={styles.eventTitle}>Mindfulness Session</Text>
-                  <Text style={styles.eventTime}>{checkDate.toDateString()}</Text>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <Text style={styles.eventTime}>{eventDate.toDateString()}</Text>
+                  {event.description ? (
+                    <Text style={styles.eventDescription}>{event.description}</Text>
+                  ) : null}
                 </View>
                 <View style={styles.eventStatus}>
-                  {isAttended ? (
-                    <Text style={styles.eventStatusTextCompleted}>Attended</Text>
+                  {isCompleted ? (
+                    <Text style={styles.eventStatusTextCompleted}>Completed</Text>
                   ) : (
                     <Text style={styles.eventStatusTextPending}>Pending</Text>
                   )}
                 </View>
               </View>
             );
-            
-            // Move to next day for next iteration
-            checkDate.setDate(checkDate.getDate() + 1);
-          }
-          
-          return upcomingSessions;
+          });
         })()}
       </View>
     </ScrollView>
@@ -398,6 +457,9 @@ const styles = StyleSheet.create({
     color: '#9C27B0',
     fontWeight: '600',
   },
+  hasEventsCell: {
+    backgroundColor: '#E3F2FD',
+  },
   checkIcon: {
     position: 'absolute',
     bottom: -6,
@@ -407,9 +469,16 @@ const styles = StyleSheet.create({
     top: 2,
     right: 2,
   },
-  sessionCompletedIndicator: {
+  eventIndicator: {
     position: 'absolute',
-    bottom: -6,
+    bottom: 2,
+    right: 2,
+  },
+  eventDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2196F3',
   },
   legendContainer: {
     flexDirection: 'row',
@@ -440,6 +509,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fff',
   },
+  eventLegend: {
+    backgroundColor: '#2196F3',
+  },
   legendText: {
     fontSize: 12,
     color: '#666',
@@ -452,6 +524,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2D3748',
     marginBottom: 16,
+  },
+  noEventsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  noEventsText: {
+    fontSize: 16,
+    color: '#999',
   },
   eventCard: {
     flexDirection: 'row',
@@ -487,6 +569,11 @@ const styles = StyleSheet.create({
   eventTime: {
     fontSize: 14,
     color: '#666',
+    marginTop: 4,
+  },
+  eventDescription: {
+    fontSize: 12,
+    color: '#999',
     marginTop: 4,
   },
   eventStatus: {

@@ -7,6 +7,12 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 -- about_me_profiles table
 create table about_me_profiles (
   id uuid references auth.users on delete cascade not null primary key,
@@ -47,6 +53,12 @@ $$ language plpgsql security definer set search_path = public, auth;
 create or replace trigger on_auth_user_created_about_me
   after insert on auth.users
   for each row execute procedure public.handle_new_user_about_me();
+
+
+  -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 
 -- Daily sliders table
@@ -91,6 +103,11 @@ CREATE POLICY "Users can only access their own daily sliders data"
 GRANT ALL ON TABLE daily_sliders TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE daily_sliders_id_seq TO authenticated;
 GRANT ALL ON TABLE about_me_profiles TO authenticated;
+
+
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 -- Updated Weekly Answers Table (without weekly_questions table)
@@ -143,6 +160,12 @@ GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
 -- Insert sample data for the fixed weekly questions
 -- Note: These questions are now fixed and stored in the application code, not in the database
 -- Sample data would be inserted through the application
+
+
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 
 -- Main Questionnaire Tables
@@ -319,6 +342,12 @@ INSERT INTO main_questions (question_set_id, section_type, question_id, question
 (1, 'B', 'FFMQ_14', 'I think some of my emotions are bad or inappropriate and I shouldn''t feel them.', 'Non-Judging', true, 14),
 (1, 'B', 'FFMQ_15', 'When I have distressing thoughts or images, I am able to just notice them without reacting.', 'Non-Reactivity', false, 15);
 
+
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 -- Table for storing voice recording metadata
 CREATE TABLE IF NOT EXISTS voice_recordings (
     id SERIAL PRIMARY KEY,
@@ -391,5 +420,102 @@ CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
 -- Grant permissions
 GRANT ALL ON TABLE admins TO postgres;
 
--- Optional: Auto-create admin record when a user is marked as admin
--- (But typically, you'd insert into admins manually when promoting a user)
+
+
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+-- Calendar Events Table
+-- Purpose: Store calendar events for the mindfulness app
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    event_date DATE NOT NULL,
+    event_time TIME,
+    is_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS (Row Level Security)
+ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies - Allow all users to read calendar events
+CREATE POLICY "All users can access calendar events" 
+    ON calendar_events 
+    FOR SELECT 
+    USING (true);
+
+-- Allow authenticated users to insert/update/delete events
+CREATE POLICY "Authenticated users can insert events" 
+    ON calendar_events 
+    FOR INSERT 
+    WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can update their events" 
+    ON calendar_events 
+    FOR UPDATE 
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can delete their events" 
+    ON calendar_events 
+    FOR DELETE 
+    USING (true);
+
+-- Indexes for better performance
+CREATE INDEX idx_calendar_events_event_date ON calendar_events(event_date);
+
+-- Grant permissions
+GRANT ALL ON TABLE calendar_events TO authenticated;
+GRANT SELECT ON TABLE calendar_events TO anon; -- Allow anonymous read access
+GRANT USAGE, SELECT ON SEQUENCE calendar_events_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE calendar_events_id_seq TO anon;
+
+-- Function to automatically update the updated_at column
+CREATE OR REPLACE FUNCTION update_calendar_events_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Trigger to automatically update the updated_at column
+CREATE TRIGGER update_calendar_events_updated_at 
+    BEFORE UPDATE ON calendar_events 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_calendar_events_updated_at_column();
+
+
+-- Sample data for calendar_events table
+
+-- Insert sample mindfulness sessions for December 2025
+INSERT INTO calendar_events (title, description, event_date, event_time, is_completed) VALUES
+('Mindfulness Session - W50', 'Weekly mindfulness guidance session', '2025-12-11', '10:00:00', false),
+('Mindfulness Session - W51', 'Weekly mindfulness guidance session', '2025-12-18', '10:00:00', false),
+('Mindfulness Session - W52', 'Weekly mindfulness guidance session', '2025-12-25', '10:00:00', false);
+
+-- Insert sample personal events
+INSERT INTO calendar_events (title, description, event_date, event_time, is_completed) VALUES
+('Personal Reflection Day', 'Time for personal journaling and reflection', '2025-12-15', '09:00:00', false),
+('Group Meditation', 'Join the community meditation session', '2025-12-20', '16:00:00', false),
+('Progress Review', 'Review your mindfulness journey this month', '2025-12-28', '14:00:00', false);
+
+-- Sample data for January 2026
+INSERT INTO calendar_events (title, description, event_date, event_time, is_completed) VALUES
+('Mindfulness Session - W1', 'New year mindfulness guidance session', '2026-01-01', '10:00:00', false),
+('Mindfulness Session - W2', 'Weekly mindfulness guidance session', '2026-01-08', '10:00:00', false),
+('Mindfulness Session - W3', 'Weekly mindfulness guidance session', '2026-01-15', '10:00:00', false),
+('Mindfulness Session - W4', 'Weekly mindfulness guidance session', '2026-01-22', '10:00:00', false),
+('Mindfulness Session - W5', 'Weekly mindfulness guidance session', '2026-01-29', '10:00:00', false);
+
+-- Additional personal events for January 2026
+INSERT INTO calendar_events (title, description, event_date, event_time, is_completed) VALUES
+('New Year Intentions', 'Set your mindfulness intentions for the new year', '2026-01-05', '09:00:00', false),
+('Community Sharing', 'Share your mindfulness experiences with the community', '2026-01-12', '18:00:00', false),
+('Nature Walk Meditation', 'Outdoor mindfulness practice', '2026-01-17', '08:00:00', false);

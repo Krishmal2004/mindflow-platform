@@ -7,6 +7,7 @@ import {
   Dimensions,
   Alert,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
@@ -41,6 +42,7 @@ export default function ProgressScreen() {
   const [weeklyProgressData, setWeeklyProgressData] = useState<WeeklyProgressData[]>([]);
   const [mainQuestionnaireData, setMainQuestionnaireData] = useState<MainQuestionnaireData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'main'>('daily');
 
   useEffect(() => {
@@ -48,6 +50,12 @@ export default function ProgressScreen() {
       fetchAllProgressData();
     }
   }, [session]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchAllProgressData();
+    setRefreshing(false);
+  };
 
   const fetchAllProgressData = async () => {
     try {
@@ -187,7 +195,12 @@ export default function ProgressScreen() {
         <Text style={styles.title}>Your Progress</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Completion Overview */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.overviewContainer}>
           <Text style={styles.sectionTitle}>Completion Overview</Text>
