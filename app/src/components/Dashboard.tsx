@@ -85,6 +85,8 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [mainQuestionnaireProgress, setMainQuestionnaireProgress] = useState(0);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [missedDates, setMissedDates] = useState<string[]>([]); // New state for missed dates
+  const [totalPossibleDays, setTotalPossibleDays] = useState(0); // New state for total possible days
 
   // Animations for progress
   const streakProgress = useSharedValue(0);
@@ -125,11 +127,13 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
       if (streakError) throw streakError;
-      // Calculate streak (consecutive days)
+      
+      // Calculate streak (consecutive days) - CORRECTED VERSION
       let currentStreak = 0;
       if (streakData && streakData.length > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        
         // Create a set of dates with entries
         const entryDates = new Set();
         streakData.forEach(entry => {
@@ -137,6 +141,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           entryDate.setHours(0, 0, 0, 0);
           entryDates.add(entryDate.getTime());
         });
+        
         // Start from today and count backwards
         let currentDate = new Date(today);
         while (entryDates.has(currentDate.getTime())) {
@@ -144,6 +149,53 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           currentDate.setDate(currentDate.getDate() - 1);
         }
       }
+      
+      // Calculate missed dates and total possible days
+      const calculateMissedDates = () => {
+        if (streakData && streakData.length > 0) {
+          // Find the earliest date in the data
+          const earliestDate = new Date(streakData[streakData.length - 1].created_at);
+          earliestDate.setHours(0, 0, 0, 0);
+          
+          // Start from the earliest date to today
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Create a set of all dates from earliest to today
+          const allDates = new Set<number>();
+          const currentDate = new Date(earliestDate);
+          while (currentDate <= today) {
+            allDates.add(currentDate.getTime());
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          
+          // Create a set of dates with entries
+          const entryDates = new Set<number>();
+          streakData.forEach(entry => {
+            const entryDate = new Date(entry.created_at);
+            entryDate.setHours(0, 0, 0, 0);
+            entryDates.add(entryDate.getTime());
+          });
+          
+          // Find missed dates
+          const missed: string[] = [];
+          allDates.forEach(date => {
+            if (!entryDates.has(date)) {
+              const dateObj = new Date(date);
+              missed.push(dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+          });
+          
+          setMissedDates(missed);
+          setTotalPossibleDays(allDates.size);
+        } else {
+          setMissedDates([]);
+          setTotalPossibleDays(0);
+        }
+      };
+      
+      calculateMissedDates();
+      
       // Calculate total completed entries in the last 6 months
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -153,11 +205,13 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .gte('created_at', sixMonthsAgo.toISOString());
       if (countError) throw countError;
+      
       // For 6-month progress, we want to show actual completed entries
       // But also calculate percentage for visualization
       const maxEntries = 180; // Approx 180 days in 6 months
       const completionCount = totalCount || 0;
       const completionPercentage = totalCount ? Math.min(100, Math.round((totalCount / maxEntries) * 100)) : 0;
+      
       // Calculate consistency (percentage of days with entries in the last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -168,6 +222,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .gte('created_at', thirtyDaysAgo.toISOString());
       if (recentCountError) throw recentCountError;
       const consistencyPercentage = recentCount ? Math.min(100, Math.round((recentCount / 30) * 100)) : 0;
+      
       // Fetch weekly questions progress
       const sixMonthsAgoForWeekly = new Date();
       sixMonthsAgoForWeekly.setMonth(sixMonthsAgoForWeekly.getMonth() - 6);
@@ -177,6 +232,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .gte('submitted_at', sixMonthsAgoForWeekly.toISOString());
       if (weeklyError) throw weeklyError;
+      
       // Count unique weeks with submissions in the last 6 months
       const uniqueWeeks = new Set();
       if (weeklyAnswers) {
@@ -190,6 +246,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
       // Approximate max weeks in 6 months (26 weeks)
       const maxWeeklyEntries = 26;
       const weeklyProgressPercentage = weeklyAnswers ? Math.min(100, Math.round((weeklyCompletionCount / maxWeeklyEntries) * 100)) : 0;
+      
       // Fetch main questionnaire progress
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -199,17 +256,20 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .gte('submitted_at', oneYearAgo.toISOString());
       if (mainQuestionnaireError) throw mainQuestionnaireError;
+      
       // For main questionnaire progress, we want to show actual completed entries
       // Assuming a target of 4 main questionnaires per year (one per quarter)
       const maxMainQuestionnaires = 4;
       const mainQuestionnaireCompletionCount = mainQuestionnaireCount || 0;
       const mainQuestionnaireProgressPercentage = mainQuestionnaireCount ?
       Math.min(100, Math.round((mainQuestionnaireCount / maxMainQuestionnaires) * 100)) : 0;
+      
       setMainQuestionnaireProgress(mainQuestionnaireProgressPercentage);
       setStreak(currentStreak);
       setCompleted(completionCount);
       setConsistency(consistencyPercentage);
       setWeeklyProgress(weeklyProgressPercentage);
+      
       // After setting states, animate with corrected values
       streakProgress.value = withTiming(currentStreak > 10 ? 100 : currentStreak * 10, { duration: 1000 });
       consistencyProgress.value = withTiming(consistencyPercentage, { duration: 1000 });
@@ -366,6 +426,52 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           
           {/* Detailed Progress Bars with Icons and Values */}
           <View style={styles.detailedProgressContainer}>
+            {/* Daily Sliders Progress with Missed Dates */}
+            <View style={styles.detailedProgressBar}>
+              <View style={styles.progressBarHeader}>
+                <View style={styles.progressBarIconLabel}>
+                  <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <Path d="M8 6H21" stroke="#64C59A" strokeWidth="2" />
+                    <Path d="M8 12H21" stroke="#64C59A" strokeWidth="2" />
+                    <Path d="M8 18H21" stroke="#64C59A" strokeWidth="2" />
+                    <Circle cx="3" cy="6" r="2" fill="#64C59A" />
+                    <Circle cx="3" cy="12" r="2" fill="#64C59A" />
+                    <Circle cx="3" cy="18" r="2" fill="#64C59A" />
+                  </Svg>
+                  <Text style={styles.progressBarTitle}>Daily Sliders</Text>
+                </View>
+                <Text style={styles.progressBarValue}>{completed}</Text>
+              </View>
+              <View style={styles.progressBarTrack}>
+                <Animated.View style={[styles.progressBarFill, { width: `${Math.min(100, (completed / Math.max(1, totalPossibleDays)) * 100)}%`, backgroundColor: '#64C59A' }]} />
+              </View>
+              <Text style={styles.progressBarSubtitle}>
+                {totalPossibleDays > 0 ? `${completed}/${totalPossibleDays} days completed` : 'No data yet'}
+              </Text>
+              
+              {/* Missed Dates Section */}
+              {missedDates.length > 0 && (
+                <View style={styles.missedDatesContainer}>
+                  <Text style={styles.missedDatesTitle}>Missed Dates ({missedDates.length}):</Text>
+                  <View style={styles.missedDatesList}>
+                    {missedDates.slice(0, 5).map((date, index) => (
+                      <View key={index} style={styles.missedDateItem}>
+                        <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
+                          <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                        </Svg>
+                        <Text style={styles.missedDateText}>{date}</Text>
+                      </View>
+                    ))}
+                    {missedDates.length > 5 && (
+                      <Text style={styles.moreDatesText}>+ {missedDates.length - 5} more</Text>
+                    )}
+                  </View>
+                </View>
+              )}
+            </View>
+            
+            {/* Weekly Reflections Progress */}
             <View style={styles.detailedProgressBar}>
               <View style={styles.progressBarHeader}>
                 <View style={styles.progressBarIconLabel}>
@@ -384,6 +490,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
               <Text style={styles.progressBarSubtitle}>{Math.floor((weeklyProgress * 26) / 100)}/26 weeks completed</Text>
             </View>
             
+            {/* Main Questionnaires Progress */}
             <View style={styles.detailedProgressBar}>
               <View style={styles.progressBarHeader}>
                 <View style={styles.progressBarIconLabel}>
@@ -762,4 +869,44 @@ const styles = StyleSheet.create({
   logoutRow: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#f5f5f5', paddingTop: 32 },
   modalText: { marginLeft: 20, fontSize: 19, color: '#333', fontWeight: '600' },
   logoutText: { color: '#EF4444', fontWeight: '700' },
+  
+  // Add new styles for missed dates
+  missedDatesContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E8F5F1',
+  },
+  missedDatesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginBottom: 8,
+  },
+  missedDatesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  missedDateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  missedDateText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '500',
+    marginLeft: 6,
+  },
+  moreDatesText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
 });
