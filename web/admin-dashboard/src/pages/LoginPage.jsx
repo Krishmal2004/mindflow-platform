@@ -1,7 +1,8 @@
+// Updated LoginPage.jsx
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSession } from '../contexts/SessionContext';
-import AdminIcon from '../components/AdminIcon';
+import MindfulnessIcon from '../components/MindfulnessIcon';
 import '../assets/css/LoginPage.css';
 
 const LoginPage = () => {
@@ -15,19 +16,14 @@ const LoginPage = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    
-    // Simple validation
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
     }
-    
     setLoading(true);
     setError('');
-    
     try {
       const response = await login(email, password);
-      
       if (response.success) {
         navigate('/');
       } else {
@@ -45,19 +41,16 @@ const LoginPage = () => {
       <div className="login-card">
         <div className="login-logo">
           <div className="login-logo-icon">
-            <AdminIcon />
+            <MindfulnessIcon />
           </div>
-          <h1 className="login-title">Admin Portal</h1>
-          <p className="login-subtitle">Sign in to access the dashboard</p>
+          <h1 className="login-title">MindFlow Admin Portal</h1>
+          <p className="login-subtitle">Sign in to cultivate mindful insights</p>
         </div>
-        
         {/* Show session timeout message if present */}
         {location.state?.message && (
           <div className="info-message">{location.state.message}</div>
         )}
-        
         {error && <div className="error-message">{error}</div>}
-        
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label htmlFor="email">Email</label>
@@ -68,9 +61,9 @@ const LoginPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               disabled={loading}
+              aria-required="true"
             />
           </div>
-          
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
@@ -80,9 +73,9 @@ const LoginPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               disabled={loading}
+              aria-required="true"
             />
           </div>
-          
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? (
               <>
@@ -92,7 +85,6 @@ const LoginPage = () => {
             ) : 'Sign In'}
           </button>
         </form>
-        
         <div className="login-footer">
           <p>© 2025 MindFlow Research. All rights reserved.</p>
         </div>

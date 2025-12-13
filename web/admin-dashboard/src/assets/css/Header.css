@@ -3,20 +3,23 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
-  background: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  height: 70px; /* Slightly taller for better spacing */
+  background: 
+    radial-gradient(circle, rgba(76, 175, 80, 0.05) 0%, transparent 20%) 0 0 / 50px 50px,
+    radial-gradient(circle, rgba(33, 150, 243, 0.03) 0%, transparent 20%) 25px 25px / 50px 50px,
+    #FFFFFF; /* Clean white with subtle calm pattern */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 999;
   display: flex;
   align-items: center;
-  padding: 0 20px;
-  margin-left: 250px; /* Width of sidebar */
-  transition: margin-left 0.3s ease;
-  border-bottom: 1px solid #e1e8ed;
+  padding: 0 25px;
+  margin-left: 250px; /* Width of full sidebar */
+  transition: margin-left 0.3s ease, background-position 0.3s ease;
+  border-bottom: 1px solid rgba(76, 175, 80, 0.1); /* Subtle green tint */
 }
 
 .admin-header.collapsed {
-  margin-left: 50px; /* Width of collapsed sidebar */
+  margin-left: 60px; /* Updated to match sidebar's collapsed width */
 }
 
 .header-content {
@@ -32,16 +35,23 @@
 }
 
 .user-avatar {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
-  background: #64C59A;
+  background: linear-gradient(135deg, #4CAF50 0%, #2196F3 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: bold;
+  font-weight: 700;
+  font-size: 1.2rem;
   margin-right: 15px;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.user-avatar:hover {
+  transform: scale(1.05);
 }
 
 .user-details {
@@ -51,27 +61,49 @@
 
 .username {
   font-weight: 600;
-  color: #333333;
+  color: #2C3E50;
+  font-size: 1.1rem;
 }
 
 .user-role {
-  font-size: 12px;
-  color: #7f8c8d;
+  font-size: 0.85rem;
+  color: #7F8C8D;
 }
 
 .clock {
   text-align: right;
+  transition: color 0.3s ease;
 }
 
 .time {
-  font-size: 24px;
+  font-size: 1.6rem;
   font-weight: 600;
-  color: #333333;
+  color: #2C3E50;
   line-height: 1;
+  animation: fadeIn 1s ease-in-out infinite alternate; /* Subtle breathing effect for mindfulness */
 }
 
 .date {
-  font-size: 12px;
-  color: #7f8c8d;
+  font-size: 0.9rem;
+  color: #7F8C8D;
   margin-top: 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0.9; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    height: 60px;
+    padding: 0 15px;
+    margin-left: 60px; /* Default to collapsed on mobile */
+  }
+  .time {
+    font-size: 1.4rem;
+  }
+  .date {
+    font-size: 0.8rem;
+  }
 }
