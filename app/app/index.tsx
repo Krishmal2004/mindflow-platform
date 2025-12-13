@@ -1,45 +1,34 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useSession } from '../src/contexts/SessionContext';
 import Auth from '../src/components/Auth';
-import Dashboard from '../src/components/Dashboard';
-import AboutMe from '../src/components/AboutMe';
+import { Redirect } from 'expo-router';
 
-export default function HomeScreen() {
+export default function RootScreen() {
   const { session, loading } = useSession();
-  const [showAboutMe, setShowAboutMe] = useState(false);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer} />
-      </SafeAreaView>
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#64C59A" />
+      </View>
     );
   }
 
-  if (!session) {
-    return <Auth />;
+  // If there's a session, redirect to the main app
+  if (session) {
+    return <Redirect href="/(tabs)" />;
   }
 
-  if (showAboutMe) {
-    return <AboutMe session={session} onBack={() => setShowAboutMe(false)} />;
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <Dashboard session={session} onNavigateToAboutMe={() => setShowAboutMe(true)} />
-    </SafeAreaView>
-  );
+  // Otherwise, show the auth screen
+  return <Auth />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5FCFF',
-  },
-  loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });

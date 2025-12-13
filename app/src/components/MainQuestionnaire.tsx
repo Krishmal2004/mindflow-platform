@@ -291,15 +291,6 @@ export default function MainQuestionnaire() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          <View style={{ width: 24 }} />
-        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2E8A66" />
           <Text style={styles.loadingText}>Loading your questionnaire...</Text>
@@ -312,15 +303,6 @@ export default function MainQuestionnaire() {
   if (!questionSet) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          <View style={{ width: 24 }} />
-        </View>
         <View style={styles.completionContainer}>
           <Text style={styles.completionTitle}>No Questionnaire Available</Text>
           <Text style={styles.completionText}>Main questionnaire is not available at this time.</Text>
@@ -354,15 +336,6 @@ export default function MainQuestionnaire() {
   if (alreadySubmitted) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          <View style={{ width: 24 }} />
-        </View>
         <View style={styles.completionContainer}>
           <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
             <Text style={styles.celebrationEmoji}>🎉</Text>
@@ -380,16 +353,6 @@ export default function MainQuestionnaire() {
   if (showStartScreen) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
         <ScrollView contentContainerStyle={styles.content}>
           <Animated.View entering={FadeInDown.delay(100)} style={styles.startCard}>
             <Text style={styles.startTitle}>Main Questionnaire</Text>
@@ -413,7 +376,7 @@ export default function MainQuestionnaire() {
                 Your time to complete the questionnaire will be recorded. Please answer honestly and take your time.
               </Text>
             </View>
-
+            
             <View style={styles.timerPreview}>
               <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
@@ -421,7 +384,7 @@ export default function MainQuestionnaire() {
               </Svg>
               <Text style={styles.timerText}>Time will be tracked</Text>
             </View>
-
+            
             <TouchableOpacity
               style={styles.startButton}
               onPress={startQuestionnaire}
@@ -438,26 +401,16 @@ export default function MainQuestionnaire() {
   if (!currentSection) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
         <ScrollView contentContainerStyle={styles.content}>
           <Animated.View entering={FadeInDown.delay(100)} style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Choose a Section</Text>
             <Text style={styles.sectionSubtitle}>Complete both sections to finish the questionnaire</Text>
           </Animated.View>
-
+          
           <View style={styles.timerContainer}>
             <Text style={styles.timerText}>Time: {getTimeSpent()}s</Text>
           </View>
-
+          
           <Animated.View entering={FadeInDown.delay(200)} style={styles.sectionCard}>
             <View style={styles.sectionIconContainer}>
               <QuestionIcons.stress />
@@ -473,7 +426,7 @@ export default function MainQuestionnaire() {
               <Text style={styles.sectionButtonText}>Start Part A</Text>
             </TouchableOpacity>
           </Animated.View>
-
+          
           <Animated.View entering={FadeInDown.delay(300)} style={styles.sectionCard}>
             <View style={styles.sectionIconContainer}>
               <QuestionIcons.mindfulness />
@@ -498,21 +451,11 @@ export default function MainQuestionnaire() {
   if (currentSection === 'A') {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={goBackToSections} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Part A</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.timerContainer}>
             <Text style={styles.timerText}>Time: {getTimeSpent()}s</Text>
           </View>
-
+          
           <Animated.View entering={FadeInDown.delay(100)} style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>{questionSet.section_a_title}</Text>
             <Text style={styles.sectionInstructions}>{questionSet.section_a_instructions}</Text>
@@ -583,7 +526,7 @@ export default function MainQuestionnaire() {
                 );
               })}
           </Animated.View>
-
+          
           <TouchableOpacity
             style={styles.submitButton}
             onPress={goBackToSections}
@@ -599,21 +542,11 @@ export default function MainQuestionnaire() {
   if (currentSection === 'B') {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={goBackToSections} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Part B</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.timerContainer}>
             <Text style={styles.timerText}>Time: {getTimeSpent()}s</Text>
           </View>
-
+          
           <Animated.View entering={FadeInDown.delay(100)} style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>{questionSet.section_b_title}</Text>
             <Text style={styles.sectionInstructions}>{questionSet.section_b_instructions}</Text>
@@ -689,7 +622,7 @@ export default function MainQuestionnaire() {
                 );
               })}
           </Animated.View>
-
+          
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmit}

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, SafeAreaView, Text, Modal, TouchableOpacity, Alert } from 'react-native';
-import { useSession } from '../src/contexts/SessionContext';
-import Auth from '../src/components/Auth';
-import AccountComponent from '../src/components/Account';
-import { supabase } from '../src/lib/supabase';
+import { useSession } from '../../src/contexts/SessionContext';
+import AccountComponent from '../../src/components/Account';
+import { supabase } from '../../src/lib/supabase';
+import { Session } from '@supabase/supabase-js';
 
 export default function AccountScreen() {
   const { session, loading } = useSession();
@@ -16,13 +16,9 @@ export default function AccountScreen() {
     );
   }
   
-  if (!session) {
-    return <Auth />;
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      <AccountComponent session={session} />
+      <AccountComponent session={session as Session} />
     </SafeAreaView>
   );
 }

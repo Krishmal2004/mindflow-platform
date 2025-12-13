@@ -1,8 +1,8 @@
 import React from 'react';
-import MainQuestionnaire from '../src/components/MainQuestionnaire';
+import WeeklyQuestions from '../src/components/WeeklyQuestions';
 import { Stack } from 'expo-router';
 
-export default function MainQuestionnaireRoute() {
+export default function WeeklyWhispersRoute() {
   return (
     <>
       <Stack.Screen 
@@ -11,7 +11,7 @@ export default function MainQuestionnaireRoute() {
           gestureEnabled: false,
         }} 
       />
-      <MainQuestionnaire />
+      <WeeklyQuestions />
     </>
   );
 }
