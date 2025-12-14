@@ -71,8 +71,6 @@ CREATE TABLE IF NOT EXISTS daily_sliders (
     sleep_start_time TEXT,
     wake_up_time TEXT,
     sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 5),
-    exercise_duration INTEGER,
-    completed_exercise_time INTEGER,
     relaxation_level INTEGER CHECK (relaxation_level >= 1 AND relaxation_level <= 10),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

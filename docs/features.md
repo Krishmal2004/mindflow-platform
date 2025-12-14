@@ -8,7 +8,7 @@ Participants can track their:
 - **Influencing Factors**: Select factors affecting their stress levels from a predefined list
 - **Sleep Schedule**: Record sleep start and wake-up times
 
-After submitting their ratings, participants can engage in guided breathing exercises (4-minute sessions) with visual breathing cues. Post-exercise, they rate their relaxation level to complete the mindfulness session.
+After submitting the Influencing Factors, only the experiment group participants can listn to a mindfulness voice record which have conducted in previous week. Post-exercise, they rate their relaxation level to complete the mindfulness session.
 
 ### 1.1 Voice Guidance (Experimental Group Only)
 Participants with research IDs ending in ".ex" have access to weekly voice guidance:
