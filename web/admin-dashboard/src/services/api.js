@@ -377,11 +377,11 @@ class ApiService {
             title: 'Daily Trends Analysis',
             description: 'Analysis of daily slider submissions and trends',
             metrics: [
-              { name: 'Average Stress Level', value: `${avgStressLevel.toFixed(1)}/10` },
+              { name: 'Average Stress Level', value: `${avgStressLevel.toFixed(1)}/5` },
               { name: 'Average Mood Score', value: `${avgMood.toFixed(1)}/5` },
               { name: 'Average Sleep Quality', value: `${avgSleepQuality.toFixed(1)}/5` },
               { name: 'Most Common Stress Factor', value: 'Work' }, // Would need more complex analysis
-              { name: 'Average Exercise Duration', value: '28 mins' } // Would need calculation
+              { name: 'Average Practice Duration', value: '28 mins' } // Would need calculation
             ]
           };
           

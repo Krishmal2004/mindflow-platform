@@ -30,8 +30,8 @@ try {
 
 const { width } = Dimensions.get('window');
 
-// Stress level emojis from low to high
-const STRESS_EMOJIS = ['😊', '🙂', '😐', '😕', '😟', '😧', '😨', '😰', '😱', '😵'];
+// Stress level emojis from low to high (1-5 scale)
+const STRESS_EMOJIS = ['😊', '🙂', '😐', '😕', '😟'];
 
 // Mood faces from bad to good (5 levels)
 const MOOD_FACES = ['😢', '😐', '🙂', '😊', '😄'];
@@ -154,6 +154,9 @@ export default function DailySliders() {
   const { session } = useSession();
 
   // State variables
+  const [mindfulnessPractice, setMindfulnessPractice] = useState<'yes' | 'no' | null>(null);
+  const [practiceDuration, setPracticeDuration] = useState<string>('');
+  const [practiceLog, setPracticeLog] = useState<string>('');
   const [stressLevel, setStressLevel] = useState<number | null>(null);
   const [moodLevel, setMoodLevel] = useState<number | null>(null);
   const [sleepQuality, setSleepQuality] = useState<number | null>(null);
@@ -352,8 +355,8 @@ export default function DailySliders() {
   // Get stress color
   const getStressColor = () => {
     if (stressLevel === null) return '#64C59A';
-    if (stressLevel <= 3) return '#10B981';
-    if (stressLevel <= 6) return '#FBBF24';
+    if (stressLevel <= 2) return '#10B981';
+    if (stressLevel <= 3) return '#FBBF24';
     return '#EF4444';
   };
 
@@ -366,8 +369,8 @@ export default function DailySliders() {
   // Get sleep quality emoji - 1 poor, 5 excellent
   const getSleepQualityEmoji = () => SLEEP_QUALITY_EMOJIS[sleepQuality ? sleepQuality - 1 : 2] || '😐';
 
-  // Get relaxation emoji - 1 stressed, 10 relaxed
-  const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 10 - relaxationLevel : 2] || '😐';
+  // Get relaxation emoji - 1 stressed, 5 relaxed
+  const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 5 - relaxationLevel : 2] || '😐';
 
   // Voice recording functions
   const startRecording = async () => {
@@ -549,11 +552,18 @@ export default function DailySliders() {
       factorsToSubmit.push(`Other: ${otherFactor.trim()}`);
     }
     
-    if (stressLevel === null || moodLevel === null || sleepQuality === null || factorsToSubmit.length === 0 ||
+    if (mindfulnessPractice === null || stressLevel === null || moodLevel === null || sleepQuality === null || factorsToSubmit.length === 0 ||
       sleepStart === null || wakeUp === null) {
       Alert.alert('Incomplete Form', 'Please complete all fields before submitting.');
       return;
     }
+    
+    // If user said "Yes" to mindfulness practice, check if duration and log are filled
+    if (mindfulnessPractice === 'yes' && (!practiceDuration.trim() || !practiceLog.trim())) {
+      Alert.alert('Incomplete Form', 'Please fill in the duration and what you practiced.');
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       let data;
@@ -561,6 +571,9 @@ export default function DailySliders() {
         const { error } = await supabase
           .from('daily_sliders')
           .update({
+            mindfulness_practice: mindfulnessPractice,
+            practice_duration: mindfulnessPractice === 'yes' ? parseInt(practiceDuration) : null,
+            practice_log: mindfulnessPractice === 'yes' ? practiceLog : null,
             stress_level: stressLevel,
             mood: moodLevel,
             sleep_quality: sleepQuality,
@@ -576,6 +589,9 @@ export default function DailySliders() {
           .from('daily_sliders')
           .insert({
             user_id: session.user.id,
+            mindfulness_practice: mindfulnessPractice,
+            practice_duration: mindfulnessPractice === 'yes' ? parseInt(practiceDuration) : null,
+            practice_log: mindfulnessPractice === 'yes' ? practiceLog : null,
             stress_level: stressLevel,
             mood: moodLevel,
             sleep_quality: sleepQuality,
@@ -604,12 +620,12 @@ export default function DailySliders() {
 
   // Stress circle interpolation
   const stressCircleScale = stressAnimation.interpolate({
-    inputRange: [1, 5, 10],
+    inputRange: [1, 3, 5],
     outputRange: [1.3, 0.7, 1.3],
     extrapolate: 'clamp',
   });
   const stressCircleOpacity = stressAnimation.interpolate({
-    inputRange: [1, 10],
+    inputRange: [1, 5],
     outputRange: [0.8, 0.8],
   });
 
@@ -660,6 +676,153 @@ export default function DailySliders() {
       </View>
       
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Voice Recording Section - moved to the top */}
+        {showVoiceRecording && (
+          <View style={styles.section}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <Icons.voice />
+              </View>
+              <View style={styles.questionText}>
+                <Text style={styles.sectionTitle}>Weekly Voice Guidance</Text>
+                <Text style={styles.sectionSubtitle}>Listen to this week's mindfulness guidance</Text>
+              </View>
+            </View>
+            
+            {weeklyVoiceUrl ? (
+              <View style={styles.voicePlayerCard}>
+                <View style={styles.voicePlayerHeader}>
+                  <Text style={styles.voicePlayerTitle}>Mindfulness Session</Text>
+                  <Text style={styles.voicePlayerWeek}>Week {getWeekNumber()}</Text>
+                </View>
+                
+                <View style={styles.voicePlayerControls}>
+                  <TouchableOpacity 
+                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : '#64C59A' }]}
+                    onPress={isPlaying ? stopPlaying : playRecording}
+                  >
+                    {isPlaying ? (
+                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <Rect x="6" y="6" width="4" height="12" fill="white"/>
+                        <Rect x="14" y="6" width="4" height="12" fill="white"/>
+                      </Svg>
+                    ) : (
+                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <Path d="M8 5V19L19 12L8 5Z" fill="white"/>
+                      </Svg>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={styles.voiceProgressInfo}>
+                    <Text style={styles.voiceStatus}>
+                      {isPlaying ? 'Playing...' : 'Tap play to begin'}
+                    </Text>
+                    <Text style={styles.voiceDuration}>~5 min</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.voiceProgressBar}>
+                  <View style={[styles.voiceProgressFill, { width: isPlaying ? '60%' : '0%' }]} />
+                </View>
+                
+                <View style={styles.voicePlayerFooter}>
+                  <Text style={styles.voicePlayerTip}>🎧 Use headphones for best experience</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.voicePlaceholder}>
+                <Text style={styles.voicePlaceholderText}>
+                  Your research coordinator will upload this week's voice guidance soon.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+        
+        {/* Mindfulness Practice Question */}
+        <View style={styles.section}>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.voice />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
+              <Text style={styles.sectionSubtitle}>Have you done mindfulness practice today?</Text>
+            </View>
+          </View>
+          
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[
+                styles.choiceButton,
+                mindfulnessPractice === 'yes' && styles.choiceButtonSelected,
+                mindfulnessPractice === 'yes' && { backgroundColor: '#64C59A' }
+              ]}
+              onPress={() => setMindfulnessPractice('yes')}
+            >
+              <Text style={[
+                styles.choiceButtonText,
+                mindfulnessPractice === 'yes' && styles.choiceButtonTextSelected
+              ]}>
+                Yes
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.choiceButton,
+                mindfulnessPractice === 'no' && styles.choiceButtonSelected,
+                mindfulnessPractice === 'no' && { backgroundColor: '#EF4444' }
+              ]}
+              onPress={() => setMindfulnessPractice('no')}
+            >
+              <Text style={[
+                styles.choiceButtonText,
+                mindfulnessPractice === 'no' && styles.choiceButtonTextSelected
+              ]}>
+                No
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* If user selects "Yes", show duration and log inputs */}
+          {mindfulnessPractice === 'yes' && (
+            <View style={styles.practiceDetailsContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Duration (minutes)</Text>
+                <TextInput
+                  style={styles.durationInput}
+                  placeholder="e.g., 10"
+                  value={practiceDuration}
+                  onChangeText={setPracticeDuration}
+                  keyboardType="numeric"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>What did you practice? (Bullet points)</Text>
+                <TextInput
+                  style={styles.logInput}
+                  placeholder="• Breathing exercise&#10;• Body scan&#10;• Walking meditation"
+                  value={practiceLog}
+                  onChangeText={setPracticeLog}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+            </View>
+          )}
+          
+          {/* If user selects "No", show prompt */}
+          {mindfulnessPractice === 'no' && (
+            <View style={styles.promptContainer}>
+              <Text style={styles.promptText}>
+                We recommend listening to the Weekly Voice Guidance above to start your mindfulness practice today.
+              </Text>
+            </View>
+          )}
+        </View>
+        
         {/* Stress Level Section */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
@@ -668,7 +831,7 @@ export default function DailySliders() {
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Stress Level</Text>
-              <Text style={styles.sectionSubtitle}>How stressed do you feel today? (1-10)</Text>
+              <Text style={styles.sectionSubtitle}>How stressed do you feel today? (1-5)</Text>
             </View>
           </View>
           <View style={styles.stressVisualContainer}>
@@ -699,19 +862,19 @@ export default function DailySliders() {
                 style={[
                   styles.trackFill,
                   {
-                    width: stressLevel ? `${stressLevel * 10}%` : '0%',
+                    width: stressLevel ? `${stressLevel * 20}%` : '0%',
                     backgroundColor: getStressColor()
                   }
                 ]}
               />
             </View>
             <View style={styles.thumbContainer}>
-              {[...Array(10)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
                     styles.thumb,
-                    { width: width / 11 - 10, justifyContent: 'center', alignItems: 'center' },
+                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
                     stressLevel === i + 1 && styles.thumbActive,
                     stressLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
@@ -951,68 +1114,6 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-        {/* Voice Recording Section - only shown for .ex users */}
-        {showVoiceRecording && (
-          <View style={styles.section}>
-            <View style={styles.questionHeader}>
-              <View style={styles.iconCircle}>
-                <Icons.voice />
-              </View>
-              <View style={styles.questionText}>
-                <Text style={styles.sectionTitle}>Weekly Voice Guidance</Text>
-                <Text style={styles.sectionSubtitle}>Listen to this week's mindfulness guidance</Text>
-              </View>
-            </View>
-            
-            {weeklyVoiceUrl ? (
-              <View style={styles.voicePlayerCard}>
-                <View style={styles.voicePlayerHeader}>
-                  <Text style={styles.voicePlayerTitle}>Mindfulness Session</Text>
-                  <Text style={styles.voicePlayerWeek}>Week {getWeekNumber()}</Text>
-                </View>
-                
-                <View style={styles.voicePlayerControls}>
-                  <TouchableOpacity 
-                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : '#64C59A' }]}
-                    onPress={isPlaying ? stopPlaying : playRecording}
-                  >
-                    {isPlaying ? (
-                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <Rect x="6" y="6" width="4" height="12" fill="white"/>
-                        <Rect x="14" y="6" width="4" height="12" fill="white"/>
-                      </Svg>
-                    ) : (
-                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <Path d="M8 5V19L19 12L8 5Z" fill="white"/>
-                      </Svg>
-                    )}
-                  </TouchableOpacity>
-                  
-                  <View style={styles.voiceProgressInfo}>
-                    <Text style={styles.voiceStatus}>
-                      {isPlaying ? 'Playing...' : 'Tap play to begin'}
-                    </Text>
-                    <Text style={styles.voiceDuration}>~5 min</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.voiceProgressBar}>
-                  <View style={[styles.voiceProgressFill, { width: isPlaying ? '60%' : '0%' }]} />
-                </View>
-                
-                <View style={styles.voicePlayerFooter}>
-                  <Text style={styles.voicePlayerTip}>🎧 Use headphones for best experience</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.voicePlaceholder}>
-                <Text style={styles.voicePlaceholderText}>
-                  Your research coordinator will upload this week's voice guidance soon.
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
         {/* Relaxation Level Section - moved after Sleep Quality */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
@@ -1021,7 +1122,7 @@ export default function DailySliders() {
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Relaxation Level</Text>
-              <Text style={styles.sectionSubtitle}>How relaxed do you feel right now? (1-10)</Text>
+              <Text style={styles.sectionSubtitle}>How relaxed do you feel right now? (1-5)</Text>
             </View>
           </View>
           <View style={styles.stressVisualContainer}>
@@ -1035,25 +1136,25 @@ export default function DailySliders() {
                 style={[
                   styles.trackFill,
                   {
-                    width: relaxationLevel ? `${relaxationLevel * 10}%` : '0%',
+                    width: relaxationLevel ? `${relaxationLevel * 20}%` : '0%',
                     backgroundColor: getStressColor()
                   }
                 ]}
               />
             </View>
             <View style={styles.thumbContainer}>
-              {[...Array(10)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
                     styles.thumb,
-                    { width: width / 11 - 10, justifyContent: 'center', alignItems: 'center' },
+                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
                     relaxationLevel === i + 1 && styles.thumbActive,
                     relaxationLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setRelaxationLevel(i + 1)}
                 >
-                  <Text style={[styles.moodThumbEmoji, { textAlign: 'center' }]}>{STRESS_EMOJIS[9 - i]}</Text>
+                  <Text style={[styles.moodThumbEmoji, { textAlign: 'center' }]}>{STRESS_EMOJIS[4 - i]}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -1438,6 +1539,76 @@ const styles = StyleSheet.create({
   voicePlaceholderText: {
     fontSize: 16,
     color: '#64C59A',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  // New styles for mindfulness practice section
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  choiceButton: {
+    backgroundColor: '#F0F9F6',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderWidth: 2,
+    borderColor: '#E8F5F1',
+  },
+  choiceButtonSelected: {
+    borderColor: '#fff',
+  },
+  choiceButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  choiceButtonTextSelected: {
+    color: '#fff',
+  },
+  practiceDetailsContainer: {
+    marginTop: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  durationInput: {
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#FAFEFD',
+  },
+  logInput: {
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
+    borderRadius: 16,
+    padding: 16,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#FAFEFD',
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  promptContainer: {
+    backgroundColor: '#FFF8E6',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#FFEAAA',
+  },
+  promptText: {
+    fontSize: 16,
+    color: '#333',
     textAlign: 'center',
     fontStyle: 'italic',
   },

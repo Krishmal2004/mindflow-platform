@@ -21,7 +21,9 @@ interface DailySliderData {
   stress_level: number;
   sleep_quality: number;
   relaxation_level: number;
-  exercise_duration: number;
+  mindfulness_practice: 'yes' | 'no' | null;
+  practice_duration: number | null;
+  practice_log: string | null;
   created_at: string;
 }
 
@@ -400,7 +402,7 @@ export default function ProgressScreen() {
 const LineChart = ({ data, color, labels }: { data: number[]; color: string; labels: string[] }) => {
   if (data.length === 0) return null;
 
-  const maxValue = Math.max(...data, 10);
+  const maxValue = Math.max(...data, 5);
   const minValue = Math.min(...data, 1);
   const chartHeight = 200;
   const chartWidth = width - 48;

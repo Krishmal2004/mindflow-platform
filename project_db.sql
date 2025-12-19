@@ -65,13 +65,16 @@ create or replace trigger on_auth_user_created_about_me
 CREATE TABLE IF NOT EXISTS daily_sliders (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    stress_level INTEGER CHECK (stress_level >= 1 AND stress_level <= 10),
+    mindfulness_practice TEXT CHECK (mindfulness_practice IN ('yes', 'no')),
+    practice_duration INTEGER,
+    practice_log TEXT,
+    stress_level INTEGER CHECK (stress_level >= 1 AND stress_level <= 5),
     mood INTEGER CHECK (mood >= 1 AND mood <= 5),
     feelings TEXT,
     sleep_start_time TEXT,
     wake_up_time TEXT,
     sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 5),
-    relaxation_level INTEGER CHECK (relaxation_level >= 1 AND relaxation_level <= 10),
+    relaxation_level INTEGER CHECK (relaxation_level >= 1 AND relaxation_level <= 5),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
