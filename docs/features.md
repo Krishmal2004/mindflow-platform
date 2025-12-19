@@ -2,13 +2,15 @@
 
 ## 1. Daily Sliders
 Participants can track their:
-- **Stress Levels**: Rate stress on a scale of 1-10
+- **Done Mindfulness Training Today?**: Have you done mindfulness training today (Yes or No) If yes populate to enter the duration it had done and enter what are the things have done like a small log.
+- **Stress Levels**: Rate stress on a scale of 1-5
 - **Mood**: Track daily mood from bad to good (1-5 scale)
 - **Sleep Quality**: Assess sleep quality from poor to excellent (1-5 scale)
 - **Influencing Factors**: Select factors affecting their stress levels from a predefined list
 - **Sleep Schedule**: Record sleep start and wake-up times
+- **Reaxation Level** they rate their relaxation level to complete the mindfulness session.
 
-After submitting the Influencing Factors, only the experiment group participants can listn to a mindfulness voice record which have conducted in previous week. Post-exercise, they rate their relaxation level to complete the mindfulness session.
+Before everything, only the experiment group participants can listn to a mindfulness voice record which have conducted in previous week.  This is optional.. 
 
 ### 1.1 Voice Guidance (Experimental Group Only)
 Participants with research IDs ending in ".ex" have access to weekly voice guidance:
