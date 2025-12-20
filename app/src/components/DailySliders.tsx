@@ -16,14 +16,9 @@ import { useSession } from '../contexts/SessionContext';
 import Svg, { Path, Circle, G, Line, Rect } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 
-// Conditional import for expo-audio
-let Audio: any;
-try {
-  const expoAudio = require('expo-audio');
-  Audio = expoAudio;
-} catch (e) {
-  console.warn('Audio modules not available:', e);
-}
+// Audio playback uses expo-av (Sound.createAsync, playAsync, etc.)
+// Audio recording utilities available from expo-audio if needed
+import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 
@@ -75,6 +70,10 @@ for (let hour = 0; hour < 24; hour++) {
     WAKE_UP_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
   }
 }
+
+// Accent colors for study groups
+const CONTROL_COLOR = '#64C59A';
+const EXPERIMENT_COLOR = '#6366F1';
 
 // Custom Icons
 const Icons = {
@@ -260,27 +259,15 @@ export default function DailySliders() {
       // If no URL in database or invalid URL, construct URL from R2 public URL
       const r2BaseUrl = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
       if (r2BaseUrl) {
-        // Ensure base URL doesn't end with slash
-        let baseUrl = r2BaseUrl;
-        if (baseUrl.endsWith('/')) {
-          baseUrl = baseUrl.slice(0, -1);
-        }
-
-        // Ensure file key starts with slash
-        let formattedFileKey = fileKey;
-        if (!formattedFileKey.startsWith('/')) {
-          formattedFileKey = '/' + formattedFileKey;
-        }
-
-        // Construct the full URL - this ensures proper CDN usage
-        const constructedUrl = `${baseUrl}${formattedFileKey}`;
         try {
-          // Validate the constructed URL
-          new URL(constructedUrl);
-          setWeeklyVoiceUrl(constructedUrl);
+          // Use URL constructor to correctly join base + file key (handles slashes)
+          const constructed = new URL(fileKey, r2BaseUrl).toString();
+          // Validate
+          new URL(constructed);
+          setWeeklyVoiceUrl(constructed);
           return;
         } catch (urlError) {
-          console.warn('Invalid constructed URL:', constructedUrl);
+          console.warn('Invalid constructed URL from R2 base:', urlError);
         }
       }
 
@@ -385,11 +372,7 @@ export default function DailySliders() {
         playThroughEarpieceAndroid: false,
       });
 
-      // Check file accessibility
-      const response = await fetch(weeklyVoiceUrl, { method: 'HEAD' });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+
 
       // Create sound
       const { sound: newSound } = await Audio.Sound.createAsync(
@@ -584,6 +567,9 @@ export default function DailySliders() {
     }).start();
   }, [progress]);
 
+  // Use a single accent color for the progress bar (same for all groups)
+  const groupAccentColor = CONTROL_COLOR;
+
   if (alreadySubmittedToday) {
     return (
       <View style={styles.container}>
@@ -594,16 +580,11 @@ export default function DailySliders() {
                 <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Daily Wellness Check</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <Animated.View style={[styles.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle}>Daily Sliders </Text>
             </View>
-            <View style={styles.progressLabels}>
-              <Text style={styles.progressLabel}>0</Text>
-              <Text style={styles.progressLabel}>100</Text>
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>100%</Text>
             </View>
           </View>
         </View>
@@ -627,16 +608,11 @@ export default function DailySliders() {
               <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Daily Wellness Check</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <Animated.View style={[styles.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Daily Sliders</Text>
           </View>
-          <View style={styles.progressLabels}>
-            <Text style={styles.progressLabel}>0</Text>
-            <Text style={styles.progressLabel}>100</Text>
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{`${Math.round(progress)}%`}</Text>
           </View>
         </View>
       </View>
@@ -735,7 +711,7 @@ export default function DailySliders() {
                 </View>
                 <View style={styles.voicePlayerControls}>
                   <TouchableOpacity
-                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : '#64C59A' }]}
+                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : CONTROL_COLOR }]}
                     onPress={isPlaying ? stopPlaying : playGuidance}
                   >
                     {isPlaying ? (
@@ -767,7 +743,7 @@ export default function DailySliders() {
               </View>
             ) : (
               <View style={styles.voicePlaceholder}>
-                <Text style={styles.voicePlaceholderText}>
+                <Text style={[styles.voicePlaceholderText, { color: CONTROL_COLOR }]}> 
                   Your research coordinator will upload this week's voice guidance soon.
                 </Text>
               </View>
@@ -1158,6 +1134,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   headerTitle: {
+    padding: 8,
     fontSize: 22,
     fontWeight: '700',
     color: '#333',
@@ -1165,19 +1142,19 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 24,
   },
-  progressContainer: {
-    marginTop: 20,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#E8F5F1',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#64C59A',
-  },
+  // progressContainer: {
+  //   marginTop: 20,
+  // },
+  // progressBar: {
+  //   height: 6,
+  //   backgroundColor: '#E8F5F1',
+  //   borderRadius: 3,
+  //   overflow: 'hidden',
+  // },
+  // progressFill: {
+  //   height: '100%',
+  //   backgroundColor: '#64C59A',
+  // },
   progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1328,6 +1305,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontWeight: '500',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  progressBadge: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E6F6EE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
+  },
+  progressLabelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  progressSmallLabel: {
+    fontSize: 12,
+    color: '#8CAFA0',
+    fontWeight: '600',
   },
   factorsContainer: {
     flexDirection: 'row',
