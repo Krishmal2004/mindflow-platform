@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,6 @@ import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
 import Svg, { Path, Circle, G, Line, Rect } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
-
 // Conditional import for expo-av to avoid bundling issues
 let Audio: any;
 let FileSystem: any;
@@ -25,27 +24,20 @@ try {
   const expoFs = require('expo-file-system');
   FileSystem = expoFs;
 } catch (e) {
-  console.log('Audio features not available');
 }
-
 const { width } = Dimensions.get('window');
-
 // Stress level emojis from low to high (1-5 scale)
 const STRESS_EMOJIS = ['😊', '🙂', '😐', '😕', '😟'];
-
 // Mood faces from bad to good (5 levels)
 const MOOD_FACES = ['😢', '😐', '🙂', '😊', '😄'];
-
 // Sleep quality emojis from poor to excellent (5 levels)
 const SLEEP_QUALITY_EMOJIS = ['😫', '😪', '🛌', '😴', '🥱']; // Adjusted: poor to best
-
 // Factors influencing stress
 const STRESS_FACTORS = [
   'Health', 'Sleep', 'Exercise', 'Food', 'Hobby', 'Money', 'Identity',
   'Friends', 'Pet', 'Family', 'Dating', 'Work', 'Home', 'School',
   'Outdoors', 'Travel', 'Weather'
 ];
-
 // Time options for sleep schedule (30-minute intervals)
 // Sleep start times from 18:00 (6:00 PM) to 06:00 (6:00 AM)
 const SLEEP_START_OPTIONS: string[] = [];
@@ -68,7 +60,6 @@ for (let hour = 0; hour <= 6; hour++) {
     SLEEP_START_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
   }
 }
-
 // Wake up times from 00:00 (12:00 AM) onwards until 12:00 PM
 const WAKE_UP_OPTIONS: string[] = [];
 // Add times from 12:00 AM to 11:30 PM
@@ -80,7 +71,6 @@ for (let hour = 0; hour < 24; hour++) {
     WAKE_UP_OPTIONS.push(`${displayHour}:${displayMinute} ${period}`);
   }
 }
-
 // Custom Icons
 const Icons = {
   stress: () => (
@@ -148,11 +138,9 @@ const Icons = {
     </Svg>
   ),
 };
-
 export default function DailySliders() {
   const router = useRouter();
   const { session } = useSession();
-
   // State variables
   const [mindfulnessPractice, setMindfulnessPractice] = useState<'yes' | 'no' | null>(null);
   const [practiceDuration, setPracticeDuration] = useState<string>('');
@@ -178,23 +166,31 @@ export default function DailySliders() {
   const [sound, setSound] = useState<any | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [weeklyVoiceUrl, setWeeklyVoiceUrl] = useState<string | null>(null);
-
+  const [playedVoiceGuidance, setPlayedVoiceGuidance] = useState(false);
+  const [listenDuration, setListenDuration] = useState(0);
   const stressAnimation = useRef(new Animated.Value(0)).current;
-
+  const progressAnim = useRef(new Animated.Value(0)).current;
   // Check if user has already submitted today
   useEffect(() => {
     checkDailySubmission();
     getUserResearchId();
     loadWeeklyVoice();
-    
     // Cleanup function
     return () => {
       if (sound) {
-        sound.unloadAsync().catch((err: any) => console.log('Error unloading sound:', err));
+        sound.unloadAsync().catch((err: any) => {});
       }
     };
   }, [session]);
-
+  useEffect(() => {
+    if (alreadySubmittedToday || showCompletion) {
+      Animated.timing(progressAnim, {
+        toValue: 100,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [alreadySubmittedToday, showCompletion]);
   const getUserResearchId = async () => {
     if (!session?.user?.id) return;
     try {
@@ -203,105 +199,64 @@ export default function DailySliders() {
         .select('researchID')
         .eq('id', session.user.id)
         .single();
-      
       if (error) throw error;
-      
       if (data && data.researchID) {
         setResearchId(data.researchID);
-        // Show voice recording feature only for users with research ID ending in .ex
         if (data.researchID.endsWith('.ex')) {
           setShowVoiceRecording(true);
         }
       }
     } catch (error) {
-      console.error('Error fetching research ID:', error);
     }
   };
-
   const loadWeeklyVoice = async () => {
     if (!session?.user?.id) return;
-    
     try {
-      // Get current week number and year using ISO week numbering (Monday as first day of week)
       const currentDate = new Date();
       const date = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
       date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
       const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
       const weekNumber = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
       const year = date.getUTCFullYear();
-      
-      // Construct the file key based on your R2 structure
-      // Format: SessionRecord/V2025-W50.mp3 for week 50 of 2025
       const fileKey = `SessionRecord/V${year}-W${weekNumber.toString().padStart(2, '0')}.mp3`;
-      
-      console.log('Loading voice for week:', weekNumber, 'year:', year);
-      console.log('Constructed file key:', fileKey);
-      
-      // Try to get existing voice recording for this week from database first
       const { data, error } = await supabase
         .from('voice_recordings')
         .select('file_url')
         .eq('week_number', weekNumber)
         .eq('year', year)
         .limit(1);
-      
       if (error && error.code !== 'PGRST116') {
-        console.error('Database error:', error);
         throw error;
       }
-      
       if (data && data.length > 0 && data[0].file_url) {
-        console.log('Found URL in database:', data[0].file_url);
-        // Validate URL before setting it
         try {
           new URL(data[0].file_url);
           setWeeklyVoiceUrl(data[0].file_url);
         } catch (urlError) {
-          console.error('Invalid URL from database:', data[0].file_url);
         }
       } else {
-        // If no database entry, construct URL based on R2 structure
         const r2BaseUrl = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
-        console.log('R2 Base URL from env:', r2BaseUrl);
-        
         if (r2BaseUrl) {
-          // Ensure base URL formatting is correct
           let baseUrl = r2BaseUrl;
-          // Remove trailing slash if present
           if (baseUrl.endsWith('/')) {
             baseUrl = baseUrl.slice(0, -1);
           }
-          
-          // Ensure fileKey starts with /
           let formattedFileKey = fileKey;
           if (!formattedFileKey.startsWith('/')) {
             formattedFileKey = '/' + formattedFileKey;
           }
-          
           const constructedUrl = `${baseUrl}${formattedFileKey}`;
-          
-          console.log('Base URL:', baseUrl);
-          console.log('File key:', formattedFileKey);
-          console.log('Constructed URL:', constructedUrl);
-          
-          // Validate the constructed URL
           try {
             new URL(constructedUrl);
             setWeeklyVoiceUrl(constructedUrl);
           } catch (urlError) {
-            console.error('Invalid constructed URL:', constructedUrl);
-            console.error('URL error:', urlError);
           }
-        } else {
-          console.log('R2_PUBLIC_URL environment variable not set');
         }
       }
     } catch (error) {
-      console.error('Error loading weekly voice:', error);
-      setWeeklyVoiceUrl(null); // Reset URL on error
+      setWeeklyVoiceUrl(null);
     }
   };
-
   const checkDailySubmission = async () => {
     if (!session?.user?.id) return;
     try {
@@ -319,10 +274,8 @@ export default function DailySliders() {
         setEntryId(data[0].id);
       }
     } catch (error) {
-      console.error('Error checking daily submission:', error);
     }
   };
-
   // Animate stress circle
   useEffect(() => {
     if (stressLevel !== null) {
@@ -333,25 +286,19 @@ export default function DailySliders() {
       }).start();
     }
   }, [stressLevel]);
-
   // Toggle factor
   const toggleFactor = (factor: string) => {
     if (factor === 'Other') {
-      // For "Other" factor, we need special handling
       if (selectedFactors.includes('Other')) {
-        // If already selected, deselect it and clear the text
         setSelectedFactors(prev => prev.filter(f => f !== 'Other'));
         setOtherFactor('');
       } else {
-        // If not selected, select it
         setSelectedFactors(prev => [...prev, 'Other']);
       }
     } else {
-      // For regular factors
       setSelectedFactors(prev => prev.includes(factor) ? prev.filter(f => f !== factor) : [...prev, factor]);
     }
   };
-
   // Get stress color
   const getStressColor = () => {
     if (stressLevel === null) return '#64C59A';
@@ -359,23 +306,17 @@ export default function DailySliders() {
     if (stressLevel <= 3) return '#FBBF24';
     return '#EF4444';
   };
-
   // Get stress emoji
   const getStressEmoji = () => STRESS_EMOJIS[stressLevel ? stressLevel - 1 : 2] || '😐';
-
   // Get mood face - now 1 bad, 5 good
   const getMoodFace = () => MOOD_FACES[moodLevel ? moodLevel - 1 : 2] || '😐';
-
   // Get sleep quality emoji - 1 poor, 5 excellent
   const getSleepQualityEmoji = () => SLEEP_QUALITY_EMOJIS[sleepQuality ? sleepQuality - 1 : 2] || '😐';
-
   // Get relaxation emoji - 1 stressed, 5 relaxed
   const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 5 - relaxationLevel : 2] || '😐';
-
   // Voice recording functions
   const startRecording = async () => {
     if (!Audio) return;
-    
     try {
       if (Platform.OS === 'android') {
         await Audio.setAudioModeAsync({
@@ -383,7 +324,6 @@ export default function DailySliders() {
           playsInSilentModeIOS: true,
         });
       }
-      
       const { recording } = await Audio.Recording.createAsync({
         android: {
           extension: '.m4a',
@@ -408,87 +348,65 @@ export default function DailySliders() {
           bitsPerSecond: 128000,
         },
       });
-      
       setRecording(recording);
       setIsRecording(true);
     } catch (err) {
-      console.error('Failed to start recording', err);
     }
   };
-
   const stopRecording = async () => {
     if (!recording) return;
-    
     try {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      
       if (uri) {
         setRecordedUri(uri);
       }
-      
       setIsRecording(false);
       setRecording(null);
     } catch (err) {
-      console.error('Failed to stop recording', err);
     }
   };
-
   const playRecording = async () => {
     if (!weeklyVoiceUrl || !Audio) {
       Alert.alert('Playback Error', 'No audio file available to play.');
       return;
     }
-    
-    // Validate URL format
     try {
       new URL(weeklyVoiceUrl);
     } catch (urlError) {
-      console.error('Invalid URL format:', weeklyVoiceUrl);
       Alert.alert('Playback Error', 'Invalid audio file URL.');
       return;
     }
-    
     try {
-      // Unload any existing sound
       if (sound) {
         await sound.unloadAsync();
         setSound(null);
       }
-      
-      // Set audio mode for playback
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
         playThroughEarpieceAndroid: false
       });
-      
-      console.log('Attempting to play audio from URL:', weeklyVoiceUrl);
-      
-      // Create and load the sound directly with proper options
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: weeklyVoiceUrl },
-        { 
+        {
           shouldPlay: true,
-          progressUpdateIntervalMillis: 1000 // Update progress every second
+          progressUpdateIntervalMillis: 1000
         }
       );
-      
       setSound(newSound);
       setIsPlaying(true);
-      
-      // Set up playback status update listener
+      setPlayedVoiceGuidance(true);
       newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded) {
           if (status.didJustFinish) {
+            setListenDuration(prev => prev + Math.floor(status.positionMillis / 1000));
             setIsPlaying(false);
             newSound.unloadAsync();
           }
         } else if (status.error) {
-          console.error('Playback error:', status.error);
           setIsPlaying(false);
-          // Provide more detailed error information
           let errorMsg = `Failed to play audio: ${status.error}`;
           if (status.error.includes('400') || status.error.includes('404')) {
             errorMsg = 'Audio file not found or inaccessible. Please check if the file exists in the storage.';
@@ -496,20 +414,13 @@ export default function DailySliders() {
           Alert.alert('Playback Error', errorMsg);
         }
       });
-      
-      // Play the sound
       await newSound.playAsync();
     } catch (err: any) {
-      console.error('Failed to play recording:', err);
       setIsPlaying(false);
-      
-      // Provide more specific error messages
       let errorMessage = 'Failed to play the audio. Please try again.';
       if (err.message) {
         errorMessage = `Playback failed: ${err.message}`;
       }
-      
-      // Handle specific error codes
       if (err.code === 'E_NETWORK_ERROR') {
         errorMessage = 'Network error: Unable to connect to the audio server. Please check your internet connection.';
       } else if (err.code === 'E_CONTENT_NOT_FOUND') {
@@ -519,51 +430,45 @@ export default function DailySliders() {
       } else if (errorMessage.includes('400') || errorMessage.includes('404')) {
         errorMessage = 'Unable to access the audio file. It may not exist in the storage or there may be permission issues.';
       }
-      
       Alert.alert('Playback Error', errorMessage);
     }
   };
-
   const stopPlaying = async () => {
     if (sound) {
       try {
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          setListenDuration(prev => prev + Math.floor(status.positionMillis / 1000));
+        }
         await sound.stopAsync();
         await sound.unloadAsync();
         setIsPlaying(false);
         setSound(null);
       } catch (err) {
-        console.error('Failed to stop playing', err);
       }
     }
   };
-
   // Submit wellness data
   const submitWellnessData = async (isEdit = false) => {
     if (!session?.user?.id) {
       Alert.alert('Authentication Error', 'Please log in to submit data.');
       return;
     }
-    
     // Prepare factors list including "Other" if selected
     let factorsToSubmit = [...selectedFactors];
     if (selectedFactors.includes('Other') && otherFactor.trim()) {
-      // Replace "Other" with the actual text entered by the user
       factorsToSubmit = factorsToSubmit.filter(f => f !== 'Other');
       factorsToSubmit.push(`Other: ${otherFactor.trim()}`);
     }
-    
     if (mindfulnessPractice === null || stressLevel === null || moodLevel === null || sleepQuality === null || factorsToSubmit.length === 0 ||
       sleepStart === null || wakeUp === null) {
       Alert.alert('Incomplete Form', 'Please complete all fields before submitting.');
       return;
     }
-    
-    // If user said "Yes" to mindfulness practice, check if duration and log are filled
     if (mindfulnessPractice === 'yes' && (!practiceDuration.trim() || !practiceLog.trim())) {
       Alert.alert('Incomplete Form', 'Please fill in the duration and what you practiced.');
       return;
     }
-    
     setIsSubmitting(true);
     try {
       let data;
@@ -580,7 +485,9 @@ export default function DailySliders() {
             feelings: factorsToSubmit.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
-            relaxation_level: relaxationLevel, // Add relaxation level to the update
+            relaxation_level: relaxationLevel,
+            played_voice_guidance: playedVoiceGuidance,
+            voice_listen_duration: listenDuration,
           })
           .eq('id', entryId);
         if (error) throw error;
@@ -598,7 +505,9 @@ export default function DailySliders() {
             feelings: factorsToSubmit.join(','),
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
-            relaxation_level: relaxationLevel, // Add relaxation level to the insert
+            relaxation_level: relaxationLevel,
+            played_voice_guidance: playedVoiceGuidance,
+            voice_listen_duration: listenDuration,
             created_at: new Date().toISOString(),
           })
           .select();
@@ -612,12 +521,10 @@ export default function DailySliders() {
       setAlreadySubmittedToday(true);
     } catch (error) {
       Alert.alert('Submission Error', 'Failed to save data. Please try again.');
-      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
   };
-
   // Stress circle interpolation
   const stressCircleScale = stressAnimation.interpolate({
     inputRange: [1, 3, 5],
@@ -628,7 +535,6 @@ export default function DailySliders() {
     inputRange: [1, 5],
     outputRange: [0.8, 0.8],
   });
-
   const getWeekNumber = () => {
     const d = new Date();
     const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -637,19 +543,55 @@ export default function DailySliders() {
     const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
     return weekNo;
   };
-
+  const progress = useMemo(() => {
+    let completed = 0;
+    let total = 7;
+    if (mindfulnessPractice !== null) {
+      if (mindfulnessPractice === 'no') {
+        completed++;
+      } else if (practiceDuration.trim() && practiceLog.trim()) {
+        completed++;
+      }
+    }
+    if (stressLevel !== null) completed++;
+    if (moodLevel !== null) completed++;
+    let factorsFilled = selectedFactors.length > 0;
+    if (selectedFactors.includes('Other') && !otherFactor.trim()) factorsFilled = false;
+    if (factorsFilled) completed++;
+    if (sleepStart && wakeUp) completed++;
+    if (sleepQuality !== null) completed++;
+    if (relaxationLevel !== null) completed++;
+    return (completed / total) * 100;
+  }, [mindfulnessPractice, practiceDuration, practiceLog, stressLevel, moodLevel, selectedFactors, otherFactor, sleepStart, wakeUp, sleepQuality, relaxationLevel]);
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
   if (alreadySubmittedToday) {
     return (
       <View style={styles.container}>
-        {/* Professional Header with Custom Icons */}
         <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Daily Wellness Check</Text>
-          <View style={styles.headerSpacer} />
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+              <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Daily Wellness Check</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <Animated.View style={[styles.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }]} />
+            </View>
+            <View style={styles.progressLabels}>
+              <Text style={styles.progressLabel}>0</Text>
+              <Text style={styles.progressLabel}>100</Text>
+            </View>
+          </View>
         </View>
         <View style={styles.completionContainer}>
           <Text style={styles.celebrationEmoji}>🎉</Text>
@@ -661,85 +603,29 @@ export default function DailySliders() {
       </View>
     );
   }
-
   return (
     <View style={styles.container}>
-      {/* Professional Header with Custom Icons */}
       <View style={styles.professionalHeader}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Daily Wellness Check</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-      
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Voice Recording Section - moved to the top */}
-        {showVoiceRecording && (
-          <View style={styles.section}>
-            <View style={styles.questionHeader}>
-              <View style={styles.iconCircle}>
-                <Icons.voice />
-              </View>
-              <View style={styles.questionText}>
-                <Text style={styles.sectionTitle}>Weekly Voice Guidance</Text>
-                <Text style={styles.sectionSubtitle}>Listen to this week's mindfulness guidance</Text>
-              </View>
-            </View>
-            
-            {weeklyVoiceUrl ? (
-              <View style={styles.voicePlayerCard}>
-                <View style={styles.voicePlayerHeader}>
-                  <Text style={styles.voicePlayerTitle}>Mindfulness Session</Text>
-                  <Text style={styles.voicePlayerWeek}>Week {getWeekNumber()}</Text>
-                </View>
-                
-                <View style={styles.voicePlayerControls}>
-                  <TouchableOpacity 
-                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : '#64C59A' }]}
-                    onPress={isPlaying ? stopPlaying : playRecording}
-                  >
-                    {isPlaying ? (
-                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <Rect x="6" y="6" width="4" height="12" fill="white"/>
-                        <Rect x="14" y="6" width="4" height="12" fill="white"/>
-                      </Svg>
-                    ) : (
-                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <Path d="M8 5V19L19 12L8 5Z" fill="white"/>
-                      </Svg>
-                    )}
-                  </TouchableOpacity>
-                  
-                  <View style={styles.voiceProgressInfo}>
-                    <Text style={styles.voiceStatus}>
-                      {isPlaying ? 'Playing...' : 'Tap play to begin'}
-                    </Text>
-                    <Text style={styles.voiceDuration}>~5 min</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.voiceProgressBar}>
-                  <View style={[styles.voiceProgressFill, { width: isPlaying ? '60%' : '0%' }]} />
-                </View>
-                
-                <View style={styles.voicePlayerFooter}>
-                  <Text style={styles.voicePlayerTip}>🎧 Use headphones for best experience</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.voicePlaceholder}>
-                <Text style={styles.voicePlaceholderText}>
-                  Your research coordinator will upload this week's voice guidance soon.
-                </Text>
-              </View>
-            )}
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
+            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Daily Wellness Check</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <Animated.View style={[styles.progressFill, { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }]} />
           </View>
-        )}
-        
-        {/* Mindfulness Practice Question */}
+          <View style={styles.progressLabels}>
+            <Text style={styles.progressLabel}>0</Text>
+            <Text style={styles.progressLabel}>100</Text>
+          </View>
+        </View>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -750,7 +636,6 @@ export default function DailySliders() {
               <Text style={styles.sectionSubtitle}>Have you done mindfulness practice today?</Text>
             </View>
           </View>
-          
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={[
@@ -767,7 +652,6 @@ export default function DailySliders() {
                 Yes
               </Text>
             </TouchableOpacity>
-            
             <TouchableOpacity
               style={[
                 styles.choiceButton,
@@ -784,8 +668,6 @@ export default function DailySliders() {
               </Text>
             </TouchableOpacity>
           </View>
-          
-          {/* If user selects "Yes", show duration and log inputs */}
           {mindfulnessPractice === 'yes' && (
             <View style={styles.practiceDetailsContainer}>
               <View style={styles.inputGroup}>
@@ -798,7 +680,6 @@ export default function DailySliders() {
                   keyboardType="numeric"
                 />
               </View>
-              
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>What did you practice? (Bullet points)</Text>
                 <TextInput
@@ -812,8 +693,6 @@ export default function DailySliders() {
               </View>
             </View>
           )}
-          
-          {/* If user selects "No", show prompt */}
           {mindfulnessPractice === 'no' && (
             <View style={styles.promptContainer}>
               <Text style={styles.promptText}>
@@ -822,8 +701,62 @@ export default function DailySliders() {
             </View>
           )}
         </View>
-        
-        {/* Stress Level Section */}
+        {showVoiceRecording && (
+          <View style={styles.section}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <Icons.voice />
+              </View>
+              <View style={styles.questionText}>
+                <Text style={styles.sectionTitle}>Weekly Voice Guidance</Text>
+                <Text style={styles.sectionSubtitle}>Listen to this week's mindfulness guidance</Text>
+              </View>
+            </View>
+            {weeklyVoiceUrl ? (
+              <View style={styles.voicePlayerCard}>
+                <View style={styles.voicePlayerHeader}>
+                  <Text style={styles.voicePlayerTitle}>Mindfulness Session</Text>
+                  <Text style={styles.voicePlayerWeek}>Week {getWeekNumber()}</Text>
+                </View>
+                <View style={styles.voicePlayerControls}>
+                  <TouchableOpacity
+                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : '#64C59A' }]}
+                    onPress={isPlaying ? stopPlaying : playRecording}
+                  >
+                    {isPlaying ? (
+                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <Rect x="6" y="6" width="4" height="12" fill="white"/>
+                        <Rect x="14" y="6" width="4" height="12" fill="white"/>
+                      </Svg>
+                    ) : (
+                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <Path d="M8 5V19L19 12L8 5Z" fill="white"/>
+                      </Svg>
+                    )}
+                  </TouchableOpacity>
+                  <View style={styles.voiceProgressInfo}>
+                    <Text style={styles.voiceStatus}>
+                      {isPlaying ? 'Playing...' : 'Tap play to begin'}
+                    </Text>
+                    <Text style={styles.voiceDuration}>~5 min</Text>
+                  </View>
+                </View>
+                <View style={styles.voiceProgressBar}>
+                  <View style={[styles.voiceProgressFill, { width: isPlaying ? '60%' : '0%' }]} />
+                </View>
+                <View style={styles.voicePlayerFooter}>
+                  <Text style={styles.voicePlayerTip}>🎧 Use headphones for best experience</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.voicePlaceholder}>
+                <Text style={styles.voicePlaceholderText}>
+                  Your research coordinator will upload this week's voice guidance soon.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -890,8 +823,6 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-        
-        {/* Mood Selector Section */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -941,8 +872,6 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-        
-        {/* Factors Influencing Stress */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -972,7 +901,6 @@ export default function DailySliders() {
                 </Text>
               </TouchableOpacity>
             ))}
-            {/* Other option */}
             <TouchableOpacity
               style={[
                 styles.factorTag,
@@ -989,8 +917,6 @@ export default function DailySliders() {
               </Text>
             </TouchableOpacity>
           </View>
-          
-          {/* Text input for "Other" factor */}
           {selectedFactors.includes('Other') && (
             <View style={styles.otherFactorContainer}>
               <Text style={styles.otherFactorLabel}>Please specify:</Text>
@@ -1004,7 +930,6 @@ export default function DailySliders() {
             </View>
           )}
         </View>
-        {/* Sleep Schedule */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -1064,7 +989,6 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-        {/* Sleep Quality Section - moved after schedule */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -1114,7 +1038,6 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-        {/* Relaxation Level Section - moved after Sleep Quality */}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -1164,7 +1087,6 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
-        {/* Submit Button */}
         {!showCompletion && (
           <TouchableOpacity
             style={[styles.submitButton, { backgroundColor: getStressColor() }]}
@@ -1189,17 +1111,12 @@ export default function DailySliders() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FDFC',
   },
-  // Professional Header Styles
   professionalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 20,
@@ -1211,6 +1128,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerBackButton: {
     padding: 8,
@@ -1224,6 +1146,28 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 24,
+  },
+  progressContainer: {
+    marginTop: 10,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#E8F5F1',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#64C59A',
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  progressLabel: {
+    fontSize: 12,
+    color: '#666',
   },
   content: {
     padding: 24,
@@ -1377,7 +1321,6 @@ const styles = StyleSheet.create({
   factorTextSelected: {
     color: '#fff',
   },
-  // New styles for "Other" factor
   otherFactorContainer: {
     marginTop: 20,
     width: '100%',
@@ -1542,7 +1485,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
-  // New styles for mindfulness practice section
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
