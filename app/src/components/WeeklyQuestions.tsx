@@ -303,8 +303,14 @@ export default function WeeklyQuestions() {
             <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Weekly Reflection</Text>
-        <View style={styles.headerSpacer} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Weekly Reflection</Text>
+        </View>
+        {!showVocalCapture && !alreadySubmitted && (
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{answers.filter(a => a.trim()).length}/10</Text>
+          </View>
+        )}
       </View>
 
       {showVocalCapture ? (
@@ -539,11 +545,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   headerTitle: {
+    padding: 8,
     fontSize: 22,
     fontWeight: '700',
     color: '#333',
   },
   headerSpacer: {
     width: 24,
+  },
+  progressBadge: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E6F6EE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
   },
 });

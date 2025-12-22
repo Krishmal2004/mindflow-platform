@@ -68,6 +68,7 @@ interface Question {
 interface Answer {
   questionId: string;
   value: number | null;
+  section_type?: string;
 }
 
 export default function MainQuestionnaire() {
@@ -509,6 +510,9 @@ export default function MainQuestionnaire() {
 
   // Section A Questions
   if (currentSection === 'A') {
+    const answeredA = answers.filter(a => a.section_type === 'A' && a.value !== null).length;
+    const totalA = questions.filter(q => q.section_type === 'A').length;
+    
     return (
       <View style={styles.container}>
         {/* Professional Header */}
@@ -518,8 +522,12 @@ export default function MainQuestionnaire() {
               <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire - Part A</Text>
-          <View style={styles.headerSpacer} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Main Questionnaire - Part A</Text>
+          </View>
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{answeredA}/{totalA}</Text>
+          </View>
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.timerContainer}>
@@ -610,6 +618,9 @@ export default function MainQuestionnaire() {
 
   // Section B Questions
   if (currentSection === 'B') {
+    const answeredB = answers.filter(a => a.section_type === 'B' && a.value !== null).length;
+    const totalB = questions.filter(q => q.section_type === 'B').length;
+    
     return (
       <View style={styles.container}>
         {/* Professional Header */}
@@ -619,8 +630,12 @@ export default function MainQuestionnaire() {
               <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Main Questionnaire - Part B</Text>
-          <View style={styles.headerSpacer} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Main Questionnaire - Part B</Text>
+          </View>
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{answeredB}/{totalB}</Text>
+          </View>
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.timerContainer}>
@@ -756,6 +771,26 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 24,
+  },
+  progressBadge: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E6F6EE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
   },
   content: {
     padding: 24,
