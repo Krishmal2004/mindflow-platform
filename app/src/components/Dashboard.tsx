@@ -11,6 +11,7 @@ import {
   Alert,
   ImageBackground,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -303,8 +304,17 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         text: "Sign Out",
         style: "destructive",
         onPress: async () => {
-          const { error } = await supabase.auth.signOut();
-          if (error) Alert.alert("Error", error.message);
+          try {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              Alert.alert("Error", error.message);
+            } else {
+              // Navigate to auth screen
+              router.replace('/');
+            }
+          } catch (error: any) {
+            Alert.alert("Error", error.message || 'Failed to sign out');
+          }
         },
       },
     ]);
@@ -321,9 +331,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
       />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>MindFlow</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={[styles.headerTitle, styles.mindText]}>Mind</Text>
+          <Text style={[styles.headerTitle, styles.flowText]}>Flow</Text>
+        </View>
         <TouchableOpacity onPress={() => setShowAccountModal(true)} style={styles.avatarButton}>
-          <BrainAvatar size={48} />
+          <Image source={require('../../assets/images/user.png')} style={styles.avatarImage} />
         </TouchableOpacity>
       </View>
       <ScrollView 
@@ -611,10 +624,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
             <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); router.push('/account'); }}>
-              <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <Circle cx="12" cy="7" r="4" stroke="#333" strokeWidth="2" />
-                <Path d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21" stroke="#333" strokeWidth="2" />
-              </Svg>
+              <Image source={require('../../assets/images/user.png')} style={styles.modalIcon} />
               <Text style={styles.modalText}>Manage Account</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
@@ -652,16 +662,20 @@ const WaveProgress = ({ progress, color }: { progress: any; color: string }) => 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'transparent' }, // Transparent for gradient/bg
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 28, paddingTop: 64, paddingBottom: 20, zIndex: 1 },
-  headerTitle: { fontSize: 36, fontWeight: '900', color: '#2E8A66', letterSpacing: 0.5 },
+  headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
+  mindText: { color: '#3bcc97ff' },
+  flowText: { color: '#2E8A66' },
+  headerTitle: { fontSize: 36, fontWeight: '900', letterSpacing: 0.5 },
   avatarButton: {
-    padding: 6,
-    borderRadius: 32,
-    backgroundColor: '#fff',
-    shadowColor: '#A8E6CF',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 25,
-    elevation: 20,
+    padding: 0,
+    borderRadius: 40,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    resizeMode: 'cover',
+    borderRadius: 40,
   },
   avatarContainer: {
     borderRadius: 64,
@@ -917,6 +931,7 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, paddingTop: 24, paddingHorizontal: 28, paddingBottom: 48 },
   modalHandle: { width: 60, height: 6, backgroundColor: '#eee', borderRadius: 3, alignSelf: 'center', marginBottom: 28 },
   modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 20 },
+  modalIcon: { width: 44, height: 44, resizeMode: 'contain' },
   logoutRow: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#f5f5f5', paddingTop: 32 },
   modalText: { marginLeft: 20, fontSize: 19, color: '#333', fontWeight: '600' },
   logoutText: { color: '#EF4444', fontWeight: '700' },

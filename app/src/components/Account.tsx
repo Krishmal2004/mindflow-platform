@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -102,8 +103,7 @@ export default function Account({ session }: { session: Session }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
-      // Navigate to the Auth screen
+      // Navigate to auth screen
       router.replace('/');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to sign out');
@@ -129,44 +129,9 @@ export default function Account({ session }: { session: Session }) {
 
         {/* Profile Hero */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.profileCard}>
-          {/* Beautiful Custom Brain + Mindfulness SVG Avatar */}
+          {/* User Profile Picture */}
           <View style={styles.avatarCircle}>
-            <Svg width="140" height="140" viewBox="0 0 120 120">
-              {/* Gradient Definition */}
-              <Defs>
-                <LinearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor="#64C59A" />
-                  <Stop offset="100%" stopColor="#4CAF85" />
-                </LinearGradient>
-              </Defs>
-
-              {/* Soft glow background */}
-              <Circle cx="60" cy="60" r="58" fill="url(#gradient)" opacity="0.15" />
-
-              {/* Main brain outline */}
-              <Path
-                d="M60 20 C40 20, 30 35, 30 55 C30 75, 45 90, 60 90 C75 90, 90 75, 90 55 C90 35, 80 20, 60 20 Z"
-                stroke="#64C59A"
-                strokeWidth="4"
-                fill="none"
-              />
-
-              {/* Brain folds - left */}
-              <Path d="M45 40 Q40 50, 45 60 Q40 70, 45 80" stroke="#64C59A" strokeWidth="3" fill="none" strokeLinecap="round" />
-              <Path d="M38 45 Q35 55, 38 65 Q35 75, 38 82" stroke="#64C59A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
-
-              {/* Brain folds - right */}
-              <Path d="M75 40 Q80 50, 75 60 Q80 70, 75 80" stroke="#64C59A" strokeWidth="3" fill="none" strokeLinecap="round" />
-              <Path d="M82 45 Q85 55, 82 65 Q85 75, 82 82" stroke="#64C59A" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.7" />
-
-              {/* Third eye / mindfulness glow */}
-              <Circle cx="60" cy="48" r="8" fill="#64C59A" opacity="0.25" />
-              <Circle cx="60" cy="48" r="4" fill="#64C59A" />
-
-              {/* Calm energy waves */}
-              <Circle cx="60" cy="60" r="48" stroke="#64C59A" strokeWidth="1.5" fill="none" opacity="0.3" />
-              <Circle cx="60" cy="60" r="54" stroke="#64C59A" strokeWidth="1" fill="none" opacity="0.2" />
-            </Svg>
+            <Image source={require('../../assets/images/user.png')} style={styles.avatarImage} />
           </View>
 
           <Text style={styles.userName}>{username}</Text>
@@ -303,7 +268,7 @@ export default function Account({ session }: { session: Session }) {
 
       {/* Sign Out Confirmation Modal */}
       <Modal visible={showSignOutModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
+        <View style={styles.signOutModalOverlay}>
           <View style={styles.alertModal}>
             <Text style={styles.alertTitle}>Sign Out?</Text>
             <Text style={styles.alertMessage}>You will need to log in again.</Text>
@@ -364,6 +329,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 25,
     elevation: 20,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 140,
+    height: 140,
+    resizeMode: 'cover',
+    marginTop: 8,
   },
   userName: { fontSize: 26, fontWeight: '700', color: '#1A1A1A', marginTop: 12 },
   userEmail: { fontSize: 16, color: '#64C59A', marginTop: 6, fontWeight: '500' },
@@ -424,6 +396,7 @@ const styles = StyleSheet.create({
   dangerButton: { backgroundColor: '#FFFBFA' },
   dangerText: { fontSize: 17, color: '#EF4444', fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  signOutModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 20, paddingHorizontal: 24, paddingBottom: 40 },
   modalHandle: { width: 50, height: 5, backgroundColor: '#ddd', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 24 },

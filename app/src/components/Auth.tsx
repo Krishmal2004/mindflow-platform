@@ -18,7 +18,7 @@ import { supabase } from '../lib/supabase';
 const MindFlowLogo = () => (
   <View style={styles.logoContainer}>
     <Image
-      source={require('../../assets/images/mindfulnessLogo.png')}
+      source={require('../../assets/images/Auth.png')}
       style={styles.logo}
       resizeMode="contain"
     />
@@ -29,7 +29,6 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false); // Toggle between login and signup
 
   async function signInWithEmail() {
     if (!email || !password) {
@@ -45,27 +44,11 @@ export default function Auth() {
     setLoading(false);
   }
 
-  async function signUpWithEmail() {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    if (error) {
-      Alert.alert('Sign Up Failed', error.message);
-    } else {
-      Alert.alert(
-        'Sign Up Successful',
-        'Please check your email for confirmation.'
-      );
-      // Switch back to login view after successful signup
-      setIsSignUp(false);
-    }
-    setLoading(false);
+  function handleSignUpClick() {
+    Alert.alert(
+      'Sign Up',
+      'Research admins will assign you and give you the credentials'
+    );
   }
 
   return (
@@ -73,19 +56,20 @@ export default function Auth() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.innerContainer}>
           {/* Logo */}
           <MindFlowLogo />
 
           {/* App Name */}
-          <Text style={styles.appName}>MindFlow</Text>
+          <View style={styles.headerTitleContainer}>
+            <Text style={[styles.appName, styles.mindText]}>Mind</Text>
+            <Text style={[styles.appName, styles.flowText]}>Flow</Text>
+          </View>
 
           {/* Welcome Text */}
           <Text style={styles.welcomeText}>
-            {isSignUp 
-              ? 'Create an account to start your mindfulness journey' 
-              : 'Welcome back to your mindfulness journey'}
+            Welcome back to your mindfulness journey
           </Text>
 
           {/* University Email */}
@@ -121,32 +105,28 @@ export default function Auth() {
             </View>
           </View>
 
-          {/* Action Button */}
+          {/* Login Button */}
           <TouchableOpacity
             style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-            onPress={isSignUp ? signUpWithEmail : signInWithEmail}
+            onPress={signInWithEmail}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.loginButtonText}>
-                {isSignUp ? 'Sign Up' : 'Login'}
+                Login
               </Text>
             )}
           </TouchableOpacity>
 
-          {/* Toggle between Login and Sign Up */}
+          {/* Sign Up Link */}
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>
-              {isSignUp 
-                ? 'Already have an account? ' 
-                : "Don't have an account? "}
+              Don't have an account?
             </Text>
-            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
-              <Text style={styles.signupLink}>
-                {isSignUp ? 'Login' : 'Sign Up'}
-              </Text>
+            <TouchableOpacity onPress={handleSignUpClick}>
+              <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -158,99 +138,112 @@ export default function Auth() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FDFC',
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
   innerContainer: {
     alignItems: 'center',
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   logoContainer: {
     width: 120,
     height: 120,
-    backgroundColor: '#64C59A',
+    backgroundColor: '#E8F5F1',
     borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
+    marginBottom: 28,
+    shadowColor: '#2E8A66',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: '#A8E6CF',
   },
   logo: {
-    width: 64,
-    height: 64,
-    tintColor: '#fff',
+    width: 95,
+    height: 95,
   },
   appName: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 40,
+    fontWeight: '800',
     color: '#2E8A66',
-    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   welcomeText: {
     fontSize: 16,
-    color: '#666',
+    color: '#555',
     textAlign: 'center',
-    marginBottom: 40,
-    paddingHorizontal: 20,
+    marginBottom: 44,
+    paddingHorizontal: 16,
+    lineHeight: 24,
+    fontWeight: '500',
   },
   inputContainer: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 22,
   },
   label: {
     fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-    fontWeight: '600',
+    color: '#2E8A66',
+    marginBottom: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   inputWrapper: {
     position: 'relative',
   },
   input: {
-    backgroundColor: '#F7F7F7',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderWidth: 1.5,
+    borderColor: '#E0EBE8',
+    color: '#333',
+    fontWeight: '500',
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginTop: 8,
+    marginTop: 10,
   },
   forgotPasswordText: {
     color: '#2E8A66',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   loginButton: {
-    backgroundColor: '#64C59A',
+    backgroundColor: '#2E8A66',
     width: '100%',
     paddingVertical: 18,
-    borderRadius: 30,
+    borderRadius: 26,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#64C59A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    marginTop: 18,
+    shadowColor: '#2E8A66',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
   },
   loginButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   loginButtonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -261,11 +254,11 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#DDD',
+    backgroundColor: '#E0E0E0',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#888',
+    color: '#999',
     fontSize: 14,
   },
   ssoContainer: {
@@ -279,11 +272,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#FFF',
     paddingVertical: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderWidth: 1.5,
+    borderColor: '#E0EBE8',
   },
   ssoIcon: {
     width: 24,
@@ -292,20 +285,30 @@ const styles = StyleSheet.create({
   },
   ssoText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#333',
   },
   signupContainer: {
     flexDirection: 'row',
-    marginTop: 32,
+    marginTop: 36,
+    justifyContent: 'center',
+    gap: 6,
   },
   signupText: {
     color: '#666',
     fontSize: 16,
+    fontWeight: '500',
   },
   signupLink: {
     color: '#2E8A66',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  mindText: {
+    color: '#3bcc97ff',
+  },
+  flowText: {
+    color: '#2E8A66',
   },
 });
