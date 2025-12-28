@@ -16,10 +16,6 @@ import { useSession } from '../contexts/SessionContext';
 import Svg, { Path, Circle, G, Line, Rect } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 
-// Audio playback uses expo-av (Sound.createAsync, playAsync, etc.)
-// Audio recording utilities available from expo-audio if needed
-import { Audio } from 'expo-av';
-
 const { width } = Dimensions.get('window');
 
 // Stress level emojis from low to high (1-5 scale)
@@ -164,15 +160,6 @@ export default function DailySliders() {
   const [entryId, setEntryId] = useState<number | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showEditAfterExercise, setShowEditAfterExercise] = useState(false);
-  const [researchId, setResearchId] = useState<string | null>(null);
-  const [showVoiceGuidance, setShowVoiceGuidance] = useState(false);
-  const [sound, setSound] = useState<any | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [weeklyVoiceUrl, setWeeklyVoiceUrl] = useState<string | null>(null);
-  const [playedVoiceGuidance, setPlayedVoiceGuidance] = useState(false);
-  const [listenDuration, setListenDuration] = useState(0);
-  const [playbackPosition, setPlaybackPosition] = useState(0);
-  const [playbackDuration, setPlaybackDuration] = useState(0);
 
   const stressAnimation = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -180,14 +167,10 @@ export default function DailySliders() {
   // Check if user has already submitted today
   useEffect(() => {
     checkDailySubmission();
-    getUserResearchId();
-    loadWeeklyVoice();
 
     // Cleanup function
     return () => {
-      if (sound) {
-        sound.unloadAsync().catch((err: any) => {});
-      }
+      // Cleanup code if needed
     };
   }, [session]);
 
@@ -200,84 +183,6 @@ export default function DailySliders() {
       }).start();
     }
   }, [alreadySubmittedToday, showCompletion]);
-
-  const getUserResearchId = async () => {
-    if (!session?.user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('researchID')
-        .eq('id', session.user.id)
-        .single();
-      if (error) throw error;
-      if (data && data.researchID) {
-        setResearchId(data.researchID);
-        if (data.researchID.endsWith('.ex')) {
-          setShowVoiceGuidance(true);
-        }
-      }
-    } catch (error) {}
-  };
-
-  const loadWeeklyVoice = async () => {
-    if (!session?.user?.id) return;
-    try {
-      const currentDate = new Date();
-      const date = new Date(Date.UTC(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate()));
-      date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-      const weekNumber = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-      const year = date.getUTCFullYear();
-
-      // Updated file key pattern to match the actual files that will be uploaded
-      const fileKey = `SessionRecord/V${year}-W${weekNumber.toString().padStart(2, '0')}.mp3`;
-
-      // First, try to get the file URL from the database
-      const { data, error } = await supabase
-        .from('voice_recordings')
-        .select('file_url')
-        .eq('week_number', weekNumber)
-        .eq('year', year)
-        .limit(1);
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      // If we have a URL in the database, use it
-      if (data && data.length > 0 && data[0].file_url) {
-        try {
-          // Validate the URL
-          new URL(data[0].file_url);
-          setWeeklyVoiceUrl(data[0].file_url);
-          return;
-        } catch (urlError) {
-          console.warn('Invalid URL from database:', data[0].file_url);
-        }
-      }
-
-      // If no URL in database or invalid URL, construct URL from R2 public URL
-      const r2BaseUrl = process.env.EXPO_PUBLIC_R2_PUBLIC_URL;
-      if (r2BaseUrl) {
-        try {
-          // Use URL constructor to correctly join base + file key (handles slashes)
-          const constructed = new URL(fileKey, r2BaseUrl).toString();
-          // Validate
-          new URL(constructed);
-          setWeeklyVoiceUrl(constructed);
-          return;
-        } catch (urlError) {
-          console.warn('Invalid constructed URL from R2 base:', urlError);
-        }
-      }
-
-      // If we reach here, we couldn't get a valid URL
-      setWeeklyVoiceUrl(null);
-    } catch (error) {
-      console.error('Error loading weekly voice:', error);
-      setWeeklyVoiceUrl(null);
-    }
-  };
 
   const checkDailySubmission = async () => {
     if (!session?.user?.id) return;
@@ -343,96 +248,6 @@ export default function DailySliders() {
   // Get relaxation emoji - 1 stressed, 5 relaxed
   const getRelaxationEmoji = () => STRESS_EMOJIS[relaxationLevel ? 5 - relaxationLevel : 2] || '😐';
 
-  // Playback functions
-  const playGuidance = async () => {
-    if (!weeklyVoiceUrl || !Audio) {
-      Alert.alert('Playback Error', 'Audio functionality is not available.');
-      return;
-    }
-
-    try {
-      new URL(weeklyVoiceUrl);
-    } catch (urlError) {
-      Alert.alert('Playback Error', 'Invalid audio file URL.');
-      return;
-    }
-
-    try {
-      // Unload any existing sound
-      if (sound) {
-        await sound.unloadAsync();
-        setSound(null);
-      }
-
-      // Set audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        playThroughEarpieceAndroid: false,
-      });
-
-
-
-      // Create sound
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: weeklyVoiceUrl },
-        { shouldPlay: true, progressUpdateIntervalMillis: 500 },
-        onPlaybackStatusUpdate
-      );
-
-      setSound(newSound);
-      setIsPlaying(true);
-      setPlayedVoiceGuidance(true);
-
-      await newSound.playAsync();
-    } catch (err: any) {
-      setIsPlaying(false);
-      let errorMessage = 'Failed to play the audio. Please try again.';
-      if (err.message?.includes('400') || err.message?.includes('404')) {
-        errorMessage = 'Audio file not found or inaccessible.';
-      } else if (err.code === 'E_NETWORK_ERROR') {
-        errorMessage = 'Network error: Unable to connect.';
-      }
-      Alert.alert('Playback Error', errorMessage);
-      console.error('Playback error:', err);
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded) {
-      setPlaybackPosition(status.positionMillis);
-      setPlaybackDuration(status.durationMillis || 0);
-
-      if (status.didJustFinish) {
-        setListenDuration(prev => prev + Math.floor(status.durationMillis / 1000));
-        setIsPlaying(false);
-        sound.unloadAsync();
-        setSound(null);
-        setPlaybackPosition(0);
-      }
-    } else if (status.error) {
-      Alert.alert('Playback Error', `Error: ${status.error}`);
-      setIsPlaying(false);
-    }
-  };
-
-  const stopPlaying = async () => {
-    if (sound) {
-      try {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          setListenDuration(prev => prev + Math.floor(status.positionMillis / 1000));
-        }
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(null);
-        setIsPlaying(false);
-        setPlaybackPosition(0);
-      } catch (err) {}
-    }
-  };
-
   // Submit wellness data
   const submitWellnessData = async (isEdit = false) => {
     if (!session?.user?.id) {
@@ -475,8 +290,6 @@ export default function DailySliders() {
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
             relaxation_level: relaxationLevel,
-            played_voice_guidance: playedVoiceGuidance,
-            voice_listen_duration: listenDuration,
           })
           .eq('id', entryId);
         if (error) throw error;
@@ -495,8 +308,6 @@ export default function DailySliders() {
             sleep_start_time: sleepStart,
             wake_up_time: wakeUp,
             relaxation_level: relaxationLevel,
-            played_voice_guidance: playedVoiceGuidance,
-            voice_listen_duration: listenDuration,
             created_at: new Date().toISOString(),
           })
           .select();
@@ -684,72 +495,7 @@ export default function DailySliders() {
               </View>
             </View>
           )}
-          {mindfulnessPractice === 'no' && (
-            <View style={styles.promptContainer}>
-              <Text style={styles.promptText}>
-                We recommend listening to the Weekly Voice Guidance to start your mindfulness practice today.
-              </Text>
-            </View>
-          )}
         </View>
-        {showVoiceGuidance && (
-          <View style={styles.section}>
-            <View style={styles.questionHeader}>
-              <View style={styles.iconCircle}>
-                <Icons.voice />
-              </View>
-              <View style={styles.questionText}>
-                <Text style={styles.sectionTitle}>Weekly Voice Guidance</Text>
-                <Text style={styles.sectionSubtitle}>Listen to this week's mindfulness guidance</Text>
-              </View>
-            </View>
-            {weeklyVoiceUrl ? (
-              <View style={styles.voicePlayerCard}>
-                <View style={styles.voicePlayerHeader}>
-                  <Text style={styles.voicePlayerTitle}>Mindfulness Session</Text>
-                  <Text style={styles.voicePlayerWeek}>Week {getWeekNumber()}</Text>
-                </View>
-                <View style={styles.voicePlayerControls}>
-                  <TouchableOpacity
-                    style={[styles.voiceControlButton, { backgroundColor: isPlaying ? '#EF4444' : CONTROL_COLOR }]}
-                    onPress={isPlaying ? stopPlaying : playGuidance}
-                  >
-                    {isPlaying ? (
-                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <Rect x="6" y="6" width="4" height="12" fill="white"/>
-                        <Rect x="14" y="6" width="4" height="12" fill="white"/>
-                      </Svg>
-                    ) : (
-                      <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                        <Path d="M8 5V19L19 12L8 5Z" fill="white"/>
-                      </Svg>
-                    )}
-                  </TouchableOpacity>
-                  <View style={styles.voiceProgressInfo}>
-                    <Text style={styles.voiceStatus}>
-                      {isPlaying ? 'Playing...' : 'Tap play to begin'}
-                    </Text>
-                    <Text style={styles.voiceDuration}>
-                      {playbackDuration > 0 ? `${Math.floor(playbackPosition / 60000)}:${((playbackPosition % 60000) / 1000).toFixed(0).padStart(2, '0')} / ${Math.floor(playbackDuration / 60000)}:${((playbackDuration % 60000) / 1000).toFixed(0).padStart(2, '0')}` : '~5 min'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.voiceProgressBar}>
-                  <View style={[styles.voiceProgressFill, { width: playbackDuration > 0 ? `${(playbackPosition / playbackDuration) * 100}%` : '0%' }]} />
-                </View>
-                <View style={styles.voicePlayerFooter}>
-                  <Text style={styles.voicePlayerTip}>🎧 Use headphones for best experience</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.voicePlaceholder}>
-                <Text style={[styles.voicePlaceholderText, { color: CONTROL_COLOR }]}> 
-                  Your research coordinator will upload this week's voice guidance soon.
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
