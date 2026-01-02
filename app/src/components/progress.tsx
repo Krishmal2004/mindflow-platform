@@ -74,22 +74,23 @@ export default function ProgressScreen() {
       if (sliderError) throw sliderError;
       setDailySliderData(sliderData || []);
 
-      // Fetch weekly answers (all) and compute weeks from earliest submission
-      const { data: weeklyAnswers, error: weeklyError } = await supabase
-        .from('weekly_answers')
-        .select('week_id, submitted_at')
+      // Fetch voice recordings (all) and compute weeks from earliest submission
+      const { data: voiceRecordings, error: voiceRecordingsError } = await supabase
+        .from('voice_recordings')
+        .select('week_number, year, created_at')
         .eq('user_id', session?.user?.id)
-        .order('submitted_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
-      if (weeklyError) throw weeklyError;
+      if (voiceRecordingsError) throw voiceRecordingsError;
 
       const submittedWeeksSet = new Set<string>();
       let earliestWeeklyDate: Date | null = null;
-      if (weeklyAnswers && weeklyAnswers.length > 0) {
-        weeklyAnswers.forEach(answer => {
-          const submitted = new Date(answer.submitted_at);
-          if (!earliestWeeklyDate || submitted < earliestWeeklyDate) earliestWeeklyDate = submitted;
-          const [y, w] = getWeekNumber(submitted);
+      if (voiceRecordings && voiceRecordings.length > 0) {
+        voiceRecordings.forEach(recording => {
+          // Create a date from week number and year
+          const date = new Date(recording.year, 0, 1 + (recording.week_number - 1) * 7);
+          if (!earliestWeeklyDate || date < earliestWeeklyDate) earliestWeeklyDate = date;
+          const [y, w] = getWeekNumber(date);
           submittedWeeksSet.add(`${y}-W${w.toString().padStart(2, '0')}`);
         });
       }
@@ -265,7 +266,7 @@ export default function ProgressScreen() {
                 </Svg>
               </View>
               <Text style={styles.completionValue}>{weeklyCompletion}%</Text>
-              <Text style={styles.completionLabel}>Weekly Questions</Text>
+              <Text style={styles.completionLabel}>Weekly Recordings</Text>
             </View>
             
             <View style={styles.completionCard}>

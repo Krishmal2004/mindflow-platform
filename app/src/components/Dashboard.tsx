@@ -155,14 +155,14 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
 
       const consistencyPercentage = recentCount ? Math.min(100, Math.round((recentCount / 30) * 100)) : 0;
 
-      const { data: weeklyAnswers } = await supabase
-        .from('weekly_answers')
-        .select('submitted_at')
+      const { data: voiceRecordings } = await supabase
+        .from('voice_recordings')
+        .select('created_at')
         .eq('user_id', session.user.id)
-        .gte('submitted_at', sixMonthsAgo.toISOString());
+        .gte('created_at', sixMonthsAgo.toISOString());
 
-      const uniqueWeeks = new Set(weeklyAnswers?.map(a => {
-        const d = new Date(a.submitted_at);
+      const uniqueWeeks = new Set(voiceRecordings?.map(a => {
+        const d = new Date(a.created_at);
         const [year, week] = getWeekNumber(d);
         return `${year}-W${week.toString().padStart(2, '0')}`;
       }) || []);
@@ -185,7 +185,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
       setWeeklyProgress(weeklyProgressPercentage);
       setMainQuestionnaireProgress(mainProgress);
       setDailySlidersCount(totalCount || 0);
-      setWeeklyWhispersCount(uniqueWeeks.size);
+      setWeeklyWhispersCount(uniqueWeeks.size); // This now reflects voice recordings
       setCoreInsightsCount(mainCount || 0);
 
       streakProgress.value = withTiming(currentStreak > 10 ? 100 : currentStreak * 10, { duration: 1000 });
@@ -400,7 +400,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                   </Svg>
                 </View>
                 <Text style={styles.summaryStatValue}>{Math.floor((weeklyProgress * 26) / 100)}</Text>
-                <Text style={styles.summaryStatLabel}>Weekly Surveys</Text>
+                <Text style={styles.summaryStatLabel}>Weekly Voice</Text>
               </View>
 
               <View style={styles.summaryStatCard}>
@@ -458,7 +458,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                           <Text style={[styles.roadmapCardTitle, aboutMeCompleted && styles.roadmapCardTitleCompleted]}>
                             About Me
                           </Text>
-                          <Text style={styles.roadmapCardFrequency}>Onboarding • 1 time</Text>
+                          <Text style={styles.roadmapCardFrequency}>Onboarding        • 1 time</Text>
                           <Text style={[styles.roadmapCardDescription, aboutMeCompleted && styles.roadmapCardDescriptionCompleted]}>
                             Set up your profile
                           </Text>

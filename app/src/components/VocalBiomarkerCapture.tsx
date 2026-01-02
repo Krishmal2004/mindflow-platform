@@ -159,7 +159,19 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
       
       // Update duration every second
       intervalRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
+        setRecordingDuration(prev => {
+          const newDuration = prev + 1;
+          // Automatically stop recording at 30 seconds
+          if (newDuration >= 30) {
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
+            // Stop the recording automatically
+            stopRecording();
+          }
+          return newDuration;
+        });
       }, 1000) as unknown as NodeJS.Timeout;
     } catch (err) {
       console.error('Failed to start recording', err);
@@ -184,25 +196,26 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
       if (uri) {
         setRecordingUri(uri);
         
-        // Check duration
-        if (recordingDuration < 15) {
+        // Get the actual duration from the recording object
+        const status = await recordingRef.current.getStatusAsync();
+        const actualDuration = status.durationMillis / 1000;
+        
+        // If the actual duration is >= 30 seconds, it was auto-stopped, so skip the minimum duration check
+        if (actualDuration >= 30) {
+          // This was an auto-stop at 30 seconds, proceed to complete stage
+          setIsRecording(false);
+        } else if (actualDuration < 15) {
+          // Check duration only for manually stopped recordings
           Alert.alert('Recording Too Short', 'Recording must be at least 15 seconds. Please read the full paragraph.');
           setRecordingUri(null);
           setRecordingDuration(0);
           setIsRecording(false); // Reset recording state so button shows "Start" again
-          return;
-        }
-        
-        if (recordingDuration > 45) {
-          Alert.alert('Recording Too Long', 'Recording exceeded 45 seconds. Please try again with a more natural pace.');
-          setRecordingUri(null);
-          setRecordingDuration(0);
-          setIsRecording(false); // Reset recording state so button shows "Start" again
-          return;
+        } else {
+          // Recording is between 15-30 seconds, proceed normally
+          setIsRecording(false);
         }
       }
       
-      setIsRecording(false);
     } catch (err) {
       console.error('Failed to stop recording', err);
       Alert.alert('Recording Error', 'Failed to stop recording. Please try again.');
@@ -313,85 +326,89 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Vocal Biomarker Capture</Text>
-      </View>
-
       <ScrollView contentContainerStyle={styles.content}>
-        {showLoading ? (
-          // Loading screen for 5 seconds after upload
+        {!showLoading && ( // Only show the main content if not showing loading
+          <>
+            {!recordingUri ? (
+              <>
+                <Animated.View entering={FadeInDown.delay(100)} style={styles.instructionContainer}>
+                  <VoiceIcon />
+                  <Text style={styles.instructionTitle}>Voice Recording</Text>
+                  <Text style={styles.instructionText}>
+                    Please read the following paragraph aloud in your normal speaking voice. Try to speak clearly.
+                  </Text>
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(200)} style={styles.recordingContainer}>
+                  <View style={styles.timerContainer}>
+                    <Text style={styles.timerText}>{recordingDuration}s</Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[styles.recordButton, isRecording && styles.recordingActive]}
+                    onPress={handleToggleRecording}
+                    disabled={uploading}
+                  >
+                    <MicrophoneIcon isRecording={isRecording} />
+                  </TouchableOpacity>
+                  
+                  <Text style={styles.recordButtonText}>
+                    {isRecording ? 'Stop Recording' : 'Start Recording'}
+                  </Text>
+                  
+                  {isRecording && (
+                    <View style={styles.recordingIndicator}>
+                      <View style={styles.pulseDot} />
+                      <Text style={styles.recordingText}>Recording...</Text>
+                    </View>
+                  )}
+                </Animated.View>
+
+                <Animated.View entering={FadeInDown.delay(300)} style={styles.passageContainer}>
+                  <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
+                </Animated.View>
+              </>
+            ) : (
+              <Animated.View entering={FadeInDown.delay(100)} style={styles.reviewContainer}>
+                <CheckmarkIcon />
+                <Text style={styles.reviewTitle}>Recording Complete!</Text>
+                <Text style={styles.reviewText}>Duration: {recordingDuration} seconds</Text>
+                
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity style={styles.secondaryButton} onPress={handleRetry}>
+                    <Text style={styles.secondaryButtonText}>Retake</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.primaryButton} 
+                    onPress={uploadRecording}
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <>
+                        <ActivityIndicator color="#fff" size="small" />
+                        <Text style={styles.primaryButtonText}>Uploading... {uploadProgress}%</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.primaryButtonText}>Submit Recording</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            )}
+          </>
+        )}
+      </ScrollView>
+      
+      {/* Loading overlay that appears as modal when processing recording */}
+      {showLoading && (
+        <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2E8A66" />
             <Text style={styles.loadingText}>Processing your recording...</Text>
           </View>
-        ) : !recordingUri ? (
-          <>
-            <Animated.View entering={FadeInDown.delay(100)} style={styles.instructionContainer}>
-              <VoiceIcon />
-              <Text style={styles.instructionTitle}>Voice Recording</Text>
-              <Text style={styles.instructionText}>
-                Please read the following paragraph aloud in your normal speaking voice. Try to speak clearly.
-              </Text>
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.delay(200)} style={styles.recordingContainer}>
-              <View style={styles.timerContainer}>
-                <Text style={styles.timerText}>{recordingDuration}s</Text>
-              </View>
-              
-              <TouchableOpacity
-                style={[styles.recordButton, isRecording && styles.recordingActive]}
-                onPress={handleToggleRecording}
-                disabled={uploading}
-              >
-                <MicrophoneIcon isRecording={isRecording} />
-              </TouchableOpacity>
-              
-              <Text style={styles.recordButtonText}>
-                {isRecording ? 'Stop Recording' : 'Start Recording'}
-              </Text>
-              
-              {isRecording && (
-                <View style={styles.recordingIndicator}>
-                  <View style={styles.pulseDot} />
-                  <Text style={styles.recordingText}>Recording...</Text>
-                </View>
-              )}
-            </Animated.View>
-
-            <Animated.View entering={FadeInDown.delay(300)} style={styles.passageContainer}>
-              <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
-            </Animated.View>
-          </>
-        ) : (
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.reviewContainer}>
-            <CheckmarkIcon />
-            <Text style={styles.reviewTitle}>Recording Complete!</Text>
-            <Text style={styles.reviewText}>Duration: {recordingDuration} seconds</Text>
-            
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={handleRetry}>
-                <Text style={styles.secondaryButtonText}>Retake</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.primaryButton} 
-                onPress={uploadRecording}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <>
-                    <ActivityIndicator color="#fff" size="small" />
-                    <Text style={styles.primaryButtonText}>Uploading... {uploadProgress}%</Text>
-                  </>
-                ) : (
-                  <Text style={styles.primaryButtonText}>Submit Recording</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        )}
-      </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -433,6 +450,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 6,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   loadingText: {
     fontSize: 20,
