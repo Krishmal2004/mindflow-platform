@@ -1,4 +1,3 @@
-// app/(tabs)/index.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,13 +14,16 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withTiming, useAnimatedProps } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useSharedValue, withTiming, useAnimatedProps } from 'react-native-reanimated';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Pattern } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
 const { width } = Dimensions.get('window');
 
+/**
+ * Array of mindfulness tips displayed to users with '.ex' extension.
+ */
 const MINDFULNESS_TIPS = [
   "Take a moment to breathe deeply. Notice how your body feels right now, without judgment.",
   "Pause and observe one thing you can see, hear, and feel in this moment.",
@@ -35,6 +37,9 @@ const MINDFULNESS_TIPS = [
   "This too shall pass. Breathe through it."
 ];
 
+/**
+ * Array of fascinating facts displayed to users with '.cg' extension.
+ */
 const CONTROL_FACTS = [
   "Honey never spoils. Archaeologists have found edible honey in ancient Egyptian tombs.",
   "The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion.",
@@ -46,71 +51,27 @@ const CONTROL_FACTS = [
   "The shortest war in history was between Britain and Zanzibar in 1896. It lasted 38 minutes.",
   "Oxford University is older than the Aztec Empire.",
   "There are more stars in the universe than grains of sand on all the Earth's beaches.",
-  "Wombat poop is cube-shaped to prevent it from rolling away.",
-  "Strawberries are not berries, but bananas, avocados, and watermelons are.",
-  "The national animal of Scotland is the Unicorn.",
-  "Sharks existed before trees.",
-  "A blue whale's heart is the size of a small car.",
-  "An average cumulus cloud weighs about 1.1 million pounds.",
-  "Cows can walk up stairs, but their knees cannot bend properly to walk down them.",
-  "Space smells like seared steak or hot metal according to astronauts.",
-  "Hot water can freeze faster than cold water. This is known as the Mpemba effect.",
-  "The longest English word without a vowel is 'rhythms'.",
-  "Russia has a larger surface area than Pluto.",
-  "If you uncoiled the DNA in your body, it would stretch 10 billion miles.",
-  "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
-  "Glass is not a slow-moving liquid; it is an amorphous solid.",
-  "Flamingos are born grey. Their diet of brine shrimp turns them pink.",
-  "The 'QWERTY' keyboard was designed to slow down typists so typewriters wouldn't jam.",
-  "Babies are born with ~300 bones, but adults have only 206 because some fuse together.",
-  "Sunsets on Mars appear blue due to the dust in the atmosphere.",
-  "A group of crows is called a 'murder'.",
-  "The dot over the letter 'i' or 'j' is called a 'tittle'."
 ];
 
-// Enhanced Brain Avatar with more mindful, calm design (added subtle glow and patterns)
-const BrainAvatar = ({ size = 48 }: { size?: number }) => (
-  <View style={[styles.avatarContainer, { width: size + 20, height: size + 20 }]}>
-    <Svg width={size} height={size} viewBox="0 0 120 120">
-      <Defs>
-        <SvgLinearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <Stop offset="0%" stopColor="#A8E6CF" />
-          <Stop offset="100%" stopColor="#64C59A" />
-        </SvgLinearGradient>
-        <Pattern id="pattern" patternUnits="userSpaceOnUse" width="20" height="20">
-          <Path d="M5 10 C5 5, 15 5, 15 10 C15 15, 5 15, 5 10" fill="none" stroke="#A8E6CF" strokeWidth="0.5" opacity="0.3" />
-        </Pattern>
-      </Defs>
-      <Circle cx="60" cy="60" r="58" fill="url(#grad)" opacity="0.2" />
-      <Circle cx="60" cy="60" r="58" fill="url(#pattern)" opacity="0.1" />
-      <Path
-        d="M60 20 C35 20, 25 40, 30 60 C35 80, 50 95, 60 95 C70 95, 85 80, 90 60 C95 40, 85 20, 60 20 Z"
-        stroke="#64C59A"
-        strokeWidth="4"
-        fill="none"
-        opacity="0.8"
-      />
-      <Path d="M45 40 Q40 55, 45 70 Q40 85, 45 95" stroke="#A8E6CF" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.6" />
-      <Path d="M38 45 Q35 60, 38 75 Q35 90, 38 95" stroke="#A8E6CF" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.4" />
-      <Path d="M75 40 Q80 55, 75 70 Q80 85, 75 95" stroke="#A8E6CF" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.6" />
-      <Path d="M82 45 Q85 60, 82 75 Q85 90, 82 95" stroke="#A8E6CF" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.4" />
-      <Circle cx="60" cy="50" r="10" fill="#A8E6CF" opacity="0.3" />
-      <Circle cx="60" cy="50" r="5" fill="#64C59A" />
-      <Circle cx="60" cy="65" r="50" stroke="#A8E6CF" strokeWidth="1.5" fill="none" opacity="0.4" />
-    </Svg>
-  </View>
-);
-
-// Custom subtle background pattern component
+/**
+ * Component for rendering a subtle background pattern.
+ */
 const CalmBackground = () => (
   <ImageBackground
-    source={{ uri: 'https://example.com/subtle-zen-pattern.png' }} // Replace with a real subtle pattern URL or local asset (e.g., waves or leaves)
+    source={{ uri: 'https://example.com/subtle-zen-pattern.png' }} // Replace with a real subtle pattern URL or local asset
     style={StyleSheet.absoluteFillObject}
     resizeMode="repeat"
     imageStyle={{ opacity: 0.05 }}
   />
 );
 
+/**
+ * Main Dashboard component displaying user progress, tips, and navigation.
+ * 
+ * @param {Object} props - Component props
+ * @param {Session} props.session - Current user session
+ * @param {Function} props.onNavigateToAboutMe - Callback to navigate to About Me
+ */
 export default function Dashboard({ session, onNavigateToAboutMe }: { session: Session; onNavigateToAboutMe: () => void }) {
   const router = useRouter();
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
@@ -120,26 +81,24 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   const [weeklyProgress, setWeeklyProgress] = useState(0);
   const [mainQuestionnaireProgress, setMainQuestionnaireProgress] = useState(0);
   const [showAccountModal, setShowAccountModal] = useState(false);
-  const [missedDates, setMissedDates] = useState<string[]>([]); // New state for missed dates
-  const [totalPossibleDays, setTotalPossibleDays] = useState(0); // New state for total possible days
-  const [refreshing, setRefreshing] = useState(false); // New state for pull-to-refresh
-  const [researchID, setResearchID] = useState(''); // New state for research ID
-  const [userExtension, setUserExtension] = useState<'ex' | 'cg' | ''>(''); // New state for user extension
-  const [aboutMeCompleted, setAboutMeCompleted] = useState(false); // Track if About Me is done
-  const [dailySlidersCount, setDailySlidersCount] = useState(0); // Track daily sliders count
-  const [weeklyWhispersCount, setWeeklyWhispersCount] = useState(0); // Track weekly whispers count
-  const [coreInsightsCount, setCoreInsightsCount] = useState(0); // Track core insights count
+  const [missedDates, setMissedDates] = useState<string[]>([]);
+  const [totalPossibleDays, setTotalPossibleDays] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [researchID, setResearchID] = useState('');
+  const [userExtension, setUserExtension] = useState<'ex' | 'cg' | ''>('');
+  const [aboutMeCompleted, setAboutMeCompleted] = useState(false); // TODO: Fetch actual completion status
+  const [dailySlidersCount, setDailySlidersCount] = useState(0);
+  const [weeklyWhispersCount, setWeeklyWhispersCount] = useState(0);
+  const [coreInsightsCount, setCoreInsightsCount] = useState(0);
 
-  // Animations for progress
+  // Animation values for progress indicators
   const streakProgress = useSharedValue(0);
   const consistencyProgress = useSharedValue(0);
   const weeklyProgressAnim = useSharedValue(0);
   const mainProgressAnim = useSharedValue(0);
 
-  // Create animated SVG components
   const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-  // Animated props for circles
   const animatedPropsStreak = useAnimatedProps(() => ({
     strokeDashoffset: 440 * (1 - Math.min(1, streakProgress.value / 100)),
   }));
@@ -148,6 +107,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     strokeDashoffset: 440 * (1 - consistencyProgress.value / 100),
   }));
 
+  /**
+   * Effect to cycle through tips/facts every 60 seconds.
+   */
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTipIndex(prev => (prev + 1) % MINDFULNESS_TIPS.length);
@@ -155,17 +117,26 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     return () => clearInterval(interval);
   }, []);
 
+  /**
+   * Effect to fetch user progress and research ID on session change.
+   */
   useEffect(() => {
     fetchUserProgress();
     fetchResearchID();
   }, [session]);
 
+  /**
+   * Handles pull-to-refresh by refetching user progress.
+   */
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchUserProgress();
     setRefreshing(false);
   };
 
+  /**
+   * Fetches the user's research ID and determines extension (.ex or .cg).
+   */
   const fetchResearchID = async () => {
     if (!session?.user?.id) return;
     try {
@@ -174,12 +145,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .select('researchID')
         .eq('id', session.user.id)
         .single();
-      
       if (error && error.code !== 'PGRST116') throw error;
-      
       if (data?.researchID) {
         setResearchID(data.researchID);
-        // Extract extension (.ex or .cg)
         if (data.researchID.endsWith('.ex')) {
           setUserExtension('ex');
         } else if (data.researchID.endsWith('.cg')) {
@@ -191,65 +159,55 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     }
   };
 
+  /**
+   * Fetches and calculates user progress metrics from Supabase.
+   */
   const fetchUserProgress = async () => {
     if (!session?.user?.id) return;
     try {
-      // Fetch daily sliders streak
+      // Fetch daily sliders data
       const { data: streakData, error: streakError } = await supabase
         .from('daily_sliders')
         .select('created_at')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
       if (streakError) throw streakError;
-      
-      // Calculate streak (consecutive days)
+
+      // Calculate streak
       let currentStreak = 0;
       if (streakData && streakData.length > 0) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        // Create a set of dates with entries
-        const entryDates = new Set();
-        streakData.forEach(entry => {
+        const entryDates = new Set(streakData.map(entry => {
           const entryDate = new Date(entry.created_at);
           entryDate.setHours(0, 0, 0, 0);
-          entryDates.add(entryDate.getTime());
-        });
-        // Start from today and count backwards
+          return entryDate.getTime();
+        }));
         let currentDate = new Date(today);
         while (entryDates.has(currentDate.getTime())) {
           currentStreak++;
           currentDate.setDate(currentDate.getDate() - 1);
         }
       }
-      
+
       // Calculate missed dates and total possible days
       const calculateMissedDates = () => {
         if (streakData && streakData.length > 0) {
-          // Find the earliest date in the data
           const earliestDate = new Date(streakData[streakData.length - 1].created_at);
           earliestDate.setHours(0, 0, 0, 0);
-          
-          // Start from the earliest date to today
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          
-          // Create a set of all dates from earliest to today
           const allDates = new Set<number>();
           const currentDate = new Date(earliestDate);
           while (currentDate <= today) {
             allDates.add(currentDate.getTime());
             currentDate.setDate(currentDate.getDate() + 1);
           }
-          
-          // Create a set of dates with entries
-          const entryDates = new Set<number>();
-          streakData.forEach(entry => {
+          const entryDates = new Set<number>(streakData.map(entry => {
             const entryDate = new Date(entry.created_at);
             entryDate.setHours(0, 0, 0, 0);
-            entryDates.add(entryDate.getTime());
-          });
-          
-          // Find missed dates
+            return entryDate.getTime();
+          }));
           const missed: string[] = [];
           allDates.forEach(date => {
             if (!entryDates.has(date)) {
@@ -257,7 +215,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
               missed.push(dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
             }
           });
-          
           setMissedDates(missed);
           setTotalPossibleDays(allDates.size);
         } else {
@@ -265,9 +222,8 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           setTotalPossibleDays(0);
         }
       };
-      
       calculateMissedDates();
-      
+
       // Calculate total completed entries in the last 6 months
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -277,14 +233,11 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .gte('created_at', sixMonthsAgo.toISOString());
       if (countError) throw countError;
-      
-      // For 6-month progress, we want to show actual completed entries
-      // But also calculate percentage for visualization
-      const maxEntries = 180; // Approx 180 days in 6 months
+      const maxEntries = 180;
       const completionCount = totalCount || 0;
       const completionPercentage = totalCount ? Math.min(100, Math.round((totalCount / maxEntries) * 100)) : 0;
-      
-      // Calculate consistency (percentage of days with entries in the last 30 days)
+
+      // Calculate consistency (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const { count: recentCount, error: recentCountError } = await supabase
@@ -294,8 +247,8 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .gte('created_at', thirtyDaysAgo.toISOString());
       if (recentCountError) throw recentCountError;
       const consistencyPercentage = recentCount ? Math.min(100, Math.round((recentCount / 30) * 100)) : 0;
-      
-      // Fetch weekly questions progress
+
+      // Fetch weekly answers
       const sixMonthsAgoForWeekly = new Date();
       sixMonthsAgoForWeekly.setMonth(sixMonthsAgoForWeekly.getMonth() - 6);
       const { data: weeklyAnswers, error: weeklyError } = await supabase
@@ -304,22 +257,16 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .gte('submitted_at', sixMonthsAgoForWeekly.toISOString());
       if (weeklyError) throw weeklyError;
-      
-      // Count unique weeks with submissions in the last 6 months
-      const uniqueWeeks = new Set();
-      if (weeklyAnswers) {
-        weeklyAnswers.forEach(answer => {
-          const date = new Date(answer.submitted_at);
-          const [year, week] = getWeekNumber(date);
-          uniqueWeeks.add(`${year}-W${week.toString().padStart(2, '0')}`);
-        });
-      }
+      const uniqueWeeks = new Set(weeklyAnswers?.map(answer => {
+        const date = new Date(answer.submitted_at);
+        const [year, week] = getWeekNumber(date);
+        return `${year}-W${week.toString().padStart(2, '0')}`;
+      }) || []);
       const weeklyCompletionCount = uniqueWeeks.size;
-      // Approximate max weeks in 6 months (26 weeks)
       const maxWeeklyEntries = 26;
-      const weeklyProgressPercentage = weeklyAnswers ? Math.min(100, Math.round((weeklyCompletionCount / maxWeeklyEntries) * 100)) : 0;
-      
-      // Fetch main questionnaire progress
+      const weeklyProgressPercentage = weeklyCompletionCount ? Math.min(100, Math.round((weeklyCompletionCount / maxWeeklyEntries) * 100)) : 0;
+
+      // Fetch main questionnaire count
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       const { count: mainQuestionnaireCount, error: mainQuestionnaireError } = await supabase
@@ -328,21 +275,22 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         .eq('user_id', session.user.id)
         .gte('submitted_at', oneYearAgo.toISOString());
       if (mainQuestionnaireError) throw mainQuestionnaireError;
-      
-      // For main questionnaire progress, we want to show actual completed entries
-      // Assuming a target of 4 main questionnaires per year (one per quarter)
       const maxMainQuestionnaires = 4;
       const mainQuestionnaireCompletionCount = mainQuestionnaireCount || 0;
       const mainQuestionnaireProgressPercentage = mainQuestionnaireCount ?
-      Math.min(100, Math.round((mainQuestionnaireCount / maxMainQuestionnaires) * 100)) : 0;
-      
-      setMainQuestionnaireProgress(mainQuestionnaireProgressPercentage);
+        Math.min(100, Math.round((mainQuestionnaireCount / maxMainQuestionnaires) * 100)) : 0;
+
+      // Update states
       setStreak(currentStreak);
       setCompleted(completionCount);
       setConsistency(consistencyPercentage);
       setWeeklyProgress(weeklyProgressPercentage);
-      
-      // After setting states, animate with corrected values
+      setMainQuestionnaireProgress(mainQuestionnaireProgressPercentage);
+      setDailySlidersCount(completionCount); // Set count for roadmap
+      setWeeklyWhispersCount(weeklyCompletionCount); // Set count for roadmap
+      setCoreInsightsCount(mainQuestionnaireCompletionCount); // Set count for roadmap
+
+      // Animate progress
       streakProgress.value = withTiming(currentStreak > 10 ? 100 : currentStreak * 10, { duration: 1000 });
       consistencyProgress.value = withTiming(consistencyPercentage, { duration: 1000 });
       weeklyProgressAnim.value = withTiming(weeklyProgressPercentage, { duration: 1000 });
@@ -352,7 +300,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     }
   };
 
-  // Helper function to get week number
+  /**
+   * Helper function to get ISO week number for a date.
+   * 
+   * @param {Date} d - Input date
+   * @returns {[number, number]} Year and week number
+   */
   function getWeekNumber(d: Date): [number, number] {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -361,6 +314,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     return [d.getUTCFullYear(), weekNo];
   }
 
+  /**
+   * Handles user sign-out with confirmation.
+   */
   const handleSignOut = async () => {
     setShowAccountModal(false);
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -374,7 +330,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
             if (error) {
               Alert.alert("Error", error.message);
             } else {
-              // Navigate to auth screen
               router.replace('/');
             }
           } catch (error: any) {
@@ -394,7 +349,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      {/* Header */}
+      {/* Header Section */}
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Text style={[styles.headerTitle, styles.mindText]}>Mind</Text>
@@ -404,17 +359,15 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           <Image source={require('../../assets/images/user.png')} style={styles.avatarImage} />
         </TouchableOpacity>
       </View>
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Daily Mindfulness Tip - Shown only to .ex extension users */}
+        {/* Daily Tip/Fact Card */}
         {userExtension === 'ex' && (
           <Animated.View entering={FadeIn.duration(1000)}>
-            <LinearGradient colors={['#2D6A4F', '#1B4D35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tipCard}>
+            <LinearGradient colors={['#3bcc97ff', '#2E8A66']}start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tipCard}>
               <Svg style={StyleSheet.absoluteFillObject} viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" opacity={0.08}>
                 <Pattern id="tipPattern" patternUnits="userSpaceOnUse" width="20" height="20">
                   <Circle cx="10" cy="10" r="2" fill="#fff" />
@@ -438,8 +391,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
             </LinearGradient>
           </Animated.View>
         )}
-
-        {/* Control Facts Card - Shown only to .cg extension users */}
         {userExtension === 'cg' && (
           <Animated.View entering={FadeIn.duration(1000)}>
             <LinearGradient colors={['#9B6B35', '#7A5424']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tipCard}>
@@ -466,10 +417,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
             </LinearGradient>
           </Animated.View>
         )}
-
-        
-
-        {/* Enhanced Your Journey Section */}
+        {/* Your Journey Section */}
         <Animated.View entering={FadeInDown.delay(300).duration(800)} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Your Journey</Text>
@@ -480,10 +428,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
               </Svg>
             </TouchableOpacity>
           </View>
-          
-          {/* Enhanced Circular Progress Indicators */}
+          {/* Progress Indicators */}
           <View style={styles.enhancedProgressGrid}>
-            {/* Streak Progress with Enhanced Visuals */}
+            {/* Streak Progress */}
             <View style={styles.enhancedProgressItem}>
               <View style={styles.circularProgressContainer}>
                 <Svg width="160" height="160" viewBox="0 0 160 160">
@@ -514,8 +461,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                 <Text style={styles.progressDetailText}>Keep it up!</Text>
               </View>
             </View>
-            
-            {/* Consistency Progress with Enhanced Visuals */}
+            {/* Consistency Progress */}
             <View style={styles.enhancedProgressItem}>
               <View style={styles.circularProgressContainer}>
                 <Svg width="160" height="160" viewBox="0 0 160 160">
@@ -548,8 +494,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
               </View>
             </View>
           </View>
-          
-          {/* Journey Summary Card */}
+          {/* Journey Summary */}
           <Animated.View entering={FadeInDown.delay(200).duration(800)} style={styles.journeySummaryCard}>
             <View style={styles.summaryHeader}>
               <View>
@@ -606,27 +551,22 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
             </View>
           </Animated.View>
         </Animated.View>
-
-        {/* Mindfulness Path - Improved Map-like Roadmap */}
+        {/* Mindfulness Path Roadmap */}
         <Animated.View entering={FadeInDown.delay(100).duration(800)} style={[styles.roadmapSection]}>
-          <LinearGradient 
-            colors={['#F8FDFC', '#E8F5F1']} 
-            start={{ x: 0, y: 0 }} 
+          <LinearGradient
+            colors={['#F8FDFC', '#E8F5F1']}
+            start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ borderRadius: 32, paddingHorizontal: 20, paddingVertical: 24, marginHorizontal: -4 }}
           >
             <Text style={styles.roadmapSectionTitle}>Your Mindfulness Path</Text>
             <Text style={styles.roadmapSectionSubtitle}>Navigate your wellness journey</Text>
-
-            {/* Map Path Container */}
             <View style={styles.roadmapPathContainer}>
               <View style={[styles.roadmapMapPath, { height: '100%' }]} />
-              
-              {/* Roadmap Cards */}
               <View style={styles.roadmapCards}>
-                {/* Step 1: About Me */}
+                {/* About Me */}
                 <Animated.View entering={FadeIn.delay(100).duration(600)} style={styles.roadmapCardWrapper}>
-                  <LinearGradient 
+                  <LinearGradient
                     colors={aboutMeCompleted ? ['#64C59A', '#4CAF85'] : ['#fff', '#F8FDFC']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -640,7 +580,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                               <Path d="M20 6L9 17L4 12" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                             </Svg>
                           ) : (
-                            <Text style={[styles.roadmapMarkerNumber]}>1</Text>
+                            <Text style={styles.roadmapMarkerNumber}>1</Text>
                           )}
                         </View>
                         <View style={styles.roadmapCardDetails}>
@@ -668,10 +608,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                     </TouchableOpacity>
                   </LinearGradient>
                 </Animated.View>
-
-                {/* Step 2: Daily Sliders */}
+                {/* Daily Sliders */}
                 <Animated.View entering={FadeIn.delay(200).duration(600)} style={styles.roadmapCardWrapper}>
-                  <LinearGradient 
+                  <LinearGradient
                     colors={dailySlidersCount > 0 ? ['#64C59A', '#4CAF85'] : ['#fff', '#F8FDFC']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -711,10 +650,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                     </TouchableOpacity>
                   </LinearGradient>
                 </Animated.View>
-
-                {/* Step 3: Weekly Whispers */}
+                {/* Weekly Whispers */}
                 <Animated.View entering={FadeIn.delay(300).duration(600)} style={styles.roadmapCardWrapper}>
-                  <LinearGradient 
+                  <LinearGradient
                     colors={weeklyWhispersCount > 0 ? ['#64C59A', '#4CAF85'] : ['#fff', '#F8FDFC']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -752,10 +690,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                     </TouchableOpacity>
                   </LinearGradient>
                 </Animated.View>
-
-                {/* Step 4: Core Insights */}
+                {/* Core Insights */}
                 <Animated.View entering={FadeIn.delay(400).duration(600)} style={[styles.roadmapCardWrapper, { marginBottom: 0 }]}>
-                  <LinearGradient 
+                  <LinearGradient
                     colors={coreInsightsCount >= 4 ? ['#64C59A', '#4CAF85'] : ['#fff', '#F8FDFC']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
@@ -797,7 +734,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           </LinearGradient>
         </Animated.View>
       </ScrollView>
-      {/* Account Modal - Keep similar, add softer transitions */}
+      {/* Account Modal */}
       <Modal visible={showAccountModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
           <View style={styles.modalContent}>
@@ -821,49 +758,18 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   );
 }
 
-// Custom Wave Progress Component for mindful wave animation
-const WaveProgress = ({ progress, color }: { progress: any; color: string }) => {
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -100 + progress.value }],
-  }));
-
-  return (
-    <View style={styles.waveTrack}>
-      <Animated.View style={[styles.waveFill, animatedStyle, { backgroundColor: color }]} />
-      <Svg style={StyleSheet.absoluteFillObject} viewBox="0 0 100 10" preserveAspectRatio="none">
-        <Path d="M0 5 Q25 0, 50 5 Q75 10, 100 5 L100 10 L0 10 Z" fill={color} opacity={0.3} />
-      </Svg>
-    </View>
-  );
-};
-
-// Styles updates for calm, professional look
+/**
+ * Styles for the Dashboard component.
+ */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' }, // Transparent for gradient/bg
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 28, paddingTop: 64, paddingBottom: 20, zIndex: 1 },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
   mindText: { color: '#3bcc97ff' },
   flowText: { color: '#2E8A66' },
   headerTitle: { fontSize: 36, fontWeight: '900', letterSpacing: 0.5 },
-  avatarButton: {
-    padding: 0,
-    borderRadius: 40,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 64,
-    height: 64,
-    resizeMode: 'cover',
-    borderRadius: 40,
-  },
-  avatarContainer: {
-    borderRadius: 64,
-    backgroundColor: '#F8FDFC',
-    padding: 10,
-    borderWidth: 3,
-    borderColor: '#fff',
-    overflow: 'hidden',
-  },
+  avatarButton: { padding: 0, borderRadius: 40, overflow: 'hidden' },
+  avatarImage: { width: 64, height: 64, resizeMode: 'cover', borderRadius: 40 },
   tipCard: { marginHorizontal: 28, marginTop: 24, borderRadius: 40, padding: 36, shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 28, elevation: 20, overflow: 'hidden' },
   tipHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   tipIconCircle: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
@@ -877,272 +783,28 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   viewAllButton: { flexDirection: 'row', alignItems: 'center' },
   viewAllText: { fontSize: 17, color: '#64C59A', fontWeight: '700', marginRight: 10 },
-  enhancedProgressGrid: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 32,
-    flexWrap: 'wrap',
-  },
-  enhancedProgressItem: { 
-    width: '48%',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  circularProgressContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  enhancedProgressNumber: { 
-    fontSize: 36, 
-    fontWeight: '900', 
-    color: '#2E8A66' 
-  },
-  enhancedProgressLabel: { 
-    fontSize: 14, 
-    color: '#666', 
-    marginTop: 4, 
-    fontWeight: '600',
-    textAlign: 'center'
-  },
-  progressDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F9F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  progressDetailText: {
-    fontSize: 13,
-    color: '#2E8A66',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  detailedProgressContainer: {
-    marginBottom: 32,
-  },
-  detailedProgressBar: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  progressBarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  progressBarIconLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  progressBarTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    marginLeft: 12,
-  },
-  progressBarValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#64C59A',
-  },
-  progressBarTrack: {
-    height: 12,
-    backgroundColor: '#E8F5F1',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#64C59A',
-    borderRadius: 6,
-  },
-  progressBarSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'left',
-  },
-  // Add new styles for missed dates
-  missedDatesContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E8F5F1',
-  },
-  missedDatesTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-    marginBottom: 8,
-  },
-  missedDatesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  missedDateItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  missedDateText: {
-    fontSize: 12,
-    color: '#EF4444',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  moreDatesText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-    marginTop: 8,
-  },
-  journeySummaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 24,
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 16,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
-  },
-  summaryTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1A1A1A',
-  },
-  summarySubtitle: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  summaryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0F9F6',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    gap: 6,
-  },
-  summaryBadgeText: {
-    color: '#64C59A',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  summaryStatsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
-  },
-  summaryStatCard: {
-    flex: 1,
-    backgroundColor: '#F8FDFC',
-    borderRadius: 20,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E8F5F1',
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#E8F5F1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  summaryStatValue: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#2E8A66',
-    marginBottom: 4,
-  },
-  summaryStatLabel: {
-    fontSize: 12,
-    color: '#888',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  summaryFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  summaryFooterDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#64C59A',
-    marginRight: 8,
-  },
-  summaryFooterText: {
-    fontSize: 13,
-    color: '#64C59A',
-    fontWeight: '600',
-  },
-  progressCenter: { 
-    position: 'absolute', 
-    top: 0, 
-    left: 0, 
-    right: 0, 
-    bottom: 0, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  waveTrack: { 
-    height: 20, 
-    backgroundColor: '#E8F5F1', 
-    borderRadius: 10, 
-    overflow: 'hidden', 
-    position: 'relative' 
-  },
-  waveFill: { 
-    height: '100%', 
-    width: '200%', 
-    backgroundColor: '#64C59A' 
-  },
-  quickActionsContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  quickActionButton: {
-    width: (width - 84) / 2,
-    backgroundColor: '#fff',
-    borderRadius: 32,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#A8E6CF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  actionIconContainer: { width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  actionTitle: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 8 },
-  actionSubtitle: { fontSize: 15, color: '#666', lineHeight: 22, opacity: 0.8 },
+  enhancedProgressGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap' },
+  enhancedProgressItem: { width: '48%', alignItems: 'center', marginBottom: 20 },
+  circularProgressContainer: { position: 'relative', marginBottom: 16 },
+  enhancedProgressNumber: { fontSize: 36, fontWeight: '900', color: '#2E8A66' },
+  enhancedProgressLabel: { fontSize: 14, color: '#666', marginTop: 4, fontWeight: '600', textAlign: 'center' },
+  progressDetail: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9F6', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  progressDetailText: { fontSize: 13, color: '#2E8A66', fontWeight: '600', marginLeft: 8 },
+  progressCenter: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
+  journeySummaryCard: { backgroundColor: '#fff', borderRadius: 28, padding: 24, marginBottom: 32, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 16 },
+  summaryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  summaryTitle: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
+  summarySubtitle: { fontSize: 14, color: '#888', marginTop: 4, fontWeight: '500' },
+  summaryBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9F6', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, gap: 6 },
+  summaryBadgeText: { color: '#64C59A', fontSize: 13, fontWeight: '700' },
+  summaryStatsGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 12 },
+  summaryStatCard: { flex: 1, backgroundColor: '#F8FDFC', borderRadius: 20, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E8F5F1' },
+  statIconContainer: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#E8F5F1', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  summaryStatValue: { fontSize: 26, fontWeight: '800', color: '#2E8A66', marginBottom: 4 },
+  summaryStatLabel: { fontSize: 12, color: '#888', textAlign: 'center', fontWeight: '600' },
+  summaryFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  summaryFooterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#64C59A', marginRight: 8 },
+  summaryFooterText: { fontSize: 13, color: '#64C59A', fontWeight: '600' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, paddingTop: 24, paddingHorizontal: 28, paddingBottom: 48 },
   modalHandle: { width: 60, height: 6, backgroundColor: '#eee', borderRadius: 3, alignSelf: 'center', marginBottom: 28 },
@@ -1151,22 +813,18 @@ const styles = StyleSheet.create({
   logoutRow: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#f5f5f5', paddingTop: 32 },
   modalText: { marginLeft: 20, fontSize: 19, color: '#333', fontWeight: '600' },
   logoutText: { color: '#EF4444', fontWeight: '700' },
-  
-  // Improved Roadmap Map-like UI Styles
   roadmapSection: { marginHorizontal: 16, marginVertical: 32 },
-  roadmapBackground: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(168, 230, 207, 0.05)', borderRadius: 32 },
   roadmapPathContainer: { position: 'relative', paddingVertical: 8 },
   roadmapMapPath: { position: 'absolute', left: 32, top: 0, bottom: 0, width: 4, backgroundColor: 'rgba(100, 197, 154, 0.3)' },
-  roadmapMapPathActive: { backgroundColor: '#A8E6CF' },
   roadmapCards: { position: 'relative', zIndex: 2 },
   roadmapCardWrapper: { marginVertical: 16, marginLeft: 0 },
   roadmapCardInner: { borderRadius: 24, padding: 0, overflow: 'hidden' },
   roadmapCardContent: { padding: 20, flexDirection: 'row', alignItems: 'center' },
-  roadmapMarker: { 
-    width: 64, 
-    height: 64, 
-    borderRadius: 32, 
-    justifyContent: 'center', 
+  roadmapMarker: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
     backgroundColor: '#E8F5F1',
@@ -1190,10 +848,6 @@ const styles = StyleSheet.create({
   roadmapCardProgress: { marginLeft: 16, alignItems: 'flex-end' },
   roadmapProgressRing: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: '#E8F5F1' },
   roadmapProgressRingCompleted: { borderColor: 'rgba(255, 255, 255, 0.3)' },
-  roadmapProgressPercent: { fontSize: 16, fontWeight: '700', color: '#64C59A' },
-  roadmapProgressPercentCompleted: { color: '#fff' },
-  roadmapCompletedCheck: { position: 'absolute', right: 16, top: 16, backgroundColor: '#64C59A', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   roadmapSectionTitle: { fontSize: 26, fontWeight: '800', color: '#333', marginBottom: 8, letterSpacing: -0.5 },
   roadmapSectionSubtitle: { fontSize: 14, color: '#999', marginBottom: 24, fontWeight: '500' },
-  openProgressButton: { backgroundColor: '#F0FFF6', padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

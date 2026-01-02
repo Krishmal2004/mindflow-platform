@@ -111,12 +111,87 @@ GRANT ALL ON TABLE about_me_profiles TO authenticated;
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+-- Table for storing voice recording metadata
+CREATE TABLE IF NOT EXISTS voice_recordings (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    week_number INTEGER NOT NULL,
+    year INTEGER NOT NULL,
+    file_key TEXT NOT NULL, -- Key to locate the file in R2 bucket
+    file_url TEXT, -- Public URL to access the file
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE voice_recordings ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+CREATE POLICY "Users can only access their own voice recordings" 
+    ON voice_recordings 
+    FOR ALL 
+    USING (user_id = auth.uid());
+
+-- Indexes for better performance
+CREATE INDEX idx_voice_recordings_user_id ON voice_recordings(user_id);
+CREATE INDEX idx_voice_recordings_week_year ON voice_recordings(week_number, year);
+
+-- Grant permissions
+GRANT ALL ON TABLE voice_recordings TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE voice_recordings_id_seq TO authenticated;
+
+-- Function to automatically update the updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Trigger to automatically update the updated_at column
+CREATE TRIGGER update_voice_recordings_updated_at 
+    BEFORE UPDATE ON voice_recordings 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+DROP TABLE IF EXISTS admins;
+
+
+-- Admin table (for users who are already in auth.users)
+CREATE TABLE IF NOT EXISTS admins (
+    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,  -- plain text password
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE
+);
+
+-- Enable RLS
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Only the admin themselves (via auth.uid()) or postgres can access
+CREATE POLICY "Admins can only access their own record"
+    ON admins
+    FOR ALL
+    USING (id = auth.uid() OR CURRENT_USER = 'postgres');
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
+CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
+
+-- Grant permissions
+GRANT ALL ON TABLE admins TO postgres;
+
+
+
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 -- Updated Weekly Answers Table (without weekly_questions table)
 -- Purpose: Store each user's answers with week identifiers
-
--- Drop existing tables and policies
-DROP TABLE IF EXISTS weekly_questions;
-DROP TABLE IF EXISTS weekly_answers;
 
 -- Create the updated weekly_answers table
 CREATE TABLE IF NOT EXISTS weekly_answers (
@@ -371,84 +446,6 @@ INSERT INTO main_questions (question_set_id, section_type, question_id, question
 (1, 'B', 'FFMQ_13', 'I get so focused on the goal I want to achieve that I lose touch with what I am doing right now to get there.', 'Acting with Awareness', true, 13),
 (1, 'B', 'FFMQ_14', 'I think some of my emotions are bad or inappropriate and I shouldn''t feel them.', 'Non-Judging', true, 14),
 (1, 'B', 'FFMQ_15', 'When I have distressing thoughts or images, I am able to just notice them without reacting.', 'Non-Reactivity', false, 15);
-
-
--- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
--- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
--- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
--- Table for storing voice recording metadata
-CREATE TABLE IF NOT EXISTS voice_recordings (
-    id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    week_number INTEGER NOT NULL,
-    year INTEGER NOT NULL,
-    file_key TEXT NOT NULL, -- Key to locate the file in R2 bucket
-    file_url TEXT, -- Public URL to access the file
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enable RLS
-ALTER TABLE voice_recordings ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can only access their own voice recordings" 
-    ON voice_recordings 
-    FOR ALL 
-    USING (user_id = auth.uid());
-
--- Indexes for better performance
-CREATE INDEX idx_voice_recordings_user_id ON voice_recordings(user_id);
-CREATE INDEX idx_voice_recordings_week_year ON voice_recordings(week_number, year);
-
--- Grant permissions
-GRANT ALL ON TABLE voice_recordings TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE voice_recordings_id_seq TO authenticated;
-
--- Function to automatically update the updated_at column
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Trigger to automatically update the updated_at column
-CREATE TRIGGER update_voice_recordings_updated_at 
-    BEFORE UPDATE ON voice_recordings 
-    FOR EACH ROW 
-    EXECUTE FUNCTION update_updated_at_column();
-DROP TABLE IF EXISTS admins;
-
-
--- Admin table (for users who are already in auth.users)
-CREATE TABLE IF NOT EXISTS admins (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,  -- plain text password
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login TIMESTAMP WITH TIME ZONE
-);
-
--- Enable RLS
-ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
-
--- RLS Policy: Only the admin themselves (via auth.uid()) or postgres can access
-CREATE POLICY "Admins can only access their own record"
-    ON admins
-    FOR ALL
-    USING (id = auth.uid() OR CURRENT_USER = 'postgres');
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
-CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email);
-
--- Grant permissions
-GRANT ALL ON TABLE admins TO postgres;
 
 
 
