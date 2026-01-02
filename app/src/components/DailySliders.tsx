@@ -10,7 +10,12 @@ import {
   Alert,
   Platform,
   TextInput,
+  Modal,
+  Pressable,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
 import Svg, { Path, Circle, G, Line, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
@@ -31,7 +36,6 @@ const STRESS_EMOJIS = [
       <Circle cx="12" cy="12" r="10" fill="url(#grad1)" />
       <Circle cx="9" cy="10" r="1.2" fill="#2E8A66" />
       <Circle cx="15" cy="10" r="1.2" fill="#2E8A66" />
-      <Circle cx="8.5" cy="9.5" r="0.4" fill="white" />
       <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
       <Path d="M7 8 Q9 6.5 11 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
       <Path d="M13 8 Q15 6.5 17 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
@@ -465,16 +469,49 @@ export default function DailySliders() {
   const [entryId, setEntryId] = useState<number | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showEditAfterExercise, setShowEditAfterExercise] = useState(false);
+  const [userExtension, setUserExtension] = useState<'ex' | 'cg' | ''>('');
+  // Weekly recordings state
+  const [weeklyRecordings, setWeeklyRecordings] = useState<Array<any>>([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
+  const [selectedRecording, setSelectedRecording] = useState<any | null>(null);
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  // Playback tracking for selected recording
+  const [playbackSeconds, setPlaybackSeconds] = useState<number>(0);
+  const webviewRef = useRef<any>(null);
   const stressAnimation = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   // Check if user has already submitted today
   useEffect(() => {
     checkDailySubmission();
+    fetchUserExtension();
     // Cleanup function
     return () => {
       // Cleanup code if needed
     };
   }, [session]);
+
+  const fetchUserExtension = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('researchID')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      if (data?.researchID) {
+        if (data.researchID.endsWith('.ex')) {
+          setUserExtension('ex');
+        } else if (data.researchID.endsWith('.cg')) {
+          setUserExtension('cg');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user extension:', error);
+    }
+  };
   useEffect(() => {
     if (alreadySubmittedToday || showCompletion) {
       Animated.timing(progressAnim, {
@@ -512,6 +549,139 @@ export default function DailySliders() {
       }).start();
     }
   }, [stressLevel]);
+
+  // Fetch weekly recordings for the current week number
+  const getISOWeekNumber = (d: Date) => {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    return weekNo;
+  };
+
+  useEffect(() => {
+    const fetchRecordings = async () => {
+      setLoadingRecordings(true);
+      try {
+        const weekNo = getISOWeekNumber(new Date());
+        const { data, error } = await supabase
+          .from('weekly_recordings')
+          .select('*')
+          .eq('week_no', weekNo)
+          .order('published_at', { ascending: false });
+        if (error) throw error;
+        setWeeklyRecordings(data || []);
+      } catch (err) {
+        console.error('Error fetching weekly recordings', err);
+        setWeeklyRecordings([]);
+      } finally {
+        setLoadingRecordings(false);
+      }
+    };
+    fetchRecordings();
+  }, [session]);
+
+  // Build HTML for embed player which prevents native controls and posts playback time back
+  const getYouTubeHTML = (youtubeId: string | undefined) => {
+    if (!youtubeId) return '<html></html>';
+    return `
+    <!doctype html>
+    <html>
+      <head>
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0">
+        <style>html,body,#player{height:100%;margin:0;background:#000}</style>
+      </head>
+      <body>
+        <div id="player"></div>
+        <script>
+          var tag = document.createElement('script');
+          tag.src = "https://www.youtube.com/iframe_api";
+          document.body.appendChild(tag);
+          var player;
+          function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+              height: '100%',
+              width: '100%',
+              videoId: '${youtubeId}',
+              playerVars: {
+                autoplay: 1,
+                controls: 1,
+                disablekb: 0,
+                rel: 0,
+                modestbranding: 1,
+                playsinline: 1,
+                fs: 1,
+              },
+              events: {
+                'onReady': function() {
+                  // user must press play; ensure we can post time updates
+                  window.setInterval(function() {
+                    try {
+                      if (player && player.getCurrentTime) {
+                        var t = Math.floor(player.getCurrentTime());
+                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'time', seconds: t }));
+                      }
+                    } catch(e){}
+                  }, 1000);
+                },
+                'onStateChange': function(event) {
+                  if (event.data == YT.PlayerState.ENDED) {
+                    try {
+                      var t = Math.floor(player.getCurrentTime());
+                      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ended', seconds: t }));
+                    } catch(e){}
+                  }
+                }
+              }
+            });
+          }
+        </script>
+      </body>
+    </html>
+    `;
+  };
+
+  const handleWebviewMessage = (event: any) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'time') {
+        setPlaybackSeconds(msg.seconds || 0);
+      }
+      if (msg.type === 'ended') {
+        setPlaybackSeconds(msg.seconds || 0);
+        // Persist when video ends
+        savePlaybackSeconds(msg.seconds || 0);
+      }
+    } catch (e) {}
+  };
+
+  const savePlaybackSeconds = async (seconds: number) => {
+    if (!session?.user?.id) return;
+    const sec = Math.floor(seconds || 0);
+    try {
+      if (entryId) {
+        const { data: cur, error: err1 } = await supabase
+          .from('daily_sliders')
+          .select('video_play_seconds')
+          .eq('id', entryId)
+          .single();
+        if (err1) throw err1;
+        const newVal = (cur?.video_play_seconds || 0) + sec;
+        await supabase.from('daily_sliders').update({ video_play_seconds: newVal }).eq('id', entryId);
+      } else {
+        const { data, error } = await supabase
+          .from('daily_sliders')
+          .insert({ user_id: session.user.id, video_play_seconds: sec, created_at: new Date().toISOString() })
+          .select();
+        if (error) throw error;
+        if (data && data.length > 0) setEntryId(data[0].id);
+      }
+    } catch (err) {
+      // ignore persistence errors silently
+      console.error('Failed to save playback seconds', err);
+    }
+  };
   // Toggle factor
   const toggleFactor = (factor: string) => {
     if (factor === 'Other') {
@@ -715,6 +885,8 @@ export default function DailySliders() {
         </View>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Mindfulness Practice moved after Sleep Quality - only for .ex users */}
+        {userExtension === 'ex' && (
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -783,6 +955,61 @@ export default function DailySliders() {
             </View>
           )}
         </View>
+        )}
+        {/* Recording modal */}
+        <Modal
+          visible={showRecordingModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => { setShowRecordingModal(false); setSelectedRecording(null); }}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => { setShowRecordingModal(false); setSelectedRecording(null); }}>
+            <View style={styles.recordingModalContent}>
+              <View style={styles.modalHeaderRow}>
+                <Text style={styles.modalTitle}>{selectedRecording?.title}</Text>
+                <TouchableOpacity onPress={() => { setShowRecordingModal(false); setSelectedRecording(null); }}>
+                  <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
+                  </Svg>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.recordingWebviewContainer}>
+                {selectedRecording ? (
+                  <WebView
+                    ref={webviewRef}
+                    originWhitelist={["*"]}
+                    source={{ html: getYouTubeHTML(selectedRecording.youtube_id) }}
+                    style={{ flex: 1, backgroundColor: '#000' }}
+                    onMessage={handleWebviewMessage}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    allowsInlineMediaPlayback
+                    mediaPlaybackRequiresUserAction={false}
+                  />
+                ) : (
+                  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>No recording selected</Text>
+                  </View>
+                )}
+              </View>
+              <View style={{ padding: 12 }}>
+                <Text style={styles.recordingDesc}>{selectedRecording?.description || 'No description'}</Text>
+                <Text style={[styles.recordingDesc, { marginTop: 8 }]}>Seconds watched: {playbackSeconds}</Text>
+                {selectedRecording && (
+                  <TouchableOpacity
+                    style={[styles.playButton, { marginTop: 12 }]}
+                    onPress={() => {
+                      const url = `https://www.youtube.com/watch?v=${selectedRecording.youtube_id}`;
+                      Linking.openURL(url);
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Open in YouTube</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -1082,6 +1309,42 @@ export default function DailySliders() {
             </View>
           </View>
         </View>
+        {/* Weekly recordings (YouTube) - moved after Mindfulness Practice */}
+        {userExtension === 'ex' && (
+        <View style={styles.section}>
+          <View style={styles.questionHeader}>
+            <View style={styles.iconCircle}>
+              <Icons.relaxation />
+            </View>
+            <View style={styles.questionText}>
+              <Text style={styles.sectionTitle}>This Week's Recording</Text>
+              <Text style={styles.sectionSubtitle}>Guided practice curated for this week</Text>
+            </View>
+          </View>
+          {loadingRecordings ? (
+            <ActivityIndicator size="small" color="#64C59A" />
+          ) : (weeklyRecordings && weeklyRecordings.length > 0) ? (
+            weeklyRecordings.map((rec: any) => (
+              <View key={rec.id} style={styles.recordingCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recordingTitle}>{rec.title}</Text>
+                  {rec.description ? <Text style={styles.recordingDesc} numberOfLines={2}>{rec.description}</Text> : null}
+                </View>
+                <TouchableOpacity
+                  style={styles.playButton}
+                  onPress={() => { setSelectedRecording(rec); setShowRecordingModal(true); }}
+                >
+                  <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <Path d="M8 5V19L19 12L8 5Z" fill="#fff" />
+                  </Svg>
+                </TouchableOpacity>
+              </View>
+            ))
+          ) : (
+            <Text style={{ color: '#666' }}>No recordings available this week.</Text>
+          )}
+        </View>
+        )}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
@@ -1394,6 +1657,72 @@ const styles = StyleSheet.create({
   progressBadgeText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#333',
+  },
+  // Recordings
+  recordingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FDFC',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  recordingTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  recordingDesc: {
+    fontSize: 13,
+    color: '#666',
+  },
+  playButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#64C59A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  recordingModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    maxHeight: '85%'
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    flex: 1,
+    marginRight: 12,
+  },
+  recordingWebviewContainer: {
+    height: 220,
+    backgroundColor: '#000'
+  },
+  modalTableRow: {
+    padding: 12,
+  },
+  modalTableCell: {
+    fontSize: 14,
     color: '#333',
   },
   progressLabelsRow: {

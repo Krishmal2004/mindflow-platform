@@ -22,6 +22,7 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "@supabase/supabase-js": "^2.83.0",
+    "react-native-webview": "13.15.0",
     "expo": "~54.0.30",
     "expo-audio": "~1.1.1",
     "expo-constants": "~18.0.12",

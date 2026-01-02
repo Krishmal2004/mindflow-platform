@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS daily_sliders (
     sleep_start_time TEXT,
     wake_up_time TEXT,
     sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 5),
+    video_play_seconds INTEGER DEFAULT 0,
     relaxation_level INTEGER CHECK (relaxation_level >= 1 AND relaxation_level <= 5),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -104,7 +105,6 @@ CREATE POLICY "Users can only access their own daily sliders data"
 GRANT ALL ON TABLE daily_sliders TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE daily_sliders_id_seq TO authenticated;
 GRANT ALL ON TABLE about_me_profiles TO authenticated;
-
 
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,6 +157,35 @@ CREATE INDEX idx_weekly_answers_user_week ON weekly_answers(user_id, week_id);
 -- Grant permissions
 GRANT ALL ON TABLE weekly_answers TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
+
+-- Table: weekly_recordings
+-- Purpose: Store curated YouTube recordings mapped to a week number
+CREATE TABLE IF NOT EXISTS weekly_recordings (
+    id SERIAL PRIMARY KEY,
+    week_no INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    youtube_id TEXT NOT NULL,
+    description TEXT,
+    published_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE weekly_recordings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can access weekly recordings" ON weekly_recordings;
+CREATE POLICY "Users can access weekly recordings" ON weekly_recordings FOR SELECT USING (true);
+CREATE INDEX IF NOT EXISTS idx_weekly_recordings_week_no ON weekly_recordings(week_no);
+GRANT SELECT ON TABLE weekly_recordings TO authenticated;
+
+-- Seed example for 2026 W1
+INSERT INTO weekly_recordings (week_no, title, youtube_id, description, published_at)
+VALUES (
+    1,
+    'Guided Mindfulness Practice — Week 1 (2026)',
+    'wAIoe992Qak',
+    'Curated guided mindfulness practice for the first week of 2026 (YouTube)',
+    '2026-01-01T00:00:00Z'
+)
+ON CONFLICT DO NOTHING;
 
 -- Insert sample data for the fixed weekly questions
 -- Note: These questions are now fixed and stored in the application code, not in the database
