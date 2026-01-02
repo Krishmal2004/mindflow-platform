@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies (app)
+        working-directory: ./app
+        run: npm ci
+
+      - name: Typecheck (app)
+        working-directory: ./app
+        run: npx tsc --noEmit
+
+      - name: Lint (app)
+        working-directory: ./app
+        run: npm run lint
+
+      - name: Run tests if available (app)
+        working-directory: ./app
+        run: |
+          if npm run | grep -q "test"; then npm test; else echo "no test script"; fi
