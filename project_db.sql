@@ -188,50 +188,50 @@ GRANT ALL ON TABLE admins TO postgres;
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-- removed due to unwanted table..
 
+-- -- Updated Weekly Answers Table (without weekly_questions table)
+-- -- Purpose: Store each user's answers with week identifiers
 
--- Updated Weekly Answers Table (without weekly_questions table)
--- Purpose: Store each user's answers with week identifiers
+-- -- Create the updated weekly_answers table
+-- CREATE TABLE IF NOT EXISTS weekly_answers (
+--     id SERIAL PRIMARY KEY,
+--     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+--     week_id TEXT NOT NULL, -- Format: YYYY-WNN-WQ (e.g., 2025-W50-WQ)
+--     voice_recording_id INTEGER REFERENCES voice_recordings(id) ON DELETE SET NULL, -- Reference to voice recording
+--     a1 TEXT,
+--     a2 TEXT,
+--     a3 TEXT,
+--     a4 TEXT,
+--     a5 TEXT,
+--     a6 TEXT,
+--     a7 TEXT,
+--     a8 TEXT,
+--     a9 TEXT,
+--     a10 TEXT,
+--     submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- );
 
--- Create the updated weekly_answers table
-CREATE TABLE IF NOT EXISTS weekly_answers (
-    id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    week_id TEXT NOT NULL, -- Format: YYYY-WNN-WQ (e.g., 2025-W50-WQ)
-    voice_recording_id INTEGER REFERENCES voice_recordings(id) ON DELETE SET NULL, -- Reference to voice recording
-    a1 TEXT,
-    a2 TEXT,
-    a3 TEXT,
-    a4 TEXT,
-    a5 TEXT,
-    a6 TEXT,
-    a7 TEXT,
-    a8 TEXT,
-    a9 TEXT,
-    a10 TEXT,
-    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- -- Enable RLS (Row Level Security)
+-- ALTER TABLE weekly_answers ENABLE ROW LEVEL SECURITY;
 
--- Enable RLS (Row Level Security)
-ALTER TABLE weekly_answers ENABLE ROW LEVEL SECURITY;
+-- -- Drop existing policies if they exist
+-- DROP POLICY IF EXISTS "Users can only access their own weekly answers" ON weekly_answers;
 
--- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Users can only access their own weekly answers" ON weekly_answers;
+-- -- RLS Policies (optimized to avoid re-evaluation of auth.uid())
+-- CREATE POLICY "Users can only access their own weekly answers" 
+--     ON weekly_answers 
+--     FOR ALL 
+--     USING (user_id = (SELECT auth.uid()));
 
--- RLS Policies (optimized to avoid re-evaluation of auth.uid())
-CREATE POLICY "Users can only access their own weekly answers" 
-    ON weekly_answers 
-    FOR ALL 
-    USING (user_id = (SELECT auth.uid()));
+-- -- Indexes for better performance
+-- CREATE INDEX idx_weekly_answers_user_id ON weekly_answers(user_id);
+-- CREATE INDEX idx_weekly_answers_week_id ON weekly_answers(week_id);
+-- CREATE INDEX idx_weekly_answers_user_week ON weekly_answers(user_id, week_id);
 
--- Indexes for better performance
-CREATE INDEX idx_weekly_answers_user_id ON weekly_answers(user_id);
-CREATE INDEX idx_weekly_answers_week_id ON weekly_answers(week_id);
-CREATE INDEX idx_weekly_answers_user_week ON weekly_answers(user_id, week_id);
-
--- Grant permissions
-GRANT ALL ON TABLE weekly_answers TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
+-- -- Grant permissions
+-- GRANT ALL ON TABLE weekly_answers TO authenticated;
+-- GRANT USAGE, SELECT ON SEQUENCE weekly_answers_id_seq TO authenticated;
 
 -- Table: weekly_recordings
 -- Purpose: Store curated YouTube recordings mapped to a week number
@@ -274,151 +274,164 @@ ON CONFLICT DO NOTHING;
 
 
 -- Main Questionnaire Tables
+-- Enable required extensions (if not already enabled)
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Table 1: main_question_sets
--- Purpose: Store each main questionnaire set with 25 questions
+-- Purpose: Store each main questionnaire set
 CREATE TABLE IF NOT EXISTS main_question_sets (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
-    version TEXT UNIQUE NOT NULL, -- Unique identifier for each version (e.g., '2023-Q1')
-    section_a_title TEXT NOT NULL,
-    section_a_instructions TEXT NOT NULL,
-    section_a_scale_min INTEGER NOT NULL,
-    section_a_scale_max INTEGER NOT NULL,
-    section_a_scale_labels TEXT[] NOT NULL, -- Array of labels for the scale
-    section_b_title TEXT NOT NULL,
-    section_b_instructions TEXT NOT NULL,
-    section_b_scale_min INTEGER NOT NULL,
-    section_b_scale_max INTEGER NOT NULL,
-    section_b_scale_labels TEXT[] NOT NULL, -- Array of labels for the scale
+    version TEXT UNIQUE NOT NULL, -- e.g., '2025-Q1'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Table 2: main_questions
--- Purpose: Store individual questions for each section
+-- Table 2: questionnaire_sections
+-- Purpose: Define sections (A, B, C, ...) for each questionnaire
+CREATE TABLE IF NOT EXISTS questionnaire_sections (
+    id SERIAL PRIMARY KEY,
+    question_set_id INTEGER NOT NULL REFERENCES main_question_sets(id) ON DELETE CASCADE,
+    section_key TEXT NOT NULL, -- 'A', 'B', 'C', etc.
+    title TEXT NOT NULL,
+    instructions TEXT NOT NULL,
+    scale_min INTEGER NOT NULL,
+    scale_max INTEGER NOT NULL,
+    scale_labels TEXT[] NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(question_set_id, section_key)
+);
+
+-- Table 3: main_questions
+-- Purpose: Store individual questions
 CREATE TABLE IF NOT EXISTS main_questions (
     id SERIAL PRIMARY KEY,
-    question_set_id INTEGER REFERENCES main_question_sets(id) ON DELETE CASCADE,
-    section_type TEXT NOT NULL, -- 'A' or 'B'
-    question_id TEXT NOT NULL, -- e.g., 'PSS_01', 'FFMQ_01'
+    question_set_id INTEGER NOT NULL REFERENCES main_question_sets(id) ON DELETE CASCADE,
+    section_key TEXT NOT NULL, -- references questionnaire_sections.section_key
+    question_id TEXT NOT NULL, -- e.g., 'PSS_01'
     question_text TEXT NOT NULL,
-    facet TEXT, -- For FFMQ questions
+    facet TEXT, -- Optional, for instruments like FFMQ
     reverse_score BOOLEAN DEFAULT FALSE,
-    sort_order INTEGER NOT NULL, -- Order of questions within section
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    sort_order INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (question_set_id, section_key) 
+        REFERENCES questionnaire_sections(question_set_id, section_key)
 );
 
--- Table 3: main_questionnaire_responses
--- Purpose: Store each user's answers to the main questionnaire
-CREATE TABLE IF NOT EXISTS main_questionnaire_responses (
-    id SERIAL PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    question_set_id INTEGER REFERENCES main_question_sets(id) ON DELETE CASCADE,
-    -- Section A answers (10 questions)
-    a1 INTEGER,
-    a2 INTEGER,
-    a3 INTEGER,
-    a4 INTEGER,
-    a5 INTEGER,
-    a6 INTEGER,
-    a7 INTEGER,
-    a8 INTEGER,
-    a9 INTEGER,
-    a10 INTEGER,
-    -- Section B answers (15 questions)
-    b1 INTEGER,
-    b2 INTEGER,
-    b3 INTEGER,
-    b4 INTEGER,
-    b5 INTEGER,
-    b6 INTEGER,
-    b7 INTEGER,
-    b8 INTEGER,
-    b9 INTEGER,
-    b10 INTEGER,
-    b11 INTEGER,
-    b12 INTEGER,
-    b13 INTEGER,
-    b14 INTEGER,
-    b15 INTEGER,
-    -- Metadata
-    time_to_complete INTEGER, -- Time in seconds to complete the questionnaire
+ALTER TABLE main_questions
+ADD CONSTRAINT main_questions_question_set_question_id_key
+UNIQUE (question_set_id, question_id);
+
+-- Table 4: main_questionnaire_sessions
+-- Purpose: Track each user's completed (or in-progress) session
+CREATE TABLE IF NOT EXISTS main_questionnaire_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    question_set_id INTEGER NOT NULL REFERENCES main_question_sets(id) ON DELETE CASCADE,
+    time_to_complete INTEGER, -- in seconds
     started_at TIMESTAMP WITH TIME ZONE,
     submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enable RLS (Row Level Security)
-ALTER TABLE main_question_sets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE main_questions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE main_questionnaire_responses ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-CREATE POLICY "Users can only access main question sets" 
-    ON main_question_sets 
-    FOR ALL 
-    USING (true);
-
-CREATE POLICY "Users can only access main questions" 
-    ON main_questions 
-    FOR ALL 
-    USING (true);
-
-CREATE POLICY "Users can only access their own main questionnaire responses" 
-    ON main_questionnaire_responses 
-    FOR ALL 
-    USING (user_id = auth.uid());
-
--- Indexes for better performance
-CREATE INDEX idx_main_question_sets_version ON main_question_sets(version);
-CREATE INDEX idx_main_questions_set_section ON main_questions(question_set_id, section_type);
-CREATE INDEX idx_main_questions_sort_order ON main_questions(sort_order);
-CREATE INDEX idx_main_responses_user_id ON main_questionnaire_responses(user_id);
-CREATE INDEX idx_main_responses_question_set_id ON main_questionnaire_responses(question_set_id);
-CREATE INDEX idx_main_responses_user_question_set ON main_questionnaire_responses(user_id, question_set_id);
-
--- Grant permissions
-GRANT ALL ON TABLE main_question_sets TO authenticated;
-GRANT ALL ON TABLE main_questions TO authenticated;
-GRANT ALL ON TABLE main_questionnaire_responses TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE main_question_sets_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE main_questions_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE main_questionnaire_responses_id_seq TO authenticated;
-
--- Sample data for main_question_sets table
-INSERT INTO main_question_sets (
-    title, 
-    description, 
-    version,
-    section_a_title,
-    section_a_instructions,
-    section_a_scale_min,
-    section_a_scale_max,
-    section_a_scale_labels,
-    section_b_title,
-    section_b_instructions,
-    section_b_scale_min,
-    section_b_scale_max,
-    section_b_scale_labels
-) VALUES (
-    'Perceived Stress & Mindfulness Assessment',
-    'Standardized questionnaire measuring perceived stress and mindfulness facets',
-    '2025-Q1',
-    'Part A: Perceived Stress Scale (PSS-10)',
-    'In the last month, how often have you felt...',
-    0,
-    4,
-    ARRAY['Never', 'Almost Never', 'Sometimes', 'Fairly Often', 'Very Often'],
-    'Part B: Five Facet Mindfulness Questionnaire (FFMQ-15)',
-    'Please rate each of the following statements...',
-    1,
-    5,
-    ARRAY['Never or very rarely true', 'Rarely true', 'Sometimes true', 'Often true', 'Very often or always true']
+-- Table 5: main_questionnaire_responses
+-- Purpose: One row per answered question
+CREATE TABLE IF NOT EXISTS main_questionnaire_responses (
+    id SERIAL PRIMARY KEY,
+    session_id UUID NOT NULL REFERENCES main_questionnaire_sessions(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    question_set_id INTEGER NOT NULL,
+    question_id TEXT NOT NULL, -- e.g., 'PSS_01'
+    response_value INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- Composite FK to main_questions (via question_set_id + question_id)
+    FOREIGN KEY (question_set_id, question_id) 
+        REFERENCES main_questions(question_set_id, question_id)
 );
 
--- Sample data for main_questions table (Section A - PSS-10)
-INSERT INTO main_questions (question_set_id, section_type, question_id, question_text, reverse_score, sort_order) VALUES
-(1, 'A', 'PSS_01', 'In the last month, how often have you been upset because of something that happened unexpectedly?', false, 1),
+
+-- Enable RLS
+ALTER TABLE main_question_sets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE questionnaire_sections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE main_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE main_questionnaire_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE main_questionnaire_responses ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Public read access to question sets"
+    ON main_question_sets FOR ALL USING (true);
+
+CREATE POLICY "Public read access to sections"
+    ON questionnaire_sections FOR ALL USING (true);
+
+CREATE POLICY "Public read access to questions"
+    ON main_questions FOR ALL USING (true);
+
+CREATE POLICY "Users can manage their own sessions"
+    ON main_questionnaire_sessions 
+    FOR ALL USING (user_id = auth.uid());
+
+CREATE POLICY "Users can manage their own responses"
+    ON main_questionnaire_responses 
+    FOR ALL USING (user_id = auth.uid());
+
+    CREATE INDEX idx_main_question_sets_version ON main_question_sets(version);
+
+CREATE INDEX idx_sections_question_set ON questionnaire_sections(question_set_id);
+CREATE INDEX idx_sections_key ON questionnaire_sections(section_key);
+
+CREATE INDEX idx_main_questions_set_id ON main_questions(question_set_id);
+CREATE INDEX idx_main_questions_section ON main_questions(question_set_id, section_key);
+CREATE INDEX idx_main_questions_question_id ON main_questions(question_id);
+
+CREATE INDEX idx_sessions_user_id ON main_questionnaire_sessions(user_id);
+CREATE INDEX idx_sessions_question_set ON main_questionnaire_sessions(question_set_id);
+
+CREATE INDEX idx_responses_session_id ON main_questionnaire_responses(session_id);
+CREATE INDEX idx_responses_user_id ON main_questionnaire_responses(user_id);
+CREATE INDEX idx_responses_question_id ON main_questionnaire_responses(question_id);
+CREATE INDEX idx_responses_question_set_user ON main_questionnaire_responses(question_set_id, user_id);
+
+
+-- Tables
+GRANT ALL ON TABLE main_question_sets TO authenticated;
+GRANT ALL ON TABLE questionnaire_sections TO authenticated;
+GRANT ALL ON TABLE main_questions TO authenticated;
+GRANT ALL ON TABLE main_questionnaire_sessions TO authenticated;
+GRANT ALL ON TABLE main_questionnaire_responses TO authenticated;
+
+-- Sequences
+GRANT USAGE, SELECT ON SEQUENCE main_question_sets_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE questionnaire_sections_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE main_questions_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE main_questionnaire_responses_id_seq TO authenticated;
+-- Note: sessions.id is UUID, so no sequence needed
+
+-- Insert Questionnaire Set
+INSERT INTO main_question_sets (title, description, version)
+VALUES (
+    'Perceived Stress & Mindfulness Assessment',
+    'Standardized questionnaire measuring perceived stress and mindfulness facets',
+    '2025-Q1'
+)
+RETURNING id; -- Assume this returns id = 1
+
+-- Insert Sections
+INSERT INTO questionnaire_sections (question_set_id, section_key, title, instructions, scale_min, scale_max, scale_labels)
+VALUES
+(1, 'A', 'Part A: Perceived Stress Scale (PSS-10)',
+ 'In the last month, how often have you felt...',
+ 1, 5, ARRAY['Never', 'Almost Never', 'Sometimes', 'Fairly Often', 'Very Often']),
+(1, 'B', 'Part B: Five Facet Mindfulness Questionnaire (FFMQ-15)',
+ 'Please rate each of the following statements...',
+ 1, 5, ARRAY['Never or very rarely true', 'Rarely true', 'Sometimes true', 'Often true', 'Very often or always true']),
+(1, 'C', 'Part C: Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS)',
+ 'Below are some statements about feelings and thoughts. Please tick the box that best describes your experience of each over the last 2 weeks.',
+ 1, 5, ARRAY['None of the time', 'Rarely', 'Some of the time', 'Often', 'All of the time']);
+
+-- Insert Questions (Section A - PSS-10)
+INSERT INTO main_questions (question_set_id, section_key, question_id, question_text, reverse_score, sort_order)
+VALUES
+(1, 'A', 'PSS_01', 'How often have you been upset because of something that happened unexpectedly?', false, 1),
 (1, 'A', 'PSS_02', 'In the last month, how often have you felt that you were unable to control the important things in your life?', false, 2),
 (1, 'A', 'PSS_03', 'In the last month, how often have you felt nervous and ''stressed''?', false, 3),
 (1, 'A', 'PSS_04', 'In the last month, how often have you felt confident about your ability to handle your personal problems?', true, 4),
@@ -429,8 +442,9 @@ INSERT INTO main_questions (question_set_id, section_type, question_id, question
 (1, 'A', 'PSS_09', 'In the last month, how often have you been angered because of things that were outside of your control?', false, 9),
 (1, 'A', 'PSS_10', 'In the last month, how often have you felt difficulties were piling up so high that you could not overcome them?', false, 10);
 
--- Sample data for main_questions table (Section B - FFMQ-15)
-INSERT INTO main_questions (question_set_id, section_type, question_id, question_text, facet, reverse_score, sort_order) VALUES
+-- Section B - FFMQ-15
+INSERT INTO main_questions (question_set_id, section_key, question_id, question_text, facet, reverse_score, sort_order)
+VALUES
 (1, 'B', 'FFMQ_01', 'I notice changes in my body, such as whether my breathing slows down or speeds up.', 'Observing', false, 1),
 (1, 'B', 'FFMQ_02', 'I''m good at finding words to describe my feelings.', 'Describing', false, 2),
 (1, 'B', 'FFMQ_03', 'I find myself doing things without paying attention.', 'Acting with Awareness', true, 3),
@@ -447,6 +461,23 @@ INSERT INTO main_questions (question_set_id, section_type, question_id, question
 (1, 'B', 'FFMQ_14', 'I think some of my emotions are bad or inappropriate and I shouldn''t feel them.', 'Non-Judging', true, 14),
 (1, 'B', 'FFMQ_15', 'When I have distressing thoughts or images, I am able to just notice them without reacting.', 'Non-Reactivity', false, 15);
 
+-- Section C - WEMWBS (14 items)
+INSERT INTO main_questions (question_set_id, section_key, question_id, question_text, reverse_score, sort_order)
+VALUES
+(1, 'C', 'WEMWBS_01', 'I''ve been feeling optimistic about the future', false, 1),
+(1, 'C', 'WEMWBS_02', 'I''ve been feeling useful', false, 2),
+(1, 'C', 'WEMWBS_03', 'I''ve been feeling relaxed', false, 3),
+(1, 'C', 'WEMWBS_04', 'I''ve been feeling interested in other people', false, 4),
+(1, 'C', 'WEMWBS_05', 'I''ve had energy to spare', false, 5),
+(1, 'C', 'WEMWBS_06', 'I''ve been dealing with problems well', false, 6),
+(1, 'C', 'WEMWBS_07', 'I''ve been thinking clearly', false, 7),
+(1, 'C', 'WEMWBS_08', 'I''ve been feeling good about myself', false, 8),
+(1, 'C', 'WEMWBS_09', 'I''ve been feeling close to other people', false, 9),
+(1, 'C', 'WEMWBS_10', 'I''ve been feeling confident', false, 10),
+(1, 'C', 'WEMWBS_11', 'I''ve been able to make up my own mind about things', false, 11),
+(1, 'C', 'WEMWBS_12', 'I''ve been feeling loved', false, 12),
+(1, 'C', 'WEMWBS_13', 'I''ve been interested in new things', false, 13),
+(1, 'C', 'WEMWBS_14', 'I''ve been feeling cheerful', false, 14);
 
 
 -- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

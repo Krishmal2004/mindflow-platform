@@ -32,6 +32,7 @@ interface DailySliderData {
 interface WeeklyProgressData {
   week: string;
   completed: boolean;
+  submitted_at?: string;
 }
 
 interface MainQuestionnaireData {
@@ -49,6 +50,10 @@ export default function ProgressScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'main'>('daily');
   const [selectedMetric, setSelectedMetric] = useState<'stress' | 'sleep' | 'relax' | null>(null);
+  const [weeklyModalVisible, setWeeklyModalVisible] = useState(false);
+  const [mainModalVisible, setMainModalVisible] = useState(false);
+  const [selectedWeeklySubmissions, setSelectedWeeklySubmissions] = useState<WeeklyProgressData[]>([]);
+  const [selectedMainSubmissions, setSelectedMainSubmissions] = useState<MainQuestionnaireData[]>([]);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -83,7 +88,8 @@ export default function ProgressScreen() {
 
       if (voiceRecordingsError) throw voiceRecordingsError;
 
-      const submittedWeeksSet = new Set<string>();
+      // Get voice recording submission details
+      const submittedWeeksMap = new Map<string, { week: string; completed: boolean; submitted_at: string }>();
       let earliestWeeklyDate: Date | null = null;
       if (voiceRecordings && voiceRecordings.length > 0) {
         voiceRecordings.forEach(recording => {
@@ -91,11 +97,12 @@ export default function ProgressScreen() {
           const date = new Date(recording.year, 0, 1 + (recording.week_number - 1) * 7);
           if (!earliestWeeklyDate || date < earliestWeeklyDate) earliestWeeklyDate = date;
           const [y, w] = getWeekNumber(date);
-          submittedWeeksSet.add(`${y}-W${w.toString().padStart(2, '0')}`);
+          const weekKey = `${y}-W${w.toString().padStart(2, '0')}`;
+          submittedWeeksMap.set(weekKey, { week: weekKey, completed: true, submitted_at: recording.created_at });
         });
       }
 
-      const weeksList: Array<{ week: string; completed: boolean }> = [];
+      const weeksList: Array<{ week: string; completed: boolean; submitted_at?: string }> = [];
       if (earliestWeeklyDate) {
         const start = new Date(earliestWeeklyDate);
         start.setHours(0,0,0,0);
@@ -105,7 +112,12 @@ export default function ProgressScreen() {
           const [yr, wk] = getWeekNumber(cur);
           const key = `${yr}-W${wk.toString().padStart(2,'0')}`;
           if (!weeksList.find(w => w.week === key)) {
-            weeksList.push({ week: key, completed: submittedWeeksSet.has(key) });
+            const weekData = submittedWeeksMap.get(key);
+            if (weekData) {
+              weeksList.push(weekData);
+            } else {
+              weeksList.push({ week: key, completed: false });
+            }
           }
           cur.setDate(cur.getDate() + 7);
         }
@@ -114,25 +126,41 @@ export default function ProgressScreen() {
       setWeeklyProgressData(weeksList);
 
       // Fetch main questionnaire data
-      const { data: mainData, error: mainError } = await supabase
-        .from('main_questionnaire_responses')
-        .select(`
-          id, 
-          submitted_at,
-          main_question_sets(version)
-        `)
+      // First get the session records
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('main_questionnaire_sessions')
+        .select('id, question_set_id, started_at')
         .eq('user_id', session?.user?.id)
-        .order('submitted_at', { ascending: false });
+        .order('started_at', { ascending: false });
 
-      if (mainError) throw mainError;
+      if (sessionError) throw sessionError;
 
-      const formattedMainData = (mainData || []).map(item => ({
-        id: item.id,
-        version: item.main_question_sets && item.main_question_sets[0] ? item.main_question_sets[0].version : 'Unknown',
-        submitted_at: item.submitted_at
-      }));
-
-      setMainQuestionnaireData(formattedMainData);
+      // Then get the question sets for those sessions
+      if (sessionData && sessionData.length > 0) {
+        const sessionIds = sessionData.map(session => session.id);
+        const questionSetIds = sessionData.map(session => session.question_set_id);
+        
+        const { data: questionSets, error: questionSetsError } = await supabase
+          .from('main_question_sets')
+          .select('id, version')
+          .in('id', questionSetIds);
+          
+        if (questionSetsError) throw questionSetsError;
+        
+        // Format the data to match the expected structure
+        const formattedMainData = sessionData.map(session => {
+          const questionSet = questionSets.find(qs => qs.id === session.question_set_id);
+          return {
+            id: session.id,
+            version: questionSet ? questionSet.version : 'Unknown',
+            submitted_at: session.started_at
+          };
+        });
+        
+        setMainQuestionnaireData(formattedMainData);
+      } else {
+        setMainQuestionnaireData([]);
+      }
 
     } catch (error) {
       Alert.alert('Error', 'Failed to fetch progress data');
@@ -200,29 +228,29 @@ export default function ProgressScreen() {
     weeklyCompletion = Math.round((completedWeeks / Math.max(1, totalWeeks)) * 100);
   }
 
-  // Main questionnaires: compute quarters between earliest submission and today
+  // Main questionnaires: compute months between earliest submission and today
   let mainCompletion = 0;
-  let mainMissedQuarters: string[] = [];
+  let mainMissedMonths: string[] = [];
   if (mainQuestionnaireData && mainQuestionnaireData.length > 0) {
     const sortedMain = [...mainQuestionnaireData].sort((a,b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
     const earliest = new Date(sortedMain[0].submitted_at);
     earliest.setHours(0,0,0,0);
     const today = new Date(); today.setHours(0,0,0,0);
-    const quarters: string[] = [];
-    const quarterSet = new Set<string>();
-    const getQuarterKey = (d: Date) => `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth()/3)+1}`;
+    const months: string[] = [];
+    const monthSet = new Set<string>();
+    const getMonthKey = (d: Date) => `${d.getUTCFullYear()}-${(d.getUTCMonth()+1).toString().padStart(2, '0')}`;
     sortedMain.forEach(item => {
-      quarterSet.add(getQuarterKey(new Date(item.submitted_at)));
+      monthSet.add(getMonthKey(new Date(item.submitted_at)));
     });
     const cur = new Date(earliest);
     while (cur <= today) {
-      const qk = getQuarterKey(cur);
-      quarters.push(qk);
-      cur.setMonth(cur.getMonth() + 3);
+      const mk = getMonthKey(cur);
+      months.push(mk);
+      cur.setMonth(cur.getMonth() + 1);
     }
-    const completedMain = Array.from(quarterSet).filter(q => quarters.includes(q)).length;
-    mainCompletion = Math.round((completedMain / Math.max(1, quarters.length)) * 100);
-    mainMissedQuarters = quarters.filter(q => !quarterSet.has(q));
+    const completedMain = Array.from(monthSet).filter(m => months.includes(m)).length;
+    mainCompletion = Math.round((completedMain / Math.max(1, months.length)) * 100);
+    mainMissedMonths = months.filter(m => !monthSet.has(m));
   }
 
   return (
@@ -460,17 +488,35 @@ export default function ProgressScreen() {
             </View>
 
             <View style={styles.tableSection}>
-              <Text style={styles.tableTitle}>Weekly Submission History</Text>
+              <View style={styles.tableHeaderRow}>
+                <Text style={styles.tableTitle}>Weekly Submission History</Text>
+                {weeklyProgressData.filter(w => w.completed).length > 5 && (
+                  <TouchableOpacity onPress={() => {
+                    setSelectedWeeklySubmissions(weeklyProgressData.filter(w => w.completed));
+                    setWeeklyModalVisible(true);
+                  }}>
+                    <Text style={styles.viewAllText}>View All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               {weeklyProgressData.filter(w => w.completed).length > 0 ? (
                 weeklyProgressData
                   .filter(w => w.completed)
-                  .slice(0, 10)
+                  .slice(0, 5)
                   .map((item, index) => (
                     <View key={index} style={styles.tableRow}>
-                      <Text style={styles.dateCell}>{item.week}</Text>
+                      <View style={styles.weekCell}>
+                        <Text style={styles.dateCell}>{item.week}</Text>
+                        {item.submitted_at && (
+                          <Text style={styles.submissionTime}>{formatDateTime(item.submitted_at)}</Text>
+                        )}
+                      </View>
                       <View style={styles.statusCell}>
-                        <View style={styles.completedBadge}>
-                          <Text style={styles.completedText}>Completed</Text>
+                        <View style={styles.completedIconContainer}>
+                          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+                            <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                          </Svg>
                         </View>
                       </View>
                     </View>
@@ -501,42 +547,54 @@ export default function ProgressScreen() {
                 <View style={styles.progressBarTrack}>
                   <Animated.View style={[styles.progressBarFill, { width: `${mainCompletion}%`, backgroundColor: '#4CAF85' }]} />
                 </View>
-                <Text style={styles.progressBarSubtitle}>{mainQuestionnaireData.length}/4 sessions</Text>
+                <Text style={styles.progressBarSubtitle}>{mainQuestionnaireData.length} sessions</Text>
               </View>
             </View>
             <View style={styles.chartSection}>
-              <Text style={styles.chartTitle}>Main Questionnaire Submissions</Text>
+              <View style={styles.tableHeaderRow}>
+                <Text style={styles.chartTitle}>Main Questionnaire Submissions</Text>
+                {mainQuestionnaireData.length > 5 && (
+                  <TouchableOpacity onPress={() => {
+                    setSelectedMainSubmissions(mainQuestionnaireData);
+                    setMainModalVisible(true);
+                  }}>
+                    <Text style={styles.viewAllText}>View All</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <View style={styles.submissionList}>
                 {mainQuestionnaireData.length > 0 ? (
-                  mainQuestionnaireData.map((item) => (
-                    <View key={item.id} style={styles.submissionItem}>
-                      <View style={styles.submissionIcon}>
-                        <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                          <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-                          <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-                        </Svg>
+                  mainQuestionnaireData
+                    .slice(0, 5)
+                    .map((item) => (
+                      <View key={item.id} style={styles.submissionItem}>
+                        <View style={styles.submissionIcon}>
+                          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+                            <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                          </Svg>
+                        </View>
+                        <View style={styles.submissionText}>
+                          <Text style={styles.submissionVersion}>{item.version}</Text>
+                          <Text style={styles.submissionDate}>{formatDateTime(item.submitted_at)}</Text>
+                        </View>
                       </View>
-                      <View style={styles.submissionText}>
-                        <Text style={styles.submissionVersion}>{item.version}</Text>
-                        <Text style={styles.submissionDate}>{formatDateTime(item.submitted_at)}</Text>
-                      </View>
-                    </View>
-                  ))
+                    ))
                 ) : (
                   <Text style={styles.noDataText}>No main questionnaire submissions yet</Text>
                 )}
               </View>
             </View>
 
-            {/* Missed main questionnaires (by quarter) */}
-            {mainMissedQuarters && mainMissedQuarters.length > 0 && (
+            {/* Missed main questionnaires (by month) */}
+            {mainMissedMonths && mainMissedMonths.length > 0 && (
               <View style={[styles.missedDatesContainer, { marginBottom: 12 }] }>
-                <Text style={styles.missedDatesTitle}>Missed Quarters ({mainMissedQuarters.length}):</Text>
+                <Text style={styles.missedDatesTitle}>Missed Months ({mainMissedMonths.length}):</Text>
                 <View style={styles.missedDatesList}>
-                  {mainMissedQuarters.slice(0, 6).map((q, i) => (
+                  {mainMissedMonths.slice(0, 6).map((m, i) => (
                     <View key={i} style={styles.missedDateItem}>
                       <Svg width="16" height="16" viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" /><Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" /></Svg>
-                      <Text style={styles.missedDateText}>{q}</Text>
+                      <Text style={styles.missedDateText}>{m}</Text>
                     </View>
                   ))}
                 </View>
@@ -550,12 +608,90 @@ export default function ProgressScreen() {
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>{mainCompletion}%</Text>
-                <Text style={styles.statLabel}>OfYear Target</Text>
+                <Text style={styles.statLabel}>Completion Rate</Text>
               </View>
             </View>
           </Animated.View>
         )}
       </ScrollView>
+
+      {/* Weekly Submissions Modal */}
+      <Modal
+        visible={weeklyModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setWeeklyModalVisible(false)}
+      >
+        <View style={styles.allSubmissionsModalContainer}>
+          <View style={styles.allSubmissionsModalContent}>
+            <View style={styles.allSubmissionsModalHeader}>
+              <Text style={styles.allSubmissionsModalTitle}>All Weekly Submissions</Text>
+              <TouchableOpacity onPress={() => setWeeklyModalVisible(false)}>
+                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
+                </Svg>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.allSubmissionsModalBody}>
+              {selectedWeeklySubmissions.map((item, index) => (
+                <View key={index} style={styles.allSubmissionsModalListItem}>
+                  <View style={styles.weekCell}>
+                    <Text style={styles.dateCell}>{item.week}</Text>
+                    {item.submitted_at && (
+                      <Text style={styles.submissionTime}>{formatDateTime(item.submitted_at)}</Text>
+                    )}
+                  </View>
+                  <View style={styles.statusCell}>
+                    <View style={styles.completedIconContainer}>
+                      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+                        <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                      </Svg>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Main Submissions Modal */}
+      <Modal
+        visible={mainModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setMainModalVisible(false)}
+      >
+        <View style={styles.allSubmissionsModalContainer}>
+          <View style={styles.allSubmissionsModalContent}>
+            <View style={styles.allSubmissionsModalHeader}>
+              <Text style={styles.allSubmissionsModalTitle}>All Main Questionnaire Submissions</Text>
+              <TouchableOpacity onPress={() => setMainModalVisible(false)}>
+                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
+                </Svg>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.allSubmissionsModalBody}>
+              {selectedMainSubmissions.map((item) => (
+                <View key={item.id} style={styles.allSubmissionsModalListItem}>
+                  <View style={styles.submissionIcon}>
+                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
+                      <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                    </Svg>
+                  </View>
+                  <View style={styles.submissionText}>
+                    <Text style={styles.submissionVersion}>{item.version}</Text>
+                    <Text style={styles.submissionDate}>{formatDateTime(item.submitted_at)}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Metric Detail Modal */}
       <Modal
@@ -935,6 +1071,17 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 20,
   },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: '#64C59A',
+    fontWeight: '600',
+  },
   tableRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -948,6 +1095,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 2,
   },
+  weekCell: {
+    flex: 2,
+  },
+  submissionTime: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
   dataCell: {
     fontSize: 16,
     color: '#666',
@@ -958,16 +1113,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
   },
-  completedBadge: {
-    backgroundColor: '#64C59A20',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+
+  completedIcon: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+    marginRight: 6,
   },
-  completedText: {
-    color: '#64C59A',
-    fontSize: 14,
-    fontWeight: '600',
+  completedIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noDataText: {
     fontSize: 16,
@@ -1158,5 +1314,43 @@ const styles = StyleSheet.create({
   modalTableCell: {
     fontSize: 13,
     color: '#333',
+  },
+  allSubmissionsModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  allSubmissionsModalContent: {
+    width: '90%',
+    maxWidth: 500,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    maxHeight: '80%',
+  },
+  allSubmissionsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  allSubmissionsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+  },
+  allSubmissionsModalBody: {
+    padding: 20,
+  },
+  allSubmissionsModalListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
 });
