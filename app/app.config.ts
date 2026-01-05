@@ -6,12 +6,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     slug: "app",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/app-intro.png",
+    icon: "./assets/images/app-icon.png",
     scheme: "app",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
-        bundleIdentifier: "com.anonymous.app",
+        bundleIdentifier: "com.mindflow.research",
         supportsTablet: true,
         infoPlist: {
             NSMicrophoneUsageDescription: "This app needs access to the microphone to capture vocal biomarkers for mindfulness research analysis.",
@@ -20,11 +20,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     android: {
         adaptiveIcon: {
             backgroundColor: "#F8FDFC",
-            foregroundImage: "./assets/images/app-intro.png"
+            foregroundImage: "./assets/images/app-icon.png"
         },
         edgeToEdgeEnabled: true,
         predictiveBackGestureEnabled: false,
-        package: "com.anonymous.app",
+        package: "com.mindflow.research",
         permissions: [
             "android.permission.AUDIO_CAPTURE",
             "android.permission.RECORD_AUDIO",

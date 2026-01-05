@@ -151,7 +151,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
           setIsRecording(false);
         } else if (actualDuration < 15) {
           // Check duration only for manually stopped recordings
-          Alert.alert('Recording Too Short', 'Recording must be at least 15 seconds. Please read the full paragraph.');
+          Alert.alert('Recording Too Short', 'Recording must be at least 15 seconds.');
           setRecordingUri(null);
           setRecordingDuration(0);
           setIsRecording(false); // Reset recording state so button shows "Start" again
@@ -305,22 +305,34 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
                   </Text>
                 </Animated.View>
 
+
+
                 <Animated.View entering={FadeInDown.delay(200)} style={styles.recordingContainer}>
                   <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>{recordingDuration}s</Text>
+                    <Text style={[styles.timerText, isRecording && { color: '#EF4444' }]}>
+                      {recordingDuration}s
+                    </Text>
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.recordButton, isRecording && styles.recordingActive]}
+                    style={[
+                      styles.recordButton,
+                      isRecording && styles.recordingActive
+                    ]}
                     onPress={handleToggleRecording}
                     disabled={uploading}
                   >
                     <Icons.Microphone isRecording={isRecording} width={40} height={40} color="#fff" fill={isRecording ? "#EF4444" : "#2E8A66"} />
                   </TouchableOpacity>
 
-                  <Text style={styles.recordButtonText}>
-                    {isRecording ? 'Stop Recording' : 'Start Recording'}
+                  <Text style={[styles.recordButtonText, isRecording && { color: '#EF4444', fontWeight: '700' }]}>
+                    {isRecording ? 'Stop Recording' : 'Tap to Start'}
                   </Text>
+
+                  {/* Minimum duration hint */}
+                  {!isRecording && (
+                    <Text style={{ fontSize: 13, color: '#888', marginTop: 8 }}>Minimum 15 seconds</Text>
+                  )}
 
                   {isRecording && (
                     <View style={styles.recordingIndicator}>
@@ -331,6 +343,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
                 </Animated.View>
 
                 <Animated.View entering={FadeInDown.delay(300)} style={styles.passageContainer}>
+                  <Text style={styles.passageTitle}>Read Aloud:</Text>
                   <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
                 </Animated.View>
               </>
@@ -378,7 +391,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
       </ScrollView>
 
 
-    </View>
+    </View >
   );
 }
 
@@ -475,6 +488,14 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 28,
     textAlign: 'left',
+  },
+  passageTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E8A66',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   recordingContainer: {
     alignItems: 'center',

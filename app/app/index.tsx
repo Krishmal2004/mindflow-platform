@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useSession } from '../src/contexts/SessionContext';
 import Auth from '../src/components/Auth';
-import { Redirect } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 export default function RootScreen() {
   const { session, loading } = useSession();
+  const router = useRouter();
+
+  // Redirect logic moved to app/_layout.tsx
+
 
   if (loading) {
     return (
@@ -15,9 +19,9 @@ export default function RootScreen() {
     );
   }
 
-  // If there's a session, redirect to the main app
+  // If there's a session, we are redirecting, so show nothing or loading
   if (session) {
-    return <Redirect href="/(tabs)" />;
+    return null;
   }
 
   // Otherwise, show the auth screen
