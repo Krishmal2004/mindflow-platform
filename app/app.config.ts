@@ -11,6 +11,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
+        bundleIdentifier: "com.anonymous.app",
         supportsTablet: true,
         infoPlist: {
             NSMicrophoneUsageDescription: "This app needs access to the microphone to capture vocal biomarkers for mindfulness research analysis.",
