@@ -8,14 +8,18 @@ import {
   Dimensions,
   Alert,
   RefreshControl,
+  ActivityIndicator,
+  Modal,
+  Image,
+  Pressable, // Import Pressable
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSession } from '../../src/contexts/SessionContext';
-import { Svg, Path, Circle } from 'react-native-svg';
+import { Svg, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '../lib/supabase';
-
-const { width } = Dimensions.get('window');
+import { Icons } from './common/AppIcons'; // Import Icons
+// Removed unused Dimensions
 
 /**
  * Interface defining the structure of calendar events
@@ -41,6 +45,8 @@ export default function CalendarScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false); // Add loading state
+  const [selectedDateEvents, setSelectedDateEvents] = useState<{ date: Date; events: CalendarEvent[] } | null>(null); // State for modal
   const scrollViewRef = useRef<ScrollView>(null);
 
   useFocusEffect(
@@ -91,7 +97,9 @@ export default function CalendarScreen() {
       setCalendarEvents(data || []);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
-      Alert.alert('Error', 'Failed to fetch calendar events');
+      // Alert.alert('Error', 'Failed to fetch calendar events'); // Silent error or toast preferred
+    } finally {
+      setIsLoadingEvents(false);
     }
   };
 
@@ -233,17 +241,23 @@ export default function CalendarScreen() {
         <View style={styles.calendarCard}>
           <View style={styles.header}>
             <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
-              <Text style={styles.navArrow}>←</Text>
+              <Icons.Back width={20} height={20} color="#333" />
             </TouchableOpacity>
             <Text style={styles.monthTitle}>
               {monthNames[month]} {year}
             </Text>
             <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
-              <Text style={styles.navArrow}>→</Text>
+              <Icons.Forward width={20} height={20} color="#333" />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.grid}>{cells}</View>
+          {isLoadingEvents ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#64C59A" />
+            </View>
+          ) : (
+            <View style={styles.grid}>{cells}</View>
+          )}
 
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
@@ -268,42 +282,31 @@ export default function CalendarScreen() {
    * Handles when a day is pressed on the calendar
    * Shows events for the selected date if any exist
    */
+  /**
+   * Handles when a day is pressed on the calendar
+   */
   const handleDayPress = (date: Date) => {
-    // Show events for the selected date
     const events = getEventsForDate(date);
-    if (events.length > 0) {
-      const eventMessages = events.map(e => `${e.title}${e.description ? `\n${e.description}` : ''}`).join('\n\n');
-      Alert.alert(
-        `Events on ${date.toDateString()}`,
-        eventMessages,
-        [{ text: "OK" }]
-      );
-      return;
-    }
-
-    // Default action for date selection
-    Alert.alert(
-      "Date Selected",
-      `Selected date: ${date.toDateString()}`,
-      [{ text: "OK" }]
-    );
+    setSelectedDateEvents({ date, events });
   };
 
   /**
    * Gets upcoming mindfulness sessions for display in the events section
+   * Memoized to prevent recalculation
    */
-  const getUpcomingMindfulnessSessions = () => {
+  const upcomingMindfulnessSessions = React.useMemo(() => {
     const today = new Date();
-    const upcomingSessions = calendarEvents
+    // Normalize today to start of day for comparison
+    today.setHours(0, 0, 0, 0);
+
+    return calendarEvents
       .filter(event =>
         event.title.startsWith('Mindfulness Session') &&
         new Date(event.event_date) >= today
       )
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
       .slice(0, 4);
-
-    return upcomingSessions;
-  };
+  }, [calendarEvents]);
 
   return (
     <View style={styles.container}>
@@ -328,18 +331,13 @@ export default function CalendarScreen() {
           <Text style={styles.sectionTitle}>Upcoming Mindfulness Sessions</Text>
 
           {/* Upcoming Sessions List */}
-          {(() => {
-            const upcomingSessions = getUpcomingMindfulnessSessions();
-
-            if (upcomingSessions.length === 0) {
-              return (
-                <View style={styles.noEventsContainer}>
-                  <Text style={styles.noEventsText}>No upcoming mindfulness sessions</Text>
-                </View>
-              );
-            }
-
-            return upcomingSessions.map((event, index) => {
+          {upcomingMindfulnessSessions.length === 0 ? (
+            <View style={styles.noEventsContainer}>
+              <Icons.Relaxation width={48} height={48} color="#D1D5DB" />
+              <Text style={styles.noEventsText}>No upcoming mindfulness sessions</Text>
+            </View>
+          ) : (
+            upcomingMindfulnessSessions.map((event, index) => {
               const eventDate = new Date(event.event_date);
               const isCompleted = event.is_completed;
 
@@ -366,10 +364,50 @@ export default function CalendarScreen() {
                   </View>
                 </View>
               );
-            });
-          })()}
+            })
+          )}
         </View>
       </ScrollView>
+
+      {/* Event Details Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={!!selectedDateEvents}
+        onRequestClose={() => setSelectedDateEvents(null)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSelectedDateEvents(null)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {selectedDateEvents?.date.toDateString()}
+              </Text>
+            </View>
+
+            {selectedDateEvents?.events && selectedDateEvents.events.length > 0 ? (
+              selectedDateEvents.events.map((event, index) => (
+                <View key={index} style={styles.modalEventItem}>
+                  <Text style={styles.modalEventTitle}>{event.title}</Text>
+                  {event.event_time && <Text style={styles.modalEventTime}>{event.event_time}</Text>}
+                  {event.description && <Text style={styles.modalEventDesc}>{event.description}</Text>}
+                </View>
+              ))
+            ) : (
+              <Text style={styles.modalNoEventsText}>No events for this date.</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setSelectedDateEvents(null)}
+            >
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -479,7 +517,6 @@ const styles = StyleSheet.create({
   hasEventsCell: {
     backgroundColor: '#E3F2FD',
   },
-  // Removed checkIcon styles
   sessionIndicator: {
     position: 'absolute',
     top: 2,
@@ -532,6 +569,7 @@ const styles = StyleSheet.create({
   eventsSection: {
     padding: 24,
     paddingTop: 0,
+    marginTop: 24, 
   },
   sectionTitle: {
     fontSize: 20,
@@ -604,5 +642,85 @@ const styles = StyleSheet.create({
     color: '#64C59A',
     fontWeight: '600',
     fontSize: 14,
+  },
+  loadingContainer: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2E8A66',
+  },
+  modalEventItem: {
+    marginBottom: 12,
+    width: '100%',
+    backgroundColor: '#F8FDFC',
+    padding: 12,
+    borderRadius: 12,
+  },
+  modalEventTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalEventTime: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  modalEventDesc: {
+    fontSize: 14,
+    color: '#555',
+    marginTop: 4,
+  },
+  modalNoEventsText: {
+    fontSize: 16,
+    color: '#888',
+    marginBottom: 20,
+    fontStyle: 'italic',
+  },
+  modalButton: {
+    backgroundColor: '#2E8A66',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 20,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

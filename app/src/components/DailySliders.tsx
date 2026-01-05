@@ -234,9 +234,10 @@ export default function DailySliders() {
                 modestbranding: 1,
                 playsinline: 1,
                 fs: 1,
+                origin: 'https://www.youtube.com'
               },
               events: {
-                'onReady': function() {
+                'onReady': function(event) {
                   // user must press play; ensure we can post time updates
                   window.setInterval(function() {
                     try {
@@ -254,6 +255,9 @@ export default function DailySliders() {
                       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ended', seconds: t }));
                     } catch(e){}
                   }
+                },
+                'onError': function(event) {
+                   window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', code: event.data }));
                 }
               }
             });
@@ -338,8 +342,11 @@ export default function DailySliders() {
     return Emojis.SleepQuality[idx] || Emojis.SleepQuality[2];
   };
   const getRelaxationIcon = () => {
-    const idx = relaxationLevel ? 5 - relaxationLevel : 2;
-    return Emojis.Stress[idx] || Emojis.Stress[2];
+    if (relaxationLevel) {
+      return Emojis.Relaxation[relaxationLevel - 1];
+    }
+    // Default or neutral state
+    return Emojis.Relaxation[2];
   };
   // Submit wellness data
   const handleSubmit = async (isEdit = false) => {
@@ -501,7 +508,6 @@ export default function DailySliders() {
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Mindfulness Practice moved after Sleep Quality - only for .ex users */}
         {userExtension === 'ex' && (
           <View style={styles.section}>
             <View style={styles.questionHeader}>
@@ -592,13 +598,15 @@ export default function DailySliders() {
                   <WebView
                     ref={webviewRef}
                     originWhitelist={["*"]}
-                    source={{ html: getYouTubeHTML(selectedRecording.youtube_id) }}
+                    source={{ html: getYouTubeHTML(selectedRecording.youtube_id), baseUrl: "https://www.youtube.com" }}
                     style={{ flex: 1, backgroundColor: '#000' }}
                     onMessage={handleWebviewMessage}
                     javaScriptEnabled
                     domStorageEnabled
                     allowsInlineMediaPlayback
+                    allowsFullscreenVideo={true}
                     mediaPlaybackRequiresUserAction={false}
+                    userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36"
                   />
                 ) : (
                   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -606,18 +614,19 @@ export default function DailySliders() {
                   </View>
                 )}
               </View>
-              <View style={{ padding: 12 }}>
+              <View style={{ padding: 20 }}>
                 <Text style={styles.recordingDesc}>{selectedRecording?.description || 'No description'}</Text>
-                <Text style={[styles.recordingDesc, { marginTop: 8 }]}>Seconds watched: {playbackSeconds}</Text>
+                <Text style={[styles.recordingDesc, { marginTop: 8, fontSize: 12, color: '#999' }]}>Seconds watched: {playbackSeconds}</Text>
                 {selectedRecording && (
                   <TouchableOpacity
-                    style={[styles.playButton, { marginTop: 12 }]}
+                    style={[styles.playButton, { marginTop: 16, width: '100%', height: 50, backgroundColor: '#FF0000', borderRadius: 25, flexDirection: 'row' }]}
                     onPress={() => {
                       const url = `https://www.youtube.com/watch?v=${selectedRecording.youtube_id}`;
                       Linking.openURL(url);
                     }}
                   >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>Open in YouTube</Text>
+                    {/* Youtube Icon could go here */}
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Open in YouTube</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -636,18 +645,7 @@ export default function DailySliders() {
           </View>
           <View style={styles.stressVisualContainer}>
             <Animated.View
-              style={[styles.iconLarge, { width: 80, height: 80 }, {
-                transform: [
-                  {
-                    translateX: stressLevel
-                      ? stressAnimation.interpolate({
-                        inputRange: [1, 2, 3, 4, 5],
-                        outputRange: [-30, -15, 0, 15, 30]
-                      })
-                      : 0
-                  }
-                ]
-              }]}
+              style={[styles.iconLarge, { width: 80, height: 80 }]}
             >
               {(() => {
                 const IconComp = getStressIcon();
@@ -948,8 +946,7 @@ export default function DailySliders() {
                   onPress={() => setRelaxationLevel(i + 1)}
                 >
                   {(() => {
-                    // Reusing Stress emojis for relaxation (reversed)
-                    const IconComp = Emojis.Stress[4 - i];
+                    const IconComp = Emojis.Relaxation[i];
                     return IconComp ? <IconComp width={28} height={28} /> : null;
                   })()}
                 </TouchableOpacity>
@@ -1018,7 +1015,7 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 24,
   },
- 
+
   progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1132,7 +1129,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 10,
-    gap: 4 
+    gap: 4
   },
   emotionButton: {
     width: 50,
@@ -1246,34 +1243,40 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     padding: 20,
   },
   recordingModalContent: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: 'hidden',
-    maxHeight: '85%'
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
   modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: '#1a1a1a',
     flex: 1,
-    marginRight: 12,
+    marginRight: 16,
   },
   recordingWebviewContainer: {
-    height: 220,
-    backgroundColor: '#000'
+    height: 240,
+    backgroundColor: '#000',
   },
   modalTableRow: {
     padding: 12,

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown, useSharedValue, withTiming, useAnimatedProps } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useSharedValue, withTiming, useAnimatedProps, useAnimatedStyle, withRepeat, withSequence } from 'react-native-reanimated';
 import Svg, { Path, Circle, Pattern, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
 import { supabase } from '../lib/supabase';
@@ -46,14 +46,35 @@ const CONTROL_FACTS = [
   "There are more stars in the universe than grains of sand on all the Earth's beaches.",
 ];
 
-const CalmBackground = () => (
-  <ImageBackground
-    source={{ uri: 'https://example.com/subtle-zen-pattern.png' }}
-    style={StyleSheet.absoluteFillObject}
-    resizeMode="repeat"
-    imageStyle={{ opacity: 0.05 }}
-  />
-);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const SkeletonItem = ({ style, borderRadius = 12 }: { style?: any; borderRadius?: number }) => {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 800 }),
+        withTiming(0.3, { duration: 800 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      style={[
+        { backgroundColor: '#E1E9E5', borderRadius },
+        style,
+        animatedStyle
+      ]}
+    />
+  );
+};
+
 
 /**
  * Dashboard Component
@@ -84,11 +105,11 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
 
   // State for content rotation and user progress
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [streak, setStreak] = useState(0);
   const [completed, setCompleted] = useState(0);
   const [consistency, setConsistency] = useState(0);
   const [weeklyProgress, setWeeklyProgress] = useState(0);
-  const [mainQuestionnaireProgress, setMainQuestionnaireProgress] = useState(0);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [researchID, setResearchID] = useState('');
@@ -103,7 +124,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   // Animation values
   const streakProgress = useSharedValue(0);
   const consistencyProgress = useSharedValue(0);
-  const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
   const animatedPropsStreak = useAnimatedProps(() => ({
     strokeDashoffset: 440 * (1 - Math.min(1, streakProgress.value / 100)),
@@ -125,8 +145,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   }, [userExtension]);
 
   useEffect(() => {
-    fetchResearchID();
-    fetchUserProgress();
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchResearchID(), fetchUserProgress()]);
+      setLoading(false);
+    };
+    loadData();
   }, [session]);
 
   const onRefresh = async () => {
@@ -314,7 +338,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
 
   return (
     <View style={styles.container}>
-      <CalmBackground />
       <LinearGradient
         colors={['#F8FDFC', '#E8F5F1']}
         style={StyleSheet.absoluteFillObject}
@@ -331,220 +354,236 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 60 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {userExtension && (
-          <Animated.View entering={FadeIn.duration(1000)}>
-            <LinearGradient
-              colors={userExtension === 'ex' ? ['#3bcc97ff', '#2E8A66'] : ['#9B6B35', '#7A5424']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.tipCard}
-            >
-              <Svg style={StyleSheet.absoluteFillObject} viewBox="0 0 100 100" opacity={0.08}>
-                <Pattern id="pattern" patternUnits="userSpaceOnUse" width="20" height="20">
-                  <Circle cx="10" cy="10" r="2" fill="#fff" />
-                </Pattern>
-                <Circle cx="50" cy="50" r="50" fill="url(#pattern)" />
+      {loading ? (
+        <ScrollView contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 28 }}>
+          {/* Tip Card Skeleton */}
+          <SkeletonItem style={{ height: 180, width: '100%', borderRadius: 32, marginTop: 10 }} />
+
+          {/* Journey Section Skeleton */}
+          <View style={{ marginTop: 32 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+              <SkeletonItem style={{ width: 150, height: 30 }} />
+              <SkeletonItem style={{ width: 100, height: 30 }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <SkeletonItem style={{ width: '48%', height: 160, borderRadius: 160 }} />
+              <SkeletonItem style={{ width: '48%', height: 160, borderRadius: 160 }} />
+            </View>
+          </View>
+
+          {/* About Me Skeleton */}
+          <SkeletonItem style={{ height: 100, width: '100%', marginTop: 20, borderRadius: 24 }} />
+
+          {/* Map Skeleton */}
+          <View style={{ marginTop: 20 }}>
+            <SkeletonItem style={{ width: 120, height: 30, marginBottom: 10 }} />
+            <SkeletonItem style={{ height: 300, width: '100%', borderRadius: 24 }} />
+          </View>
+        </ScrollView>
+      ) : (
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 60 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {userExtension && (
+            <Animated.View entering={FadeIn.duration(1000)}>
+              <LinearGradient
+                colors={userExtension === 'ex' ? ['#3bcc97ff', '#2E8A66'] : ['#9B6B35', '#7A5424']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.tipCard}
+              >
+                <Svg style={StyleSheet.absoluteFillObject} viewBox="0 0 100 100" opacity={0.08}>
+                  <Pattern id="pattern" patternUnits="userSpaceOnUse" width="20" height="20">
+                    <Circle cx="10" cy="10" r="2" fill="#fff" />
+                  </Pattern>
+                  <Circle cx="50" cy="50" r="50" fill="url(#pattern)" />
+                </Svg>
+                <View style={styles.tipHeader}>
+                  <View style={styles.tipIconCircle}>
+                    <Icons.Mindfulness width={24} height={24} color="#fff" />
+                  </View>
+                  <Text style={styles.tipLabel}>
+                    {userExtension === 'ex' ? 'Daily Mindfulness Tip' : 'Fascinating Fact'}
+                  </Text>
+                </View>
+                <Text style={styles.tipText}>{currentTip}</Text>
+              </LinearGradient>
+            </Animated.View>
+          )}
+
+          {/* Your Journey Statistics */}
+          <Animated.View entering={FadeInDown.delay(300).duration(800)} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Your Journey</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/progress')}>
+                <Text style={styles.viewAllText}>Explore More</Text>
+                <Icons.Forward width={16} height={16} color="#64C59A" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.enhancedProgressGrid}>
+              {/* Streak Circle */}
+              <View style={styles.enhancedProgressItem}>
+                <View style={styles.circularProgressContainer}>
+                  <Svg width="160" height="160" viewBox="0 0 160 160">
+                    <Circle cx="80" cy="80" r="70" stroke="#E8F5F1" strokeWidth="12" fill="none" />
+                    <AnimatedCircle
+                      cx="80" cy="80" r="70" stroke="#64C59A" strokeWidth="12" fill="none"
+                      strokeDasharray="440" strokeLinecap="round"
+                      transform="rotate(-90 80 80)"
+                      animatedProps={animatedPropsStreak}
+                    />
+                    <Circle cx="80" cy="80" r="50" fill="#F8FDFC" />
+                  </Svg>
+                  <View style={styles.progressCenter}>
+                    <Text style={styles.enhancedProgressNumber}>{streak}</Text>
+                    <Text style={styles.enhancedProgressLabel}>Day Streak</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Consistency Circle */}
+              <View style={styles.enhancedProgressItem}>
+                <View style={styles.circularProgressContainer}>
+                  <Svg width="160" height="160" viewBox="0 0 160 160">
+                    <Circle cx="80" cy="80" r="70" stroke="#E8F5F1" strokeWidth="12" fill="none" />
+                    <AnimatedCircle
+                      cx="80" cy="80" r="70" stroke="#4CAF85" strokeWidth="12" fill="none"
+                      strokeDasharray="440" strokeLinecap="round"
+                      transform="rotate(-90 80 80)"
+                      animatedProps={animatedPropsConsistency}
+                    />
+                    <Circle cx="80" cy="80" r="50" fill="#F8FDFC" />
+                  </Svg>
+                  <View style={styles.progressCenter}>
+                    <Text style={styles.enhancedProgressNumber}>{consistency}%</Text>
+                    <Text style={styles.enhancedProgressLabel}>Consistency</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* About Me */}
+          <Animated.View entering={FadeInDown.delay(100).duration(800)} style={{ paddingHorizontal: 28, marginBottom: 20 }}>
+            <TouchableOpacity onPress={onNavigateToAboutMe} activeOpacity={0.9}>
+              <View style={[styles.aboutMeCard, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee' }]}>
+                <View style={[styles.aboutMeIconContainer, { backgroundColor: '#F8FDFC' }]}>
+                  <Icons.User width={24} height={24} color="#000" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.aboutMeTitle, { color: '#000' }]}>
+                    {aboutMeCompleted ? 'About Me' : 'Complete Your Profile'}
+                  </Text>
+                  <Text style={[styles.aboutMeSubtitle, { color: '#666' }]}>
+                    {aboutMeCompleted ? 'View your details' : 'Tell us a bit about yourself to get started (1 min)'}
+                  </Text>
+                </View>
+                {!aboutMeCompleted && <Icons.Check width={24} height={24} color="#000" />}
+                {aboutMeCompleted && <Icons.Forward width={20} height={20} color="#ccc" />}
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Mindfulness Path Map */}
+          <Animated.View entering={FadeInDown.delay(200).duration(800)} style={styles.mapSection}>
+            <Text style={styles.mapTitle}>Your Path</Text>
+            <Text style={styles.mapSubtitle}>Daily • Weekly • Monthly</Text>
+
+            <View style={styles.mapContainer}>
+              {/* Path: Start (Top Right) -> Middle (Left) -> End (Bottom Center) */}
+              <Svg width={width - 56} height={400} viewBox="0 0 300 400" style={styles.mapSvg}>
+                <Defs>
+                  <SvgLinearGradient id="pathGradient" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#A8E6CF" stopOpacity="0.6" />
+                    <Stop offset="1" stopColor="#64C59A" stopOpacity="0.8" />
+                  </SvgLinearGradient>
+                </Defs>
+                <Path
+                  d="M 220 60 C 220 120, 80 120, 80 200 C 80 280, 150 280, 150 340"
+                  stroke="url(#pathGradient)"
+                  strokeWidth="6"
+                  fill="none"
+                  strokeDasharray="10 6"
+                  strokeLinecap="round"
+                />
               </Svg>
-              <View style={styles.tipHeader}>
-                <View style={styles.tipIconCircle}>
-                  <Icons.Mindfulness width={24} height={24} color="#fff" />
+
+              {/* Node 1: Daily Sliders (Top Right) -> Sun Icon */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => router.push('/daily-sliders')}
+                style={[styles.mapNode, { top: 20, right: 30 }]}
+              >
+                <View style={[styles.nodeCircle, dailyDoneToday && styles.nodeCircleDone]}>
+                  <Icons.Sun width={32} height={32} color={dailyDoneToday ? '#fff' : '#FFA500'} />
                 </View>
-                <Text style={styles.tipLabel}>
-                  {userExtension === 'ex' ? 'Daily Mindfulness Tip' : 'Fascinating Fact'}
-                </Text>
-              </View>
-              <Text style={styles.tipText}>{currentTip}</Text>
-            </LinearGradient>
-          </Animated.View>
-        )}
-
-        {/* Your Journey Statistics */}
-        <Animated.View entering={FadeInDown.delay(300).duration(800)} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Journey</Text>
-            <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/progress')}>
-              <Text style={styles.viewAllText}>Explore More</Text>
-              <Icons.Back width={16} height={16} color="#64C59A" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.enhancedProgressGrid}>
-            {/* Streak Circle */}
-            <View style={styles.enhancedProgressItem}>
-              <View style={styles.circularProgressContainer}>
-                <Svg width="160" height="160" viewBox="0 0 160 160">
-                  <Circle cx="80" cy="80" r="70" stroke="#E8F5F1" strokeWidth="12" fill="none" />
-                  <AnimatedCircle
-                    cx="80" cy="80" r="70" stroke="#64C59A" strokeWidth="12" fill="none"
-                    strokeDasharray="440" strokeLinecap="round"
-                    transform="rotate(-90 80 80)"
-                    animatedProps={animatedPropsStreak}
-                  />
-                  <Circle cx="80" cy="80" r="50" fill="#F8FDFC" />
-                </Svg>
-                <View style={styles.progressCenter}>
-                  <Text style={styles.enhancedProgressNumber}>{streak}</Text>
-                  <Text style={styles.enhancedProgressLabel}>Day Streak</Text>
+                <View style={styles.nodeLabelContainer}>
+                  <Text style={styles.nodeLabel}>Daily Sliders</Text>
+                  <Text style={[styles.nodeStatus, dailyDoneToday && styles.nodeStatusDone, !dailyDoneToday && styles.nodeStatusActive]}>
+                    {dailyDoneToday ? 'Completed' : 'Start Today'}
+                  </Text>
                 </View>
-              </View>
-            </View>
-
-            {/* Consistency Circle */}
-            <View style={styles.enhancedProgressItem}>
-              <View style={styles.circularProgressContainer}>
-                <Svg width="160" height="160" viewBox="0 0 160 160">
-                  <Circle cx="80" cy="80" r="70" stroke="#E8F5F1" strokeWidth="12" fill="none" />
-                  <AnimatedCircle
-                    cx="80" cy="80" r="70" stroke="#4CAF85" strokeWidth="12" fill="none"
-                    strokeDasharray="440" strokeLinecap="round"
-                    transform="rotate(-90 80 80)"
-                    animatedProps={animatedPropsConsistency}
-                  />
-                  <Circle cx="80" cy="80" r="50" fill="#F8FDFC" />
-                </Svg>
-                <View style={styles.progressCenter}>
-                  <Text style={styles.enhancedProgressNumber}>{consistency}%</Text>
-                  <Text style={styles.enhancedProgressLabel}>Consistency</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* About Me (Separated) */}
-        {!aboutMeCompleted && (
-          <Animated.View entering={FadeInDown.delay(100).duration(800)} style={{ paddingHorizontal: 28, marginBottom: 20 }}>
-            <TouchableOpacity onPress={onNavigateToAboutMe} activeOpacity={0.9}>
-              <View style={[styles.aboutMeCard, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee' }]}>
-                <View style={[styles.aboutMeIconContainer, { backgroundColor: '#F8FDFC' }]}>
-                  <Icons.User width={24} height={24} color="#000" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.aboutMeTitle, { color: '#000' }]}>Complete Your Profile</Text>
-                  <Text style={[styles.aboutMeSubtitle, { color: '#666' }]}>Tell us a bit about yourself to get started (1 min)</Text>
-                </View>
-                <Icons.Check width={24} height={24} color="#000" />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-        {aboutMeCompleted && (
-          <Animated.View entering={FadeInDown.delay(100).duration(800)} style={{ paddingHorizontal: 28, marginBottom: 20 }}>
-            <TouchableOpacity onPress={onNavigateToAboutMe} activeOpacity={0.9}>
-              <View style={[styles.aboutMeCard, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#eee' }]}>
-                <View style={[styles.aboutMeIconContainer, { backgroundColor: '#F8FDFC' }]}>
-                  <Icons.User width={24} height={24} color="#000" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.aboutMeTitle, { color: '#000' }]}>About Me</Text>
-                  <Text style={[styles.aboutMeSubtitle, { color: '#666' }]}>View your details</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {/* Mindfulness Path Map */}
-        <Animated.View entering={FadeInDown.delay(200).duration(800)} style={styles.mapSection}>
-          <Text style={styles.mapTitle}>Your Path</Text>
-          <Text style={styles.mapSubtitle}>Daily • Weekly • Monthly</Text>
-
-          <View style={styles.mapContainer}>
-            {/* Path: Start (Top Right) -> Middle (Left) -> End (Bottom Center) */}
-            <Svg width={width - 56} height={400} viewBox="0 0 300 400" style={styles.mapSvg}>
-              <Defs>
-                <SvgLinearGradient id="pathGradient" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor="#A8E6CF" stopOpacity="0.6" />
-                  <Stop offset="1" stopColor="#64C59A" stopOpacity="0.8" />
-                </SvgLinearGradient>
-              </Defs>
-              <Path
-                d="M 220 60 C 220 120, 80 120, 80 200 C 80 280, 150 280, 150 340"
-                stroke="url(#pathGradient)"
-                strokeWidth="6"
-                fill="none"
-                strokeDasharray="10 6"
-                strokeLinecap="round"
-              />
-            </Svg>
-
-            {/* Node 1: Daily Sliders (Top Right) -> Sun Icon */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/daily-sliders')}
-              style={[styles.mapNode, { top: 20, right: 30 }]}
-            >
-              <View style={[styles.nodeCircle, dailyDoneToday && styles.nodeCircleDone]}>
-                <Icons.Sun width={32} height={32} color={dailyDoneToday ? '#fff' : '#FFA500'} />
-              </View>
-              <View style={styles.nodeLabelContainer}>
-                <Text style={styles.nodeLabel}>Daily Sliders</Text>
-                <Text style={[styles.nodeStatus, dailyDoneToday && styles.nodeStatusDone]}>
-                  {dailyDoneToday ? 'Completed' : 'Start'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Node 2: Weekly (Middle Left) -> Feather Icon */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/weekly-whispers')}
-              style={[styles.mapNode, { top: 160, left: 30 }]}
-            >
-              <View style={[styles.nodeCircle, weeklyDoneThisWeek && styles.nodeCircleDone]}>
-                <Icons.Feather width={32} height={32} color={weeklyDoneThisWeek ? '#fff' : '#64C59A'} />
-              </View>
-              <View style={styles.nodeLabelContainer}>
-                <Text style={styles.nodeLabel}>Weekly Whispers</Text>
-                <Text style={[styles.nodeStatus, weeklyDoneThisWeek && styles.nodeStatusDone]}>
-                  {weeklyDoneThisWeek ? 'Completed' : 'Start'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Node 3: Core Insights (Bottom Center) */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => router.push('/main-questionnaire')}
-              style={[styles.mapNode, { top: 310, left: (width - 56 - 150) / 2 }]}
-            >
-              <View style={[styles.nodeCircle, monthlyDoneThisMonth && styles.nodeCircleDone, styles.nodeCircleLarge]}>
-                <Icons.Mindfulness width={40} height={40} color={monthlyDoneThisMonth ? '#fff' : '#64C59A'} />
-              </View>
-              <View style={styles.nodeLabelContainer}>
-                <Text style={styles.nodeLabel}>Core Insights</Text>
-                <Text style={[styles.nodeStatus, monthlyDoneThisMonth && styles.nodeStatusDone]}>
-                  {monthlyDoneThisMonth ? 'Completed' : 'Monthly'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-          </View>
-        </Animated.View>
-
-        {/* Account Modal */}
-        <Modal visible={showAccountModal} transparent animationType="fade">
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHandle} />
-              <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); router.push('/account'); }}>
-                <Image source={require('../../assets/images/user.png')} style={styles.modalIcon} />
-                <Text style={styles.modalText}>Manage Account</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
-                <Icons.Close width={24} height={24} color="#EF4444" />
-                <Text style={[styles.modalText, styles.logoutText]}>Sign Out</Text>
+
+              {/* Node 2: Weekly (Middle Left) -> Feather Icon */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => router.push('/weekly-whispers')}
+                style={[styles.mapNode, { top: 160, left: 30 }]}
+              >
+                <View style={[styles.nodeCircle, weeklyDoneThisWeek && styles.nodeCircleDone]}>
+                  <Icons.Feather width={32} height={32} color={weeklyDoneThisWeek ? '#fff' : '#64C59A'} />
+                </View>
+                <View style={styles.nodeLabelContainer}>
+                  <Text style={styles.nodeLabel}>Weekly Whispers</Text>
+                  <Text style={[styles.nodeStatus, weeklyDoneThisWeek && styles.nodeStatusDone, dailyDoneToday && !weeklyDoneThisWeek && styles.nodeStatusActive]}>
+                    {weeklyDoneThisWeek ? 'Completed' : 'Start Week'}
+                  </Text>
+                </View>
               </TouchableOpacity>
+
+              {/* Node 3: Core Insights (Bottom Center) */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => router.push('/main-questionnaire')}
+                style={[styles.mapNode, { top: 310, left: (width - 56 - 150) / 2 }]}
+              >
+                <View style={[styles.nodeCircle, monthlyDoneThisMonth && styles.nodeCircleDone, styles.nodeCircleLarge]}>
+                  <Icons.Mindfulness width={40} height={40} color={monthlyDoneThisMonth ? '#fff' : '#64C59A'} />
+                </View>
+                <View style={styles.nodeLabelContainer}>
+                  <Text style={styles.nodeLabel}>Core Insights</Text>
+                  <Text style={[styles.nodeStatus, monthlyDoneThisMonth && styles.nodeStatusDone, weeklyDoneThisWeek && !monthlyDoneThisMonth && styles.nodeStatusActive]}>
+                    {monthlyDoneThisMonth ? 'Completed' : 'Monthly Check-in'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
             </View>
-          </TouchableOpacity>
-        </Modal>
-      </ScrollView>
+          </Animated.View>
+
+          {/* Account Modal */}
+          <Modal visible={showAccountModal} transparent animationType="fade">
+            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHandle} />
+                <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); router.push('/account'); }}>
+                  <Image source={require('../../assets/images/user.png')} style={styles.modalIcon} />
+                  <Text style={styles.modalText}>Manage Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
+                  <Icons.Close width={24} height={24} color="#EF4444" />
+                  <Text style={[styles.modalText, styles.logoutText]}>Sign Out</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -593,7 +632,8 @@ const styles = StyleSheet.create({
   nodeLabelContainer: { backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   nodeLabel: { fontSize: 15, fontWeight: '700', color: '#333' },
   nodeStatus: { fontSize: 12, fontWeight: '600', color: '#888', marginTop: 2 },
-  nodeStatusDone: { color: '#64C59A' },
+  nodeStatusDone: { color: '#64C59A', fontWeight: '700' },
+  nodeStatusActive: { color: '#FFA500', fontWeight: '700' },
 
   // About Me Card
   aboutMeCard: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 5 },

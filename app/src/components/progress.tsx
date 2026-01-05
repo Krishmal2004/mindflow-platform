@@ -10,13 +10,15 @@ import {
   RefreshControl,
   Modal,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useMemo } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import Svg, { Path, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Icons } from './common/AppIcons';
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +57,14 @@ interface MainQuestionnaireData {
 /**
  * Main progress screen component that displays user's mindfulness journey data
  */
+/**
+ * Formats a date string to "MMM D" format (e.g., "Jan 1")
+ */
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 export default function ProgressScreen() {
   const { session } = useSession();
   const [dailySliderData, setDailySliderData] = useState<DailySliderData[]>([]);
@@ -104,23 +114,34 @@ export default function ProgressScreen() {
    */
   const fetchAllProgressData = async () => {
     try {
-      // Retrieve daily slider entries
-      const { data: sliderData, error: sliderError } = await supabase
-        .from('daily_sliders')
-        .select('*')
-        .eq('user_id', session?.user?.id)
-        .order('created_at', { ascending: false });
+      // Execute independent fetches in parallel
+      const [
+        { data: sliderData, error: sliderError },
+        { data: voiceRecordings, error: voiceRecordingsError },
+        { data: sessionData, error: sessionError }
+      ] = await Promise.all([
+        supabase
+          .from('daily_sliders')
+          .select('*')
+          .eq('user_id', session?.user?.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('voice_recordings')
+          .select('week_number, year, created_at')
+          .eq('user_id', session?.user?.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('main_questionnaire_sessions')
+          .select('id, question_set_id, started_at')
+          .eq('user_id', session?.user?.id)
+          .order('started_at', { ascending: false })
+      ]);
 
+      // 1. Handle Daily Sliders
       if (sliderError) throw sliderError;
       setDailySliderData(sliderData || []);
 
-      // Aggregate weekly progress from voice recordings
-      const { data: voiceRecordings, error: voiceRecordingsError } = await supabase
-        .from('voice_recordings')
-        .select('week_number, year, created_at')
-        .eq('user_id', session?.user?.id)
-        .order('created_at', { ascending: false });
-
+      // 2. Handle Weekly Progress
       if (voiceRecordingsError) throw voiceRecordingsError;
 
       const submittedWeeksMap = new Map<string, { week: string; completed: boolean; submitted_at: string }>();
@@ -156,20 +177,12 @@ export default function ProgressScreen() {
           cur.setDate(cur.getDate() + 7);
         }
       }
-
       setWeeklyProgressData(weeksList);
 
-      // Retrieve and process main questionnaire sessions
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('main_questionnaire_sessions')
-        .select('id, question_set_id, started_at')
-        .eq('user_id', session?.user?.id)
-        .order('started_at', { ascending: false });
-
+      // 3. Handle Main Questionnaire
       if (sessionError) throw sessionError;
 
       if (sessionData && sessionData.length > 0) {
-        const sessionIds = sessionData.map(session => session.id);
         const questionSetIds = sessionData.map(session => session.question_set_id);
 
         const { data: questionSets, error: questionSetsError } = await supabase
@@ -179,7 +192,7 @@ export default function ProgressScreen() {
 
         if (questionSetsError) throw questionSetsError;
 
-        // Format the data to match the expected structure
+        // Format the data
         const formattedMainData = sessionData.map(session => {
           const questionSet = questionSets.find(qs => qs.id === session.question_set_id);
           return {
@@ -242,63 +255,77 @@ export default function ProgressScreen() {
     return arr.reduce((a, b) => a + b, 0) / arr.length;
   };
 
-  // Prepare data series for metrics
-  const stressData = dailySliderData.map(item => item.stress_level);
-  const sleepData = dailySliderData.map(item => item.sleep_quality);
-  const relaxationData = dailySliderData.map(item => item.relaxation_level);
+  // Memoize averages
+  const { avgStress, avgSleep, avgRelaxation } = useMemo(() => {
+    const stressData = dailySliderData.map(item => item.stress_level);
+    const sleepData = dailySliderData.map(item => item.sleep_quality);
+    const relaxationData = dailySliderData.map(item => item.relaxation_level);
 
-  // Calculate averages
-  const avgStress = average(stressData);
-  const avgSleep = average(sleepData);
-  const avgRelaxation = average(relaxationData);
+    return {
+      avgStress: average(stressData),
+      avgSleep: average(sleepData),
+      avgRelaxation: average(relaxationData)
+    };
+  }, [dailySliderData]);
 
-  // Calculate completion rates for each modality
-  // 1. Daily: from earliest daily entry to today
-  let dailyCompletion = 0;
-  let earliestDailyDate: Date | null = null;
-  if (dailySliderData && dailySliderData.length > 0) {
-    // Find the earliest date from the data
+  // Memoize daily completion rate
+  const dailyCompletion = useMemo(() => {
+    if (!dailySliderData || dailySliderData.length === 0) return 0;
+
     const earliestEntry = [...dailySliderData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-    earliestDailyDate = new Date(earliestEntry.created_at);
-    earliestDailyDate.setHours(0, 0, 0, 0);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const days = Math.max(1, Math.ceil((today.getTime() - earliestDailyDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    const completedCount = dailySliderData.length;
-    dailyCompletion = Math.min(100, Math.round((completedCount / days) * 100));
-  }
+    const earliestDate = new Date(earliestEntry.created_at);
+    earliestDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  // 2. Weekly: from earliest weekly submission week to current week
-  let weeklyCompletion = 0;
-  if (weeklyProgressData && weeklyProgressData.length > 0) {
+    // Calculate total expected days
+    const days = Math.max(1, Math.ceil((today.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const completedCount = dailySliderData.length;
+
+    return Math.min(100, Math.round((completedCount / days) * 100));
+  }, [dailySliderData]);
+
+  // Memoize weekly completion rate
+  const weeklyCompletion = useMemo(() => {
+    if (!weeklyProgressData || weeklyProgressData.length === 0) return 0;
     const totalWeeks = weeklyProgressData.length;
     const completedWeeks = weeklyProgressData.filter(w => w.completed).length;
-    weeklyCompletion = Math.round((completedWeeks / Math.max(1, totalWeeks)) * 100);
-  }
+    return Math.round((completedWeeks / Math.max(1, totalWeeks)) * 100);
+  }, [weeklyProgressData]);
 
-  // 3. Main questionnaires: compute months between earliest submission and today
-  let mainCompletion = 0;
-  let mainMissedMonths: string[] = [];
-  if (mainQuestionnaireData && mainQuestionnaireData.length > 0) {
+  // Memoize main questionnaire completion rate and missed months
+  const { mainCompletion, mainMissedMonths } = useMemo(() => {
+    if (!mainQuestionnaireData || mainQuestionnaireData.length === 0) {
+      return { mainCompletion: 0, mainMissedMonths: [] };
+    }
+
     const sortedMain = [...mainQuestionnaireData].sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
     const earliest = new Date(sortedMain[0].submitted_at);
     earliest.setHours(0, 0, 0, 0);
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const months: string[] = [];
     const monthSet = new Set<string>();
     const getMonthKey = (d: Date) => `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+
     sortedMain.forEach(item => {
       monthSet.add(getMonthKey(new Date(item.submitted_at)));
     });
+
     const cur = new Date(earliest);
     while (cur <= today) {
       const mk = getMonthKey(cur);
       months.push(mk);
       cur.setMonth(cur.getMonth() + 1);
     }
+
     const completedMain = Array.from(monthSet).filter(m => months.includes(m)).length;
-    mainCompletion = Math.round((completedMain / Math.max(1, months.length)) * 100);
-    mainMissedMonths = months.filter(m => !monthSet.has(m));
-  }
+    const rate = Math.round((completedMain / Math.max(1, months.length)) * 100);
+    const missed = months.filter(m => !monthSet.has(m));
+
+    return { mainCompletion: rate, mainMissedMonths: missed };
+  }, [mainQuestionnaireData]);
 
   /**
    * Prepares the data for the detailed chart (last 14 entries, reversed for chronological order)
@@ -314,6 +341,14 @@ export default function ProgressScreen() {
       date: formatDate(item.created_at)
     }));
   };
+
+  if (loading && !refreshing) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#64C59A" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -333,14 +368,7 @@ export default function ProgressScreen() {
           <View style={styles.completionGrid}>
             <View style={styles.completionCard}>
               <View style={styles.completionIcon}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path d="M8 6H21" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M8 12H21" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M8 18H21" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M3 6H3.01" stroke="#64C59A" strokeWidth="3" />
-                  <Path d="M3 12H3.01" stroke="#64C59A" strokeWidth="3" />
-                  <Path d="M3 18H3.01" stroke="#64C59A" strokeWidth="3" />
-                </Svg>
+                <Icons.List width={24} height={24} color="#64C59A" strokeWidth={2} />
               </View>
               <Text style={styles.completionValue}>{dailyCompletion}%</Text>
               <Text style={styles.completionLabel}>Daily Sliders</Text>
@@ -348,12 +376,7 @@ export default function ProgressScreen() {
 
             <View style={styles.completionCard}>
               <View style={styles.completionIcon}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2" />
-                </Svg>
+                <Icons.Calendar width={24} height={24} color="#64C59A" strokeWidth={2} />
               </View>
               <Text style={styles.completionValue}>{weeklyCompletion}%</Text>
               <Text style={styles.completionLabel}>Weekly Recordings</Text>
@@ -361,10 +384,7 @@ export default function ProgressScreen() {
 
             <View style={styles.completionCard}>
               <View style={styles.completionIcon}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
-                  <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                </Svg>
+                <Icons.History width={24} height={24} color="#64C59A" strokeWidth={2} />
               </View>
               <Text style={styles.completionValue}>{mainCompletion}%</Text>
               <Text style={styles.completionLabel}>Main Questionnaires</Text>
@@ -401,14 +421,7 @@ export default function ProgressScreen() {
               <View style={styles.detailedProgressBar}>
                 <View style={styles.progressBarHeader}>
                   <View style={styles.progressBarIconLabel}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path d="M8 6H21" stroke="#64C59A" strokeWidth="2" />
-                      <Path d="M8 12H21" stroke="#64C59A" strokeWidth="2" />
-                      <Path d="M8 18H21" stroke="#64C59A" strokeWidth="2" />
-                      <Circle cx="3" cy="6" r="2" fill="#64C59A" />
-                      <Circle cx="3" cy="12" r="2" fill="#64C59A" />
-                      <Circle cx="3" cy="18" r="2" fill="#64C59A" />
-                    </Svg>
+                    <Icons.List width={24} height={24} color="#64C59A" strokeWidth={2} />
                     <Text style={styles.progressBarTitle}>Daily Sliders</Text>
                   </View>
                   <Text style={styles.progressBarValue}>{dailyCompletion}%</Text>
@@ -421,8 +434,14 @@ export default function ProgressScreen() {
                 {(() => {
                   if (!dailySliderData || dailySliderData.length === 0) return null;
                   const today = new Date(); today.setHours(0, 0, 0, 0);
-                  // Start from the user's first daily entry if available
-                  const start = earliestDailyDate ? new Date(earliestDailyDate) : new Date(today);
+
+                  // Use the helper logic to find missed dates or memoize this block if it's heavy
+                  // For now, calculating on empty array is fast enough, but we should reuse earliestDailyDate logic if available
+                  // Re-deriving earliest for display logic:
+                  const earliestEntry = [...dailySliderData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+                  if (!earliestEntry) return null;
+
+                  const start = new Date(earliestEntry.created_at);
                   start.setHours(0, 0, 0, 0);
                   const entrySet = new Set<number>();
                   dailySliderData.forEach(e => {
@@ -444,10 +463,7 @@ export default function ProgressScreen() {
                       <View style={styles.missedDatesList}>
                         {missed.slice(0, 5).map((d, i) => (
                           <View key={i} style={styles.missedDateItem}>
-                            <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                              <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
-                              <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
-                            </Svg>
+                            <Icons.RemoveCircle width={16} height={16} color="#EF4444" strokeWidth={2} />
                             <Text style={styles.missedDateText}>{d}</Text>
                           </View>
                         ))}
@@ -468,10 +484,7 @@ export default function ProgressScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.statsGridHeader}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#64C59A" strokeWidth="2" />
-                      <Path d="M12 7V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                    </Svg>
+                    <Icons.Stress width={20} height={20} color="#64C59A" />
                     <Text style={styles.statsGridLabel}>Stress</Text>
                   </View>
                   <Text style={[styles.statsGridValue, { color: '#64C59A' }]}>{avgStress.toFixed(1)}</Text>
@@ -484,10 +497,7 @@ export default function ProgressScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.statsGridHeader}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#4CAF85" strokeWidth="2" />
-                      <Path d="M12 7V12L15 15" stroke="#4CAF85" strokeWidth="2" strokeLinecap="round" />
-                    </Svg>
+                    <Icons.Sleep width={20} height={20} color="#4CAF85" />
                     <Text style={styles.statsGridLabel}>Sleep</Text>
                   </View>
                   <Text style={[styles.statsGridValue, { color: '#4CAF85' }]}>{avgSleep.toFixed(1)}</Text>
@@ -500,10 +510,7 @@ export default function ProgressScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.statsGridHeader}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#2E8A66" strokeWidth="2" />
-                      <Path d="M12 7V12L15 15" stroke="#2E8A66" strokeWidth="2" strokeLinecap="round" />
-                    </Svg>
+                    <Icons.Relaxation width={20} height={20} color="#2E8A66" />
                     <Text style={styles.statsGridLabel}>Relax</Text>
                   </View>
                   <Text style={[styles.statsGridValue, { color: '#2E8A66' }]}>{avgRelaxation.toFixed(1)}</Text>
@@ -522,11 +529,7 @@ export default function ProgressScreen() {
               <View style={styles.detailedProgressBar}>
                 <View style={styles.progressBarHeader}>
                   <View style={styles.progressBarIconLabel}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Path d="M19 4H5C3.9 4 3 4.9 3 6V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V6C21 4.9 20.1 4 19 4Z" stroke="#64C59A" strokeWidth="2" />
-                      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" />
-                      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" />
-                    </Svg>
+                    <Icons.Calendar width={24} height={24} color="#64C59A" strokeWidth={2} />
                     <Text style={styles.progressBarTitle}>Weekly Reflections</Text>
                   </View>
                   <Text style={styles.progressBarValue}>{weeklyCompletion}%</Text>
@@ -541,10 +544,7 @@ export default function ProgressScreen() {
                     <View style={styles.missedDatesList}>
                       {weeklyProgressData.filter(w => !w.completed).slice(0, 6).map((w, i) => (
                         <View key={i} style={styles.missedDateItem}>
-                          <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
-                            <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
-                          </Svg>
+                          <Icons.RemoveCircle width={16} height={16} color="#EF4444" strokeWidth={2} />
                           <Text style={styles.missedDateText}>{w.week}</Text>
                         </View>
                       ))}
@@ -585,10 +585,7 @@ export default function ProgressScreen() {
                       </View>
                       <View style={styles.statusCell}>
                         <View style={styles.completedIconContainer}>
-                          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
-                            <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                          </Svg>
+                          <Icons.History width={20} height={20} color="#64C59A" />
                         </View>
                       </View>
                     </View>
@@ -607,10 +604,7 @@ export default function ProgressScreen() {
               <View style={styles.detailedProgressBar}>
                 <View style={styles.progressBarHeader}>
                   <View style={styles.progressBarIconLabel}>
-                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#4CAF85" strokeWidth="2" />
-                      <Path d="M12 8V12L15 15" stroke="#4CAF85" strokeWidth="2" strokeLinecap="round" />
-                    </Svg>
+                    <Icons.History width={24} height={24} color="#4CAF85" strokeWidth={2} />
                     <Text style={styles.progressBarTitle}>Main Questionnaires</Text>
                   </View>
                   <Text style={styles.progressBarValue}>{mainCompletion}%</Text>
@@ -645,10 +639,7 @@ export default function ProgressScreen() {
                         </View>
                         <View style={styles.statusCell}>
                           <View style={styles.completedIconContainer}>
-                            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                              <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
-                              <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                            </Svg>
+                            <Icons.History width={20} height={20} color="#64C59A" />
                           </View>
                         </View>
                       </View>
@@ -666,10 +657,7 @@ export default function ProgressScreen() {
                 <View style={styles.missedDatesList}>
                   {mainMissedMonths.slice(0, 6).map((m, i) => (
                     <View key={i} style={styles.missedDateItem}>
-                      <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                        <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
-                        <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
-                      </Svg>
+                      <Icons.RemoveCircle width={16} height={16} color="#EF4444" strokeWidth={2} />
                       <Text style={styles.missedDateText}>{m}</Text>
                     </View>
                   ))}
@@ -703,9 +691,7 @@ export default function ProgressScreen() {
             <View style={styles.allSubmissionsModalHeader}>
               <Text style={styles.allSubmissionsModalTitle}>All Weekly Submissions</Text>
               <TouchableOpacity onPress={() => setWeeklyModalVisible(false)}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
-                </Svg>
+                <Icons.Close width={24} height={24} color="#666" strokeWidth={2} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.allSubmissionsModalBody}>
@@ -719,10 +705,7 @@ export default function ProgressScreen() {
                   </View>
                   <View style={styles.statusCell}>
                     <View style={styles.completedIconContainer}>
-                      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
-                        <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                      </Svg>
+                      <Icons.History width={20} height={20} color="#64C59A" />
                     </View>
                   </View>
                 </View>
@@ -744,9 +727,7 @@ export default function ProgressScreen() {
             <View style={styles.allSubmissionsModalHeader}>
               <Text style={styles.allSubmissionsModalTitle}>All Main Questionnaire Submissions</Text>
               <TouchableOpacity onPress={() => setMainModalVisible(false)}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
-                </Svg>
+                <Icons.Close width={24} height={24} color="#666" strokeWidth={2} />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.allSubmissionsModalBody}>
@@ -758,10 +739,7 @@ export default function ProgressScreen() {
                   </View>
                   <View style={styles.statusCell}>
                     <View style={styles.completedIconContainer}>
-                      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
-                        <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-                      </Svg>
+                      <Icons.History width={20} height={20} color="#64C59A" />
                     </View>
                   </View>
                 </View>
@@ -801,9 +779,7 @@ export default function ProgressScreen() {
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedMetric(null)}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
-                </Svg>
+                <Icons.Close width={24} height={24} color="#666" strokeWidth={2} />
               </TouchableOpacity>
             </View>
 
@@ -1485,5 +1461,9 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

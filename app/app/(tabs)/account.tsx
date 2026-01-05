@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView, Text, Modal, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, Modal, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../src/contexts/SessionContext';
 import AccountComponent from '../../src/components/Account';
 import { supabase } from '../../src/lib/supabase';
@@ -7,7 +8,7 @@ import { Session } from '@supabase/supabase-js';
 
 export default function AccountScreen() {
   const { session, loading } = useSession();
-  
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -15,7 +16,7 @@ export default function AccountScreen() {
       </SafeAreaView>
     );
   }
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <AccountComponent session={session as Session} />

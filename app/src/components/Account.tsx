@@ -15,8 +15,8 @@ import {
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Icons } from './common/AppIcons';
 import { useCallback } from 'react';
 
 /**
@@ -41,13 +41,11 @@ export default function Account({ session }: { session: Session }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [showSignOutModal, setShowSignOutModal] = useState(false);
-
-  // Avatar configuration
-  const avatarSeed = session?.user?.id || 'mindful-user';
-  // Use a fixed avatar URL or generate one
-  const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=E8F5F1`;
-
-
+  const [feedbackModal, setFeedbackModal] = useState<{ visible: boolean; type: 'success' | 'error'; message: string }>({
+    visible: false,
+    type: 'success',
+    message: ''
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -105,12 +103,20 @@ export default function Account({ session }: { session: Session }) {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      Alert.alert('Success', 'Your password has been changed!');
+      setFeedbackModal({
+        visible: true,
+        type: 'success',
+        message: 'Your password has been changed!'
+      });
       setShowPasswordModal(false);
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update password');
+      setFeedbackModal({
+        visible: true,
+        type: 'error',
+        message: error.message || 'Failed to update password'
+      });
     } finally {
       setSaving(false);
     }
@@ -189,40 +195,21 @@ export default function Account({ session }: { session: Session }) {
           <TouchableOpacity style={styles.actionButton} onPress={() => setShowPasswordModal(true)}>
             <View style={styles.actionLeft}>
               <View style={styles.iconCircle}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path
-                    d="M15.75 8.25V6C15.75 3.92893 14.0711 2.25 12 2.25C9.92893 2.25 8.25 3.92893 8.25 6V8.25M12 14.25V16.25M10.5 19.5H13.5C14.7426 19.5 15.75 18.4926 15.75 17.25V14.25C15.75 13.0074 14.7426 12 13.5 12H10.5C9.25736 12 8.25 13.0074 8.25 14.25V17.25C8.25 18.4926 9.25736 19.5 10.5 19.5Z"
-                    stroke="#64C59A"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                </Svg>
+                <Icons.Lock width={24} height={24} color="#64C59A" strokeWidth={1.8} />
               </View>
               <Text style={styles.actionText}>Change Password</Text>
             </View>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M9 18L15 12L9 6" stroke="#64C59A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
+            <Icons.ChevronRight width={20} height={20} color="#64C59A" strokeWidth={2.5} />
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.actionButton, styles.dangerButton]} onPress={() => setShowSignOutModal(true)}>
             <View style={styles.actionLeft}>
               <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Path
-                    d="M17.75 12H6.25M13.25 7.75L17.75 12L13.25 16.25M17 20.5H9.5C7.42893 20.5 5.75 18.8211 5.75 16.75V7.25C5.75 5.17893 7.42893 3.5 9.5 3.5H17"
-                    stroke="#EF4444"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
+                <Icons.LogOut width={24} height={24} color="#EF4444" strokeWidth={1.8} />
               </View>
               <Text style={styles.dangerText}>Sign Out from Device</Text>
             </View>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M9 18L15 12L9 6" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
+            <Icons.ChevronRight width={20} height={20} color="#EF4444" strokeWidth={2.5} />
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
@@ -300,6 +287,31 @@ export default function Account({ session }: { session: Session }) {
                 <Text style={styles.alertConfirmText}>Sign Out</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success/Error Feedback Modal */}
+      <Modal visible={feedbackModal.visible} transparent animationType="fade">
+        <View style={styles.signOutModalOverlay}>
+          <View style={styles.feedbackModal}>
+            <View style={[styles.feedbackIconContainer, feedbackModal.type === 'error' && styles.feedbackIconError]}>
+              {feedbackModal.type === 'success' ? (
+                <Icons.Check width={40} height={40} color="#fff" strokeWidth={3} />
+              ) : (
+                <Icons.RemoveCircle width={40} height={40} color="#fff" strokeWidth={3} />
+              )}
+            </View>
+            <Text style={styles.feedbackTitle}>
+              {feedbackModal.type === 'success' ? 'Success!' : 'Error'}
+            </Text>
+            <Text style={styles.feedbackMessage}>{feedbackModal.message}</Text>
+            <TouchableOpacity
+              style={styles.feedbackButton}
+              onPress={() => setFeedbackModal(prev => ({ ...prev, visible: false }))}
+            >
+              <Text style={styles.feedbackButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -444,4 +456,54 @@ const styles = StyleSheet.create({
   alertCancelText: { fontSize: 17, color: '#666', fontWeight: '600' },
   alertConfirm: { flex: 1, paddingVertical: 16, backgroundColor: '#EF4444', borderRadius: 16, marginLeft: 12, alignItems: 'center' },
   alertConfirmText: { fontSize: 17, color: '#fff', fontWeight: '600' },
+  feedbackModal: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 30,
+    alignItems: 'center',
+    width: '85%',
+    maxWidth: 340,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  feedbackIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#64C59A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  feedbackIconError: {
+    backgroundColor: '#EF4444',
+  },
+  feedbackTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#333',
+    marginBottom: 10,
+  },
+  feedbackMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  feedbackButton: {
+    backgroundColor: '#333',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  feedbackButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
 });
