@@ -10,8 +10,9 @@ import {
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
-import Svg, { Path } from 'react-native-svg';
+import StandardHeader from './common/StandardHeader';
 import SuccessScreen from './common/SuccessScreen';
+import LoadingScreen from './common/LoadingScreen';
 import VocalBiomarkerCapture from './VocalBiomarkerCapture';
 
 // ISO Week Number (Monday as first day of week)
@@ -121,22 +122,7 @@ export default function WeeklyQuestions() {
   // Loading Screen
   if (loading) {
     return (
-      <View style={styles.container}>
-        {/* Professional Header */}
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Whispers</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2E8A66" />
-          <Text style={styles.loadingText}>Loading your questions...</Text>
-        </View>
-      </View>
+      <LoadingScreen title="Weekly Whispers" message="Loading your questions..." onBack={() => router.back()} />
     );
   }
 
@@ -144,16 +130,10 @@ export default function WeeklyQuestions() {
   if (showCelebration) {
     return (
       <View style={styles.container}>
-        {/* Professional Header */}
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Weekly Whispers</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <StandardHeader
+          title="Weekly Whispers"
+          onBack={() => router.back()}
+        />
         <SuccessScreen
           title="Great Job For This Week!"
           subtitle={["You've completed your Weekly Whisper routine.", "You're all set. Let's meet again Next Week!"]}
@@ -165,17 +145,10 @@ export default function WeeklyQuestions() {
 
   return (
     <View style={styles.container}>
-      {/* Professional Header */}
-      <View style={styles.professionalHeader}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Weekly Whispers</Text>
-        </View>
-      </View>
+      <StandardHeader
+        title="Weekly Whispers"
+        onBack={() => router.back()}
+      />
 
       {showVocalCapture ? (
         <VocalBiomarkerCapture onComplete={handleVocalCaptureComplete} />

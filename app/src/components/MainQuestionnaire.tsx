@@ -12,35 +12,22 @@ import {
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
-import Svg, { Path, Circle } from 'react-native-svg';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import SuccessScreen from './common/SuccessScreen';
+import StandardHeader from './common/StandardHeader';
+import LoadingScreen from './common/LoadingScreen';
+import AppButton from './common/AppButton';
+import AppCard from './common/AppCard';
+import { Icons } from './common/AppIcons';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
 // Custom SVG Icons for different question types (simplified and smaller)
+// Custom Icons via AppIcons
 const QuestionIcons = {
-  stress: () => (
-    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="1.5" />
-      <Path d="M8 14C8.65661 13.3722 9.50909 13 10.4142 13C12.2142 13 13.4142 14.3431 13.4142 16C13.4142 17.6569 12.2142 19 10.4142 19C9.50909 19 8.65661 18.6278 8 18" stroke="#64C59A" strokeWidth="1.5" />
-      <Circle cx="8" cy="10" r="1" fill="#64C59A" />
-      <Circle cx="16" cy="10" r="1" fill="#64C59A" />
-    </Svg>
-  ),
-  mindfulness: () => (
-    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="1.5" />
-      <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="1.5" strokeLinecap="round" />
-      <Circle cx="12" cy="12" r="3" stroke="#64C59A" strokeWidth="1.5" />
-    </Svg>
-  ),
-  wellbeing: () => (
-    <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="1.5" />
-      <Path d="M8 12H16M12 8V16" stroke="#64C59A" strokeWidth="1.5" strokeLinecap="round" />
-    </Svg>
-  ),
+  stress: () => <Icons.Stress width={24} height={24} />,
+  mindfulness: () => <Icons.Mindfulness width={24} height={24} />,
+  wellbeing: () => <Icons.Relaxation width={24} height={24} />, // Using Relaxation as closest match for Wellbeing or add specific Wellbeing icon if needed
 };
 
 interface QuestionSet {
@@ -110,12 +97,7 @@ export default function MainQuestionnaire() {
     }
   }, [session]);
 
-  // Check for new questionnaire availability and redirect automatically
-  useEffect(() => {
-    if (questionSet && !alreadySubmitted && !showStartScreen && !currentSection && !loading) {
-      setShowStartScreen(true);
-    }
-  }, [questionSet, alreadySubmitted, showStartScreen, currentSection, loading]);
+
 
   const fetchQuestionSet = async () => {
     if (!session?.user?.id) return;
@@ -216,49 +198,126 @@ export default function MainQuestionnaire() {
     return isSectionCompleted(prev);
   };
 
-  const handleSubmit = async () => {
+  const saveSectionProgress = async () => {
     if (!questionSet || !session?.user?.id) return;
-    const unanswered = answers.find(a => a.value === null);
-    if (unanswered) {
-      Alert.alert('Incomplete', 'Please answer all questions before submitting.');
+
+    // Strict Validation: Ensure all questions in the current section are answered
+    if (currentSection && !isSectionCompleted(currentSection)) {
+      Alert.alert('Section Incomplete', 'Please answer all questions in this section before continuing.');
       return;
     }
+
     setSubmitting(true);
     try {
-      const timeSpent = getTimeSpent();
-      const { data: sessionData, error: sessionError } = await supabase
+      // 1. Ensure a session exists or create one
+      let sessionId = null;
+      const { data: existingSession } = await supabase
         .from('main_questionnaire_sessions')
-        .insert({
-          user_id: session.user.id,
-          question_set_id: questionSet.id,
-          time_to_complete: timeSpent,
-          started_at: startTime?.toISOString(),
-        })
-        .select()
-        .single();
-      if (sessionError) throw sessionError;
-      const responses = answers.map(answer => ({
-        session_id: sessionData.id,
+        .select('id')
+        .eq('user_id', session.user.id)
+        .eq('question_set_id', questionSet.id)
+        .maybeSingle();
+
+      if (existingSession) {
+        sessionId = existingSession.id;
+        // Update time spent
+        await supabase
+          .from('main_questionnaire_sessions')
+          .update({ time_to_complete: getTimeSpent() })
+          .eq('id', sessionId);
+      } else {
+        const { data: newSession, error: sessionError } = await supabase
+          .from('main_questionnaire_sessions')
+          .insert({
+            user_id: session.user.id,
+            question_set_id: questionSet.id,
+            time_to_complete: getTimeSpent(),
+            started_at: startTime?.toISOString(),
+          })
+          .select()
+          .single();
+        if (sessionError) throw sessionError;
+        sessionId = newSession.id;
+      }
+
+      // 2. Save answers for the current section
+      const currentSectionQuestions = questions.filter(q => q.section_key === currentSection);
+      const sectionAnswers = answers.filter(a => currentSectionQuestions.some(q => q.question_id === a.questionId) && a.value !== null);
+
+      if (sectionAnswers.length === 0) {
+        goBackToSections();
+        return;
+      }
+
+      // Delete existing responses for these questions to avoid conflict errors
+      const questionIds = sectionAnswers.map(a => a.questionId);
+      const { error: deleteError } = await supabase
+        .from('main_questionnaire_responses')
+        .delete()
+        .eq('session_id', sessionId)
+        .in('question_id', questionIds);
+
+      if (deleteError) {
+        console.warn('Delete old responses error (non-fatal):', deleteError);
+      }
+
+      const responses = sectionAnswers.map(answer => ({
+        session_id: sessionId,
         user_id: session.user.id,
         question_set_id: questionSet.id,
         question_id: answer.questionId,
         response_value: answer.value,
       }));
-      const { error: responsesError } = await supabase
+
+      const { error: insertError } = await supabase
         .from('main_questionnaire_responses')
         .insert(responses);
-      if (responsesError) throw responsesError;
-      // Update the submission status immediately
+
+      if (insertError) throw insertError;
+
+      // 3. Navigate back to sections list
+      setCurrentSection(null);
+      // Ensure we clear any other transient state if needed
+
+    } catch (err: any) {
+      console.error('Save progress error:', err);
+      Alert.alert('Save Failed', `Could not save your progress: ${err.message || 'Unknown error'}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const goBackToSections = () => {
+    setCurrentSection(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!questionSet || !session?.user?.id) return;
+    // Check if ALL questions are answered
+    const unanswered = answers.find(a => a.value === null);
+    if (unanswered) {
+      // Optional: Allow partial submission or enforce strict completion?
+      // Currently enforcing strict completion for "Submit"
+      Alert.alert('Incomplete', 'Please answer all questions before submitting.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Re-save everything to be safe, or just finalize
+      // Logic assumes saveSectionProgress handles upserts, so we can just finalize here
+      await saveSectionProgress();
+
+      // Update the submission status locally
       setAlreadySubmitted(true);
       setShowCelebration(true);
       setTimeout(() => {
         setShowCelebration(false);
-        // Optionally navigate to progress screen after celebration
         // router.push('/(tabs)/progress');
       }, 3000);
     } catch (err: any) {
       console.error('Submit error:', err);
-      Alert.alert('Submission Failed', err.message || 'Please check your connection and try again.');
+      Alert.alert('Submission Failed', err.message);
     } finally {
       setSubmitting(false);
     }
@@ -274,60 +333,29 @@ export default function MainQuestionnaire() {
     setCurrentSection(section);
   };
 
-  const goBackToSections = () => {
-    setCurrentSection(null);
-  };
+
 
   // Loading Screen
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>Loading</Text>
-          </View>
-
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#2E8A66" />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </View>
-    );
+    return <LoadingScreen title="Main Questionnaire" message="Loading..." onBack={() => router.back()} />;
   }
 
   // No Questionnaire
   if (!questionSet) {
     return (
       <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>0%</Text>
-          </View>
-
-        </View>
+        <StandardHeader
+          title="Main Questionnaire"
+          rightContent={
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>0%</Text>
+            </View>
+          }
+        />
         <View style={styles.completionContainer}>
           <Text style={styles.completionTitle}>No Questionnaire</Text>
           <Text style={styles.completionText}>Please check back later.</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={fetchQuestionSet}>
-            <Text style={styles.refreshButtonText}>Refresh</Text>
-          </TouchableOpacity>
+          <AppButton title="Refresh" onPress={fetchQuestionSet} style={{ marginTop: 20 }} />
         </View>
       </View>
     );
@@ -337,19 +365,14 @@ export default function MainQuestionnaire() {
   if (alreadySubmitted) {
     return (
       <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>100%</Text>
-          </View>
-        </View>
+        <StandardHeader
+          title="Main Questionnaire"
+          rightContent={
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>100%</Text>
+            </View>
+          }
+        />
         <SuccessScreen
           title="Questionnaire Completed"
           subtitle="You have already completed this questionnaire."
@@ -363,19 +386,14 @@ export default function MainQuestionnaire() {
   if (showCelebration) {
     return (
       <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>100%</Text>
-          </View>
-        </View>
+        <StandardHeader
+          title="Main Questionnaire"
+          rightContent={
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>100%</Text>
+            </View>
+          }
+        />
         <SuccessScreen
           title="Great Job!"
           subtitle="You've completed the questionnaire."
@@ -389,19 +407,14 @@ export default function MainQuestionnaire() {
   if (showStartScreen) {
     return (
       <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>0%</Text>
-          </View>
-        </View>
+        <StandardHeader
+          title="Main Questionnaire"
+          rightContent={
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>0%</Text>
+            </View>
+          }
+        />
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.introContainer}>
             <Text style={styles.introTitle}>{questionSet.title}</Text>
@@ -419,15 +432,10 @@ export default function MainQuestionnaire() {
               <Text style={styles.introText}>Answer honestly. Time tracked.</Text>
             </View>
             <View style={styles.timerPreview}>
-              <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="1.5" />
-                <Path d="M12 6V12L16 14" stroke="#64C59A" strokeWidth="1.5" strokeLinecap="round" />
-              </Svg>
+              <Icons.Play width={20} height={20} />
               <Text style={styles.timerText}>Time tracked</Text>
             </View>
-            <TouchableOpacity style={styles.startButton} onPress={startQuestionnaire}>
-              <Text style={styles.startButtonText}>Begin</Text>
-            </TouchableOpacity>
+            <AppButton title="Begin" onPress={startQuestionnaire} />
           </View>
         </ScrollView>
       </View>
@@ -443,19 +451,14 @@ export default function MainQuestionnaire() {
 
     return (
       <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Main Questionnaire</Text>
-          </View>
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>{totalAnswered}/{totalQuestions}</Text>
-          </View>
-        </View>
+        <StandardHeader
+          title="Main Questionnaire"
+          rightContent={
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>{totalAnswered}/{totalQuestions}</Text>
+            </View>
+          }
+        />
         <View style={styles.content}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Complete Sections</Text>
@@ -471,30 +474,34 @@ export default function MainQuestionnaire() {
             const prevKey = getPreviousSectionKey(section.section_key);
             const isCompleted = answeredCount === sectionQuestions.length && answeredCount > 0;
             return (
-              <Animated.View key={section.id} entering={FadeInDown.delay(100 + index * 50)} style={[styles.sectionCard, isCompleted && styles.sectionCardCompleted]}>
-                <View style={styles.sectionIconContainer}>
-                  {section.section_key === 'A' && <QuestionIcons.stress />}
-                  {section.section_key === 'B' && <QuestionIcons.mindfulness />}
-                  {section.section_key === 'C' && <QuestionIcons.wellbeing />}
-                </View>
-                <View style={styles.sectionTextContainer}>
-                  <Text style={styles.sectionCardTitle}>{section.section_key === 'A' ? 'Part A: PSS' : section.section_key === 'B' ? 'Part B: FFMQ' : section.section_key === 'C' ? 'Part C: WEMWBS' : `Part ${section.section_key} ${section.title}`}</Text>
-                  <Text style={styles.sectionCardSubtitle}>{sectionQuestions.length} questions</Text>
-                  <Text style={styles.sectionCardProgress}>{answeredCount}/{sectionQuestions.length} answered</Text>
-                  <View style={styles.sectionProgressBar}>
-                    <View
-                      style={[styles.sectionProgressBarFill, { width: `${(answeredCount / sectionQuestions.length) * 100}%` }]}
-                    />
+              <Animated.View key={section.id} entering={FadeInDown.delay(100 + index * 50)}>
+                <AppCard style={[styles.sectionCard, isCompleted && styles.sectionCardCompleted]} noPadding>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
+                    <View style={styles.sectionIconContainer}>
+                      {section.section_key === 'A' && <QuestionIcons.stress />}
+                      {section.section_key === 'B' && <QuestionIcons.mindfulness />}
+                      {section.section_key === 'C' && <QuestionIcons.wellbeing />}
+                    </View>
+                    <View style={styles.sectionTextContainer}>
+                      <Text style={styles.sectionCardTitle}>{section.section_key === 'A' ? 'Part A: PSS' : section.section_key === 'B' ? 'Part B: FFMQ' : section.section_key === 'C' ? 'Part C: WEMWBS' : `Part ${section.section_key} ${section.title}`}</Text>
+                      <Text style={styles.sectionCardSubtitle}>{sectionQuestions.length} questions</Text>
+                      <Text style={styles.sectionCardProgress}>{answeredCount}/{sectionQuestions.length} answered</Text>
+                      <View style={styles.sectionProgressBar}>
+                        <View
+                          style={[styles.sectionProgressBarFill, { width: `${(answeredCount / sectionQuestions.length) * 100}%` }]}
+                        />
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.sectionButton, !unlocked && styles.disabledButton]}
+                      onPress={unlocked ? () => goToSection(section.section_key) : undefined}
+                    >
+                      <Text style={[styles.sectionButtonText, !unlocked && styles.disabledButtonText]}>
+                        {unlocked ? (isCompleted ? 'Review' : 'Start') : 'Locked'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                </View>
-                <TouchableOpacity
-                  style={[styles.sectionButton, !unlocked && styles.disabledButton]}
-                  onPress={unlocked ? () => goToSection(section.section_key) : undefined}
-                >
-                  <Text style={[styles.sectionButtonText, !unlocked && styles.disabledButtonText]}>
-                    {unlocked ? (isCompleted ? 'Review' : 'Start') : `Complete Part ${prevKey} first`}
-                  </Text>
-                </TouchableOpacity>
+                </AppCard>
               </Animated.View>
             );
           })}
@@ -517,19 +524,15 @@ export default function MainQuestionnaire() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.professionalHeader}>
-        <TouchableOpacity onPress={goBackToSections} style={styles.headerBackButton}>
-          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{currentSectionData?.section_key === 'A' ? 'Part A: PSS' : currentSectionData?.section_key === 'B' ? 'Part B: FFMQ' : currentSectionData?.section_key === 'C' ? 'Part C: WEMWBS' : ''}</Text>
-        </View>
-        <View style={styles.progressBadge}>
-          <Text style={styles.progressBadgeText}>{answeredCount}/{currentSectionQuestions.length}</Text>
-        </View>
-      </View>
+      <StandardHeader
+        title={currentSectionData?.section_key === 'A' ? 'Part A: PSS' : currentSectionData?.section_key === 'B' ? 'Part B: FFMQ' : currentSectionData?.section_key === 'C' ? 'Part C: WEMWBS' : ''}
+        onBack={goBackToSections}
+        rightContent={
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{answeredCount}/{currentSectionQuestions.length}</Text>
+          </View>
+        }
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.timerContainer}>
           <Text style={styles.timerText}>Time: {getTimeSpent()}s</Text>
@@ -554,59 +557,56 @@ export default function MainQuestionnaire() {
         {currentSectionQuestions.map((question, index) => {
           const answer = answers.find(a => a.questionId === question.question_id);
           return (
-            <Animated.View key={question.id} entering={FadeInDown.delay(100 + index * 30)} style={styles.questionCard}>
-              <View style={styles.questionHeader}>
-                <View style={styles.questionNumberCircle}>
-                  <Text style={styles.questionNumberText}>Q{question.sort_order}</Text>
+            <Animated.View key={question.id} entering={FadeInDown.delay(100 + index * 30)}>
+              <AppCard style={styles.questionCard}>
+                <View style={styles.questionHeader}>
+                  <View style={styles.questionNumberCircle}>
+                    <Text style={styles.questionNumberText}>Q{question.sort_order}</Text>
+                  </View>
+                  <View style={styles.questionTextContainer}>
+                    <Text style={styles.questionText}>
+                      {question.question_text}
+                      {question.facet && <Text style={styles.facetText}> ({question.facet})</Text>}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.questionTextContainer}>
-                  <Text style={styles.questionText}>
-                    {question.question_text}
-                    {question.facet && <Text style={styles.facetText}> ({question.facet})</Text>}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.ratingScaleContainer}>
-                {Array.from({ length: (currentSectionData?.scale_max || 0) - (currentSectionData?.scale_min || 0) + 1 }, (_, i) => {
-                  const value = i + (currentSectionData?.scale_min || 0);
-                  return (
-                    <TouchableOpacity
-                      key={value}
-                      style={[
-                        styles.ratingButton,
-                        answer?.value === value && styles.ratingButtonSelected,
-                      ]}
-                      onPress={() => handleAnswerChange(question.question_id, value)}
-                      accessibilityLabel={`Rate ${value} for question ${question.sort_order}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: answer?.value === value }}
-                    >
-                      <Text
+                <View style={styles.ratingScaleContainer}>
+                  {Array.from({ length: (currentSectionData?.scale_max || 0) - (currentSectionData?.scale_min || 0) + 1 }, (_, i) => {
+                    const value = i + (currentSectionData?.scale_min || 0);
+                    return (
+                      <TouchableOpacity
+                        key={value}
                         style={[
-                          styles.ratingButtonText,
-                          answer?.value === value && styles.ratingButtonTextSelected,
+                          styles.ratingButton,
+                          answer?.value === value && styles.ratingButtonSelected,
                         ]}
+                        onPress={() => handleAnswerChange(question.question_id, value)}
+                        accessibilityLabel={`Rate ${value} for question ${question.sort_order}`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: answer?.value === value }}
                       >
-                        {value}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                        <Text
+                          style={[
+                            styles.ratingButtonText,
+                            answer?.value === value && styles.ratingButtonTextSelected,
+                          ]}
+                        >
+                          {value}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </AppCard>
             </Animated.View>
           );
         })}
-        <TouchableOpacity
-          style={[styles.submitButton, submitting && styles.submitButtonDisabled]}
-          onPress={isLastSection ? handleSubmit : goBackToSections}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>{isLastSection ? 'Submit' : 'Save & Continue'}</Text>
-          )}
-        </TouchableOpacity>
+        <AppButton
+          title={isLastSection ? 'Submit & Complete' : 'Save & Continue'}
+          onPress={isLastSection ? handleSubmit : saveSectionProgress}
+          loading={submitting}
+          style={styles.submitButton}
+        />
       </ScrollView>
     </View>
   );
@@ -735,27 +735,39 @@ const styles = StyleSheet.create({
   introContainer: {
     flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: 12,
   },
   introTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '800',
     color: '#333',
-    marginBottom: 6,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   introSubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-    marginBottom: 20,
-    lineHeight: 20,
+    marginBottom: 32,
+    lineHeight: 24,
+    textAlign: 'center',
   },
   introSection: {
-    marginBottom: 20,
+    marginBottom: 32,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   introText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#333',
-    marginBottom: 10,
-    lineHeight: 20,
+    marginBottom: 16,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   bulletPoints: {
     marginBottom: 12,

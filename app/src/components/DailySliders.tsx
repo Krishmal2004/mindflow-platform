@@ -18,270 +18,13 @@ import {
 import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
-import Svg, { Path, Circle, G, Line, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 import SuccessScreen from './common/SuccessScreen';
+import StandardHeader from './common/StandardHeader';
+import AppButton from './common/AppButton';
+import { Icons, Emojis } from './common/AppIcons';
 
 const { width } = Dimensions.get('window');
-
-const STRESS_EMOJIS = [
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#A8E6CF" stopOpacity="1" />
-          <Stop offset="1" stopColor="#7FD1AE" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grad1)" />
-      <Circle cx="9" cy="10" r="1.2" fill="#2E8A66" />
-      <Circle cx="15" cy="10" r="1.2" fill="#2E8A66" />
-      <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
-      <Path d="M7 8 Q9 6.5 11 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13 8 Q15 6.5 17 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 18 16 15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grad2" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#D8F6E9" stopOpacity="1" />
-          <Stop offset="1" stopColor="#BDECD5" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grad2)" />
-      <Circle cx="9" cy="10" r="1.1" fill="#2E8A66" />
-      <Circle cx="15" cy="10" r="1.1" fill="#2E8A66" />
-      <Circle cx="8.6" cy="9.6" r="0.35" fill="white" />
-      <Circle cx="14.6" cy="9.6" r="0.35" fill="white" />
-      <Path d="M7.5 8 Q9 7 10.5 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13.5 8 Q15 7 16.5 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 17 16 15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grad3" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#F3FFF9" stopOpacity="1" />
-          <Stop offset="1" stopColor="#E0F2E9" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grad3)" />
-      <Circle cx="9" cy="10" r="1" fill="#6B8E7A" />
-      <Circle cx="15" cy="10" r="1" fill="#6B8E7A" />
-      <Circle cx="8.7" cy="9.7" r="0.3" fill="white" />
-      <Circle cx="14.7" cy="9.7" r="0.3" fill="white" />
-      <Path d="M8 8 H10" stroke="#6B8E7A" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M14 8 H16" stroke="#6B8E7A" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M9 15 H15" stroke="#6B8E7A" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grad4" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFF7F6" stopOpacity="1" />
-          <Stop offset="1" stopColor="#FFE0DE" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grad4)" />
-      <Circle cx="9" cy="10" r="1" fill="#B34D3A" />
-      <Circle cx="15" cy="10" r="1" fill="#B34D3A" />
-      <Circle cx="8.7" cy="9.7" r="0.3" fill="white" />
-      <Circle cx="14.7" cy="9.7" r="0.3" fill="white" />
-      <Path d="M7.5 7.5 Q9 8.5 10.5 7.5" stroke="#B34D3A" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13.5 7.5 Q15 8.5 16.5 7.5" stroke="#B34D3A" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 13 16 15" stroke="#B34D3A" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grad5" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFEAEA" stopOpacity="1" />
-          <Stop offset="1" stopColor="#FFB3B3" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grad5)" />
-      <Circle cx="9" cy="10" r="1" fill="#9B2C2C" />
-      <Circle cx="15" cy="10" r="1" fill="#9B2C2C" />
-      <Circle cx="8.7" cy="9.7" r="0.3" fill="white" />
-      <Circle cx="14.7" cy="9.7" r="0.3" fill="white" />
-      <Path d="M7 7 Q9 9 11 7" stroke="#9B2C2C" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13 7 Q15 9 17 7" stroke="#9B2C2C" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 11 16 15" stroke="#9B2C2C" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-];
-
-const MOOD_FACES = [
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="gradm1" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFEAEA" stopOpacity="1" />
-          <Stop offset="1" stopColor="#FFB3B3" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#gradm1)" />
-      <Circle cx="9" cy="10" r="1" fill="#9B2C2C" />
-      <Circle cx="15" cy="10" r="1" fill="#9B2C2C" />
-      <Circle cx="8.5" cy="9.5" r="0.4" fill="white" />
-      <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
-      <Path d="M7 7 Q9 9 11 7" stroke="#9B2C2C" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13 7 Q15 9 17 7" stroke="#9B2C2C" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 11 16 15" stroke="#9B2C2C" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="gradm2" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFF7E6" stopOpacity="1" />
-          <Stop offset="1" stopColor="#FFE0B3" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#gradm2)" />
-      <Circle cx="9" cy="10" r="1" fill="#C07A39" />
-      <Circle cx="15" cy="10" r="1" fill="#C07A39" />
-      <Circle cx="8.5" cy="9.5" r="0.4" fill="white" />
-      <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
-      <Path d="M7.5 7.5 Q9 8.5 10.5 7.5" stroke="#C07A39" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13.5 7.5 Q15 8.5 16.5 7.5" stroke="#C07A39" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 13 16 15" stroke="#C07A39" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="gradm3" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#F0FFF4" stopOpacity="1" />
-          <Stop offset="1" stopColor="#D4F2DE" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#gradm3)" />
-      <Circle cx="9" cy="10" r="1" fill="#2E8A66" />
-      <Circle cx="15" cy="10" r="1" fill="#2E8A66" />
-      <Circle cx="8.5" cy="9.5" r="0.4" fill="white" />
-      <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
-      <Path d="M8 8 H10" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M14 8 H16" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M9 15 H15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="gradm4" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#D8F6E9" stopOpacity="1" />
-          <Stop offset="1" stopColor="#BDECD5" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#gradm4)" />
-      <Circle cx="9" cy="10" r="1" fill="#2E8A66" />
-      <Circle cx="15" cy="10" r="1" fill="#2E8A66" />
-      <Circle cx="8.5" cy="9.5" r="0.4" fill="white" />
-      <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
-      <Path d="M7.5 8 Q9 7 10.5 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13.5 8 Q15 7 16.5 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 17 16 15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="gradm5" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#A8E6CF" stopOpacity="1" />
-          <Stop offset="1" stopColor="#7FD1AE" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#gradm5)" />
-      <Circle cx="9" cy="10" r="1" fill="#2E8A66" />
-      <Circle cx="15" cy="10" r="1" fill="#2E8A66" />
-      <Circle cx="8.5" cy="9.5" r="0.4" fill="white" />
-      <Circle cx="14.5" cy="9.5" r="0.4" fill="white" />
-      <Path d="M7 8 Q9 6.5 11 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M13 8 Q15 6.5 17 8" stroke="#2E8A66" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M8 15 Q12 18 16 15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-];
-
-const SLEEP_QUALITY_EMOJIS = [
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grads1" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFEAEA" stopOpacity="1" />
-          <Stop offset="1" stopColor="#FFB3B3" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grads1)" />
-      <Path d="M8 10 H10" stroke="#9B2C2C" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M14 10 H16" stroke="#9B2C2C" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M8 15 Q12 12 16 15" stroke="#9B2C2C" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M17 6 Q18.5 4.5 20 6" stroke="#9B2C2C" strokeWidth="1.2" strokeLinecap="round" />
-      <Path d="M18 7 Q19 5.5 20 7" stroke="#9B2C2C" strokeWidth="1" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grads2" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFF7E6" stopOpacity="1" />
-          <Stop offset="1" stopColor="#FFE0B3" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grads2)" />
-      <Path d="M8 10 H10" stroke="#C07A39" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M14 10 H16" stroke="#C07A39" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M9 15 H15" stroke="#C07A39" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grads3" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#E8F5F1" stopOpacity="1" />
-          <Stop offset="1" stopColor="#CDEAE1" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Rect x="6" y="8" width="12" height="6" rx="2" fill="url(#grads3)" />
-      <Path d="M9 11 H15" stroke="#64C59A" strokeWidth="1.2" strokeLinecap="round" />
-      <Rect x="4" y="10" width="4" height="2" rx="1" fill="#64C59A" opacity="0.5" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grads4" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#D8F6E9" stopOpacity="1" />
-          <Stop offset="1" stopColor="#BDECD5" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grads4)" />
-      <Path d="M8 10 H10" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M14 10 H16" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M8 15 Q12 17 16 15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-  (props: any) => (
-    <Svg width={props?.width ?? 28} height={props?.height ?? 28} viewBox="0 0 24 24" fill="none">
-      <Defs>
-        <LinearGradient id="grads5" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#A8E6CF" stopOpacity="1" />
-          <Stop offset="1" stopColor="#7FD1AE" stopOpacity="1" />
-        </LinearGradient>
-      </Defs>
-      <Circle cx="12" cy="12" r="10" fill="url(#grads5)" />
-      <Path d="M8 10 H10" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M14 10 H16" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-      <Path d="M8 15 Q12 18 16 15" stroke="#2E8A66" strokeWidth="1.4" strokeLinecap="round" />
-    </Svg>
-  ),
-];
 
 // Factors influencing stress
 const STRESS_FACTORS = [
@@ -327,78 +70,6 @@ for (let hour = 0; hour < 24; hour++) {
 // Accent colors for study groups
 const CONTROL_COLOR = '#64C59A';
 const EXPERIMENT_COLOR = '#6366F1';
-
-// Custom Icons (refined, gentle shapes with gradients for premium feel)
-const Icons = {
-  mindfulness: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C13.3137 2 14.6136 2.25866 15.8268 2.75866C17.04 3.25866 18.1421 4.00001 19.071 5.00001C20 6.00001 20.7424 7.14214 21.2424 8.35534C21.7424 9.56854 22 10.8137 22 12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M12 22C10.6863 22 9.38642 21.7413 8.17317 21.2413C6.95991 20.7413 5.85786 20 4.92893 19C4 18 3.25759 16.8579 2.75759 15.6447C2.25759 14.4315 2 13.1863 2 12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M8 14C8.65661 14.6278 9.50909 15 10.4142 15C12.2142 15 13.4142 13.6569 13.4142 12C13.4142 10.3431 12.2142 9 10.4142 9C9.50909 9 8.65661 9.37216 8 10" stroke="#64C59A" strokeWidth="2" />
-    </Svg>
-  ),
-  stress: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C16.9706 2 21 6.02944 21 11C21 15.9706 16.9706 20 12 20C7.02944 20 3 15.9706 3 11C3 6.02944 7.02944 2 12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M9 9L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M15 9L9 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-    </Svg>
-  ),
-  mood: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C16.9706 2 21 6.02944 21 11C21 15.9706 16.9706 20 12 20C7.02944 20 3 15.9706 3 11C3 6.02944 7.02944 2 12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Circle cx="8" cy="9" r="1.5" stroke="#64C59A" strokeWidth="1.5" fill="none" />
-      <Circle cx="16" cy="9" r="1.5" stroke="#64C59A" strokeWidth="1.5" fill="none" />
-      <Path d="M7 14C9 16 15 16 17 14" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-    </Svg>
-  ),
-  sleep: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M17 10C17 12.7614 14.7614 15 12 15C9.23858 15 7 12.7614 7 10C7 7.23858 9.23858 5 12 5C14.7614 5 17 7.23858 17 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  ),
-  recording: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M14 12L19 8V16L14 12Z" fill="#64C59A" />
-      <Path d="M9 12L14 8V16L9 12Z" fill="#64C59A" />
-    </Svg>
-  ),
-  relaxation: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2L21 8.5V15.5L12 22L3 15.5V8.5L12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M12 7L16.5 10.5L12 14L7.5 10.5L12 7Z" fill="#64C59A" />
-      <Path d="M12 11L16.5 14.5L12 18L7.5 14.5L12 11Z" fill="#64C59A" />
-    </Svg>
-  ),
-  factors: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2L21 8.5V15.5L12 22L3 15.5V8.5L12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M8 8L16 16" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M16 8L8 16" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M12 6V18" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-    </Svg>
-  ),
-  schedule: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="4" width="18" height="18" rx="2" stroke="#64C59A" strokeWidth="2" />
-      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
-      <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2" />
-    </Svg>
-  ),
-  play: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M5 4L19 12L5 20V4Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  ),
-  stop: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Rect x="6" y="6" width="12" height="12" rx="2" stroke="#64C59A" strokeWidth="2" />
-    </Svg>
-  ),
-};
 
 export default function DailySliders() {
   const router = useRouter();
@@ -656,22 +327,22 @@ export default function DailySliders() {
   // Get icon components for current selections (returns a React component)
   const getStressIcon = () => {
     const idx = stressLevel ? stressLevel - 1 : 2;
-    return STRESS_EMOJIS[idx] || STRESS_EMOJIS[2];
+    return Emojis.Stress[idx] || Emojis.Stress[2];
   };
   const getMoodIcon = () => {
     const idx = moodLevel ? moodLevel - 1 : 2;
-    return MOOD_FACES[idx] || MOOD_FACES[2];
+    return Emojis.Mood[idx] || Emojis.Mood[2];
   };
   const getSleepIcon = () => {
     const idx = sleepQuality ? sleepQuality - 1 : 2;
-    return SLEEP_QUALITY_EMOJIS[idx] || SLEEP_QUALITY_EMOJIS[2];
+    return Emojis.SleepQuality[idx] || Emojis.SleepQuality[2];
   };
   const getRelaxationIcon = () => {
     const idx = relaxationLevel ? 5 - relaxationLevel : 2;
-    return STRESS_EMOJIS[idx] || STRESS_EMOJIS[2];
+    return Emojis.Stress[idx] || Emojis.Stress[2];
   };
   // Submit wellness data
-  const submitWellnessData = async (isEdit = false) => {
+  const handleSubmit = async (isEdit = false) => {
     if (!session?.user?.id) {
       Alert.alert('Authentication Error', 'Please log in to submit data.');
       return;
@@ -788,22 +459,27 @@ export default function DailySliders() {
       useNativeDriver: false,
     }).start();
   }, [progress]);
+
+  // Custom Icons from AppIcons
+  const QuestionIcons = {
+    mindfulness: () => <Icons.Mindfulness width={24} height={24} />,
+    stress: () => <Icons.Stress width={24} height={24} />,
+    mood: () => <Icons.Mood width={24} height={24} />,
+    sleep: () => <Icons.Sleep width={24} height={24} />,
+    recording: () => <Icons.Recording width={24} height={24} />,
+    relaxation: () => <Icons.Relaxation width={24} height={24} />,
+    factors: () => <Icons.Factors width={24} height={24} />,
+    schedule: () => <Icons.Schedule width={24} height={24} />,
+  };
   // Use a single accent color for the progress bar (same for all groups)
   const groupAccentColor = CONTROL_COLOR;
   if (alreadySubmittedToday) {
     return (
       <View style={styles.container}>
-        <View style={styles.professionalHeader}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-              <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </Svg>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Daily Sliders</Text>
-            <View style={{ width: 40 }} />
-          </View>
-        </View>
+        <StandardHeader
+          title="Daily Sliders"
+          onBack={() => router.back()}
+        />
 
         <SuccessScreen
           title="Great Job Today!"
@@ -815,28 +491,22 @@ export default function DailySliders() {
   }
   return (
     <View style={styles.container}>
-      <View style={styles.professionalHeader}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Daily Sliders</Text>
-          </View>
+      <StandardHeader
+        title="Daily Sliders"
+        onBack={() => router.back()}
+        rightContent={
           <View style={styles.progressBadge}>
             <Text style={styles.progressBadgeText}>{`${Math.round(progress)}%`}</Text>
           </View>
-        </View>
-      </View>
+        }
+      />
       <ScrollView contentContainerStyle={styles.content}>
         {/* Mindfulness Practice moved after Sleep Quality - only for .ex users */}
         {userExtension === 'ex' && (
           <View style={styles.section}>
             <View style={styles.questionHeader}>
               <View style={styles.iconCircle}>
-                <Icons.mindfulness />
+                <QuestionIcons.mindfulness />
               </View>
               <View style={styles.questionText}>
                 <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
@@ -914,9 +584,7 @@ export default function DailySliders() {
               <View style={styles.modalHeaderRow}>
                 <Text style={styles.modalTitle}>{selectedRecording?.title}</Text>
                 <TouchableOpacity onPress={() => { setShowRecordingModal(false); setSelectedRecording(null); }}>
-                  <Svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <Path d="M18 6L6 18M6 6L18 18" stroke="#666" strokeWidth="2" strokeLinecap="round" />
-                  </Svg>
+                  <Icons.Close width={22} height={22} color="#666" />
                 </TouchableOpacity>
               </View>
               <View style={styles.recordingWebviewContainer}>
@@ -959,7 +627,7 @@ export default function DailySliders() {
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
-              <Icons.stress />
+              <QuestionIcons.stress />
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Stress Level</Text>
@@ -987,32 +655,20 @@ export default function DailySliders() {
               })()}
             </Animated.View>
           </View>
-          <View style={styles.sliderContainer}>
-            <View style={styles.track}>
-              <View
-                style={[
-                  styles.trackFill,
-                  {
-                    width: stressLevel ? `${stressLevel * 20}%` : '0%',
-                    backgroundColor: getStressColor()
-                  }
-                ]}
-              />
-            </View>
-            <View style={styles.thumbContainer}>
+          <View style={styles.sliderSimpleContainer}>
+            <View style={styles.emotionRow}>
               {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
-                    styles.thumb,
-                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
-                    stressLevel === i + 1 && styles.thumbActive,
+                    styles.emotionButton,
+                    stressLevel === i + 1 && styles.emotionButtonSelected,
                     stressLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setStressLevel(i + 1)}
                 >
                   {(() => {
-                    const IconComp = STRESS_EMOJIS[i];
+                    const IconComp = Emojis.Stress[i];
                     return IconComp ? <IconComp width={28} height={28} /> : null;
                   })()}
                 </TouchableOpacity>
@@ -1027,7 +683,7 @@ export default function DailySliders() {
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
-              <Icons.mood />
+              <QuestionIcons.mood />
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Mood Level</Text>
@@ -1042,32 +698,20 @@ export default function DailySliders() {
               })()}
             </View>
           </View>
-          <View style={styles.sliderContainer}>
-            <View style={styles.track}>
-              <View
-                style={[
-                  styles.trackFill,
-                  {
-                    width: moodLevel ? `${(moodLevel * 100) / 5}%` : '0%',
-                    backgroundColor: getStressColor()
-                  }
-                ]}
-              />
-            </View>
-            <View style={styles.thumbContainer}>
+          <View style={styles.sliderSimpleContainer}>
+            <View style={styles.emotionRow}>
               {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
-                    styles.thumb,
-                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
-                    moodLevel === i + 1 && styles.thumbActive,
+                    styles.emotionButton,
+                    moodLevel === i + 1 && styles.emotionButtonSelected,
                     moodLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setMoodLevel(i + 1)}
                 >
                   {(() => {
-                    const IconComp = MOOD_FACES[i];
+                    const IconComp = Emojis.Mood[i];
                     return IconComp ? <IconComp width={28} height={28} /> : null;
                   })()}
                 </TouchableOpacity>
@@ -1082,7 +726,7 @@ export default function DailySliders() {
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
-              <Icons.factors />
+              <QuestionIcons.factors />
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Factors Influencing Mood</Text>
@@ -1140,7 +784,7 @@ export default function DailySliders() {
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
-              <Icons.schedule />
+              <QuestionIcons.schedule />
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Sleep Schedule</Text>
@@ -1199,7 +843,7 @@ export default function DailySliders() {
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
-              <Icons.sleep />
+              <QuestionIcons.sleep />
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Sleep Quality</Text>
@@ -1214,32 +858,20 @@ export default function DailySliders() {
               })()}
             </View>
           </View>
-          <View style={styles.sliderContainer}>
-            <View style={styles.track}>
-              <View
-                style={[
-                  styles.trackFill,
-                  {
-                    width: sleepQuality ? `${(sleepQuality * 100) / 5}%` : '0%',
-                    backgroundColor: getStressColor()
-                  }
-                ]}
-              />
-            </View>
-            <View style={styles.thumbContainer}>
+          <View style={styles.sliderSimpleContainer}>
+            <View style={styles.emotionRow}>
               {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
-                    styles.thumb,
-                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
-                    sleepQuality === i + 1 && styles.thumbActive,
+                    styles.emotionButton,
+                    sleepQuality === i + 1 && styles.emotionButtonSelected,
                     sleepQuality === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setSleepQuality(i + 1)}
                 >
                   {(() => {
-                    const IconComp = SLEEP_QUALITY_EMOJIS[i];
+                    const IconComp = Emojis.SleepQuality[i];
                     return IconComp ? <IconComp width={28} height={28} /> : null;
                   })()}
                 </TouchableOpacity>
@@ -1256,7 +888,7 @@ export default function DailySliders() {
           <View style={styles.section}>
             <View style={styles.questionHeader}>
               <View style={styles.iconCircle}>
-                <Icons.recording />
+                <QuestionIcons.recording />
               </View>
               <View style={styles.questionText}>
                 <Text style={styles.sectionTitle}>This Week's Recording</Text>
@@ -1276,9 +908,7 @@ export default function DailySliders() {
                     style={styles.playButton}
                     onPress={() => { setSelectedRecording(rec); setShowRecordingModal(true); }}
                   >
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Path d="M8 5V19L19 12L8 5Z" fill="#fff" />
-                    </Svg>
+                    <Icons.Play width={20} height={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
               ))
@@ -1290,7 +920,7 @@ export default function DailySliders() {
         <View style={styles.section}>
           <View style={styles.questionHeader}>
             <View style={styles.iconCircle}>
-              <Icons.relaxation />
+              <QuestionIcons.relaxation />
             </View>
             <View style={styles.questionText}>
               <Text style={styles.sectionTitle}>Relaxation Level</Text>
@@ -1305,32 +935,21 @@ export default function DailySliders() {
               })()}
             </View>
           </View>
-          <View style={styles.sliderContainer}>
-            <View style={styles.track}>
-              <View
-                style={[
-                  styles.trackFill,
-                  {
-                    width: relaxationLevel ? `${relaxationLevel * 20}%` : '0%',
-                    backgroundColor: getStressColor()
-                  }
-                ]}
-              />
-            </View>
-            <View style={styles.thumbContainer}>
+          <View style={styles.sliderSimpleContainer}>
+            <View style={styles.emotionRow}>
               {[...Array(5)].map((_, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[
-                    styles.thumb,
-                    { width: width / 6 - 10, justifyContent: 'center', alignItems: 'center' },
-                    relaxationLevel === i + 1 && styles.thumbActive,
+                    styles.emotionButton,
+                    relaxationLevel === i + 1 && styles.emotionButtonSelected,
                     relaxationLevel === i + 1 && { borderColor: getStressColor(), backgroundColor: getStressColor() }
                   ]}
                   onPress={() => setRelaxationLevel(i + 1)}
                 >
                   {(() => {
-                    const IconComp = STRESS_EMOJIS[4 - i];
+                    // Reusing Stress emojis for relaxation (reversed)
+                    const IconComp = Emojis.Stress[4 - i];
                     return IconComp ? <IconComp width={28} height={28} /> : null;
                   })()}
                 </TouchableOpacity>
@@ -1343,15 +962,12 @@ export default function DailySliders() {
           </View>
         </View>
         {!showCompletion && (
-          <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: getStressColor() }]}
-            onPress={() => submitWellnessData(false)}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Submit Wellness Data'}
-            </Text>
-          </TouchableOpacity>
+          <AppButton
+            title="Submit Wellness Data"
+            onPress={handleSubmit}
+            loading={isSubmitting}
+            style={styles.submitButton}
+          />
         )}
         {showCompletion && (
           <SuccessScreen
@@ -1520,27 +1136,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  sliderContainer: {
+  sliderSimpleContainer: {
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  emotionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    gap: 4 
+  },
+  emotionButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  track: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#E8F5F1',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  trackFill: {
-    height: '100%',
-    backgroundColor: '#64C59A',
-    borderRadius: 4,
+  emotionButtonSelected: {
+    borderWidth: 2,
+    transform: [{ scale: 1.1 }],
   },
   thumbContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginBottom: 16,
   },
   thumb: {
     width: 48,
