@@ -95,6 +95,32 @@ export const Icons = {
             <Path d="M3 10H21" stroke={color} strokeWidth="2" />
         </Svg>
     ),
+    Sun: ({ width = 28, height = 28, color = "#FFA500" }: IconProps) => (
+        <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+            <Circle cx="12" cy="12" r="5" stroke={color} strokeWidth="2" />
+            <Path d="M12 1V3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M12 21V23" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M4.22 4.22L5.64 5.64" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M18.36 18.36L19.78 19.78" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M1 12H3" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M21 12H23" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M4.22 19.78L5.64 18.36" stroke={color} strokeWidth="2" strokeLinecap="round" />
+            <Path d="M18.36 5.64L19.78 4.22" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        </Svg>
+    ),
+    Feather: ({ width = 28, height = 28, color = "#64C59A" }: IconProps) => (
+        <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+            <Path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M16 8L2 22" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M17.5 15H9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+    ),
+    User: ({ width = 28, height = 28, color = "#000" }: IconProps) => (
+        <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+            <Path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <Circle cx="12" cy="7" r="4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+    ),
 };
 
 // Emojis from DailySliders

@@ -37,11 +37,10 @@ interface CalendarEvent {
  */
 export default function CalendarScreen() {
   const { session, loading } = useSession();
-  // Current date state for month navigation
+  // State management
   const [currentDate, setCurrentDate] = useState(new Date());
-  // Removed completedDays state as we're removing the day completion functionality
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // State for calendar events
-  const [refreshing, setRefreshing] = useState(false); // State for pull-to-refresh
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useFocusEffect(
@@ -66,11 +65,10 @@ export default function CalendarScreen() {
   const fetchCalendarEvents = async () => {
     try {
       const year = currentDate.getFullYear();
-      const month = currentDate.getMonth(); // 0-indexed
+      const month = currentDate.getMonth();
 
-      // Get the first day of the month
+      // Calculate date range for the current view (including padding days)
       const firstDay = new Date(year, month, 1);
-      // Get the last day of the month
       const lastDay = new Date(year, month + 1, 0);
 
       // Extend the range to include days from previous/next months shown in the calendar
@@ -78,9 +76,9 @@ export default function CalendarScreen() {
       startDate.setDate(firstDay.getDate() - firstDay.getDay()); // Start from Sunday of the week containing the 1st
 
       const endDate = new Date(lastDay);
-      endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay())); // End on Saturday of the week containing the last day
+      endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
 
-      // Fetch all calendar events for the date range
+      // Fetch events within range
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
@@ -213,7 +211,7 @@ export default function CalendarScreen() {
           ]}>
             {day}
           </Text>
-          {/* Removed checkmark icon for completed days */}
+
           {hasMindfulnessSession && (
             <View style={styles.sessionIndicator}>
               <Svg width="12" height="12" viewBox="0 0 24 24" fill="#9C27B0">
@@ -248,7 +246,6 @@ export default function CalendarScreen() {
           <View style={styles.grid}>{cells}</View>
 
           <View style={styles.legendContainer}>
-            {/* Removed completed legend */}
             <View style={styles.legendItem}>
               <View style={[styles.legendColor, styles.mindfulnessLegend]}></View>
               <Text style={styles.legendText}>Mindfulness Session</Text>
@@ -284,7 +281,7 @@ export default function CalendarScreen() {
       return;
     }
 
-    // Removed day completion toggle functionality
+    // Default action for date selection
     Alert.alert(
       "Date Selected",
       `Selected date: ${date.toDateString()}`,
@@ -330,7 +327,7 @@ export default function CalendarScreen() {
         <View style={styles.eventsSection}>
           <Text style={styles.sectionTitle}>Upcoming Mindfulness Sessions</Text>
 
-          {/* Show upcoming mindfulness sessions from events */}
+          {/* Upcoming Sessions List */}
           {(() => {
             const upcomingSessions = getUpcomingMindfulnessSessions();
 
@@ -472,7 +469,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  // Removed completedCell styles
   mindfulnessDayCell: {
     backgroundColor: '#F5EEF8',
   },
@@ -518,7 +514,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 8,
   },
-  // Removed completedLegend styles
   mindfulnessLegend: {
     backgroundColor: '#9C27B0',
   },

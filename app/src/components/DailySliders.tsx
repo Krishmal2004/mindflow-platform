@@ -1018,19 +1018,7 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 24,
   },
-  // progressContainer: {
-  // marginTop: 20,
-  // },
-  // progressBar: {
-  // height: 6,
-  // backgroundColor: '#E8F5F1',
-  // borderRadius: 3,
-  // overflow: 'hidden',
-  // },
-  // progressFill: {
-  // height: '100%',
-  // backgroundColor: '#64C59A',
-  // },
+ 
   progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -100,11 +100,11 @@ export default function ProgressScreen() {
   };
 
   /**
-   * Fetches all progress data from Supabase
+   * Fetches all progress data from Supabase, including daily sliders, voice recordings, and questionnaires.
    */
   const fetchAllProgressData = async () => {
     try {
-      // Fetch daily slider data
+      // Retrieve daily slider entries
       const { data: sliderData, error: sliderError } = await supabase
         .from('daily_sliders')
         .select('*')
@@ -114,7 +114,7 @@ export default function ProgressScreen() {
       if (sliderError) throw sliderError;
       setDailySliderData(sliderData || []);
 
-      // Fetch voice recordings (all) and compute weeks from earliest submission
+      // Aggregate weekly progress from voice recordings
       const { data: voiceRecordings, error: voiceRecordingsError } = await supabase
         .from('voice_recordings')
         .select('week_number, year, created_at')
@@ -123,13 +123,11 @@ export default function ProgressScreen() {
 
       if (voiceRecordingsError) throw voiceRecordingsError;
 
-      // Get voice recording submission details
       const submittedWeeksMap = new Map<string, { week: string; completed: boolean; submitted_at: string }>();
       let earliestWeeklyDate: Date | null = null;
       if (voiceRecordings && voiceRecordings.length > 0) {
         voiceRecordings.forEach(recording => {
-          // Create a date from week number and year
-          // Using the first day of the specified week
+          // Determine week boundaries
           const date = new Date(recording.year, 0, 1 + (recording.week_number - 1) * 7);
           if (!earliestWeeklyDate || date < earliestWeeklyDate) earliestWeeklyDate = date;
           const [y, w] = getWeekNumber(date);
@@ -161,8 +159,7 @@ export default function ProgressScreen() {
 
       setWeeklyProgressData(weeksList);
 
-      // Fetch main questionnaire data
-      // First get the session records
+      // Retrieve and process main questionnaire sessions
       const { data: sessionData, error: sessionError } = await supabase
         .from('main_questionnaire_sessions')
         .select('id, question_set_id, started_at')
@@ -171,7 +168,6 @@ export default function ProgressScreen() {
 
       if (sessionError) throw sessionError;
 
-      // Then get the question sets for those sessions
       if (sessionData && sessionData.length > 0) {
         const sessionIds = sessionData.map(session => session.id);
         const questionSetIds = sessionData.map(session => session.question_set_id);
@@ -246,7 +242,7 @@ export default function ProgressScreen() {
     return arr.reduce((a, b) => a + b, 0) / arr.length;
   };
 
-  // Extract metric data for calculations
+  // Prepare data series for metrics
   const stressData = dailySliderData.map(item => item.stress_level);
   const sleepData = dailySliderData.map(item => item.sleep_quality);
   const relaxationData = dailySliderData.map(item => item.relaxation_level);
@@ -256,8 +252,8 @@ export default function ProgressScreen() {
   const avgSleep = average(sleepData);
   const avgRelaxation = average(relaxationData);
 
-  // Calculate completion percentages dynamically based on earliest entries
-  // Daily: from earliest daily entry to today
+  // Calculate completion rates for each modality
+  // 1. Daily: from earliest daily entry to today
   let dailyCompletion = 0;
   let earliestDailyDate: Date | null = null;
   if (dailySliderData && dailySliderData.length > 0) {
@@ -271,7 +267,7 @@ export default function ProgressScreen() {
     dailyCompletion = Math.min(100, Math.round((completedCount / days) * 100));
   }
 
-  // Weekly: from earliest weekly submission week to current week
+  // 2. Weekly: from earliest weekly submission week to current week
   let weeklyCompletion = 0;
   if (weeklyProgressData && weeklyProgressData.length > 0) {
     const totalWeeks = weeklyProgressData.length;
@@ -279,7 +275,7 @@ export default function ProgressScreen() {
     weeklyCompletion = Math.round((completedWeeks / Math.max(1, totalWeeks)) * 100);
   }
 
-  // Main questionnaires: compute months between earliest submission and today
+  // 3. Main questionnaires: compute months between earliest submission and today
   let mainCompletion = 0;
   let mainMissedMonths: string[] = [];
   if (mainQuestionnaireData && mainQuestionnaireData.length > 0) {
@@ -332,7 +328,6 @@ export default function ProgressScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Completion Overview */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.overviewContainer}>
           <Text style={styles.sectionTitle}>Completion Overview</Text>
           <View style={styles.completionGrid}>
@@ -377,8 +372,6 @@ export default function ProgressScreen() {
           </View>
         </Animated.View>
 
-        {/* detailed progress moved into per-tab views */}
-
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -404,7 +397,6 @@ export default function ProgressScreen() {
         {/* Daily Progress */}
         {activeTab === 'daily' && (
           <Animated.View entering={FadeInDown.delay(200)} style={styles.tabContent}>
-            {/* Daily progress summary (top of Daily tab) */}
             <View style={styles.detailedProgressContainer}>
               <View style={styles.detailedProgressBar}>
                 <View style={styles.progressBarHeader}>
@@ -466,7 +458,7 @@ export default function ProgressScreen() {
                 })()}
               </View>
             </View>
-            {/* Enhanced Stats Display Grid */}
+
             <View style={styles.chartSection}>
               <Text style={styles.chartTitle}>Your Well-being Summary (Last 14 Days)</Text>
               <View style={styles.statsGridContainer}>
@@ -520,14 +512,12 @@ export default function ProgressScreen() {
               </View>
             </View>
 
-            {/* Recent Entries removed per request */}
           </Animated.View>
         )}
 
         {/* Weekly Progress */}
         {activeTab === 'weekly' && (
           <Animated.View entering={FadeInDown.delay(200)} style={styles.tabContent}>
-            {/* Weekly progress summary (top of Weekly tab) */}
             <View style={styles.detailedProgressContainer}>
               <View style={styles.detailedProgressBar}>
                 <View style={styles.progressBarHeader}>
@@ -545,7 +535,6 @@ export default function ProgressScreen() {
                   <Animated.View style={[styles.progressBarFill, { width: `${weeklyCompletion}%`, backgroundColor: '#64C59A' }]} />
                 </View>
                 <Text style={styles.progressBarSubtitle}>{weeklyProgressData.filter(w => w.completed).length}/{weeklyProgressData.length} weeks completed</Text>
-                {/* Missed weeks inside progress card */}
                 {weeklyProgressData && weeklyProgressData.filter(w => !w.completed).length > 0 && (
                   <View style={styles.missedDatesContainer}>
                     <Text style={styles.missedDatesTitle}>Missed Weeks ({weeklyProgressData.filter(w => !w.completed).length}):</Text>
@@ -614,7 +603,6 @@ export default function ProgressScreen() {
         {/* Main Questionnaire Progress */}
         {activeTab === 'main' && (
           <Animated.View entering={FadeInDown.delay(200)} style={styles.tabContent}>
-            {/* Main questionnaires progress summary (top of Main tab) */}
             <View style={styles.detailedProgressContainer}>
               <View style={styles.detailedProgressBar}>
                 <View style={styles.progressBarHeader}>
@@ -1288,7 +1276,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  /* Detailed progress styles moved from Dashboard */
+  /* Detailed progress styles */
   detailedProgressContainer: {
     backgroundColor: '#fff',
     borderRadius: 20,

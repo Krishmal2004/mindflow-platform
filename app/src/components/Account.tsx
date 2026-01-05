@@ -26,24 +26,23 @@ import { useCallback } from 'react';
  */
 export default function Account({ session }: { session: Session }) {
   const router = useRouter();
+  // State management
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Profile data (read-only)
+  // Profile data
   const [username, setUsername] = useState('');
   const [researchID, setResearchID] = useState('');
   const [email, setEmail] = useState('');
 
-  // Password Modal
+  // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-
-  // Sign Out Modal
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
-  // Generate unique cute avatar using DiceBear (fallback to user ID)
+  // Avatar configuration
   const avatarSeed = session?.user?.id || 'mindful-user';
   // Use a fixed avatar URL or generate one
   const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=E8F5F1`;
@@ -308,7 +307,7 @@ export default function Account({ session }: { session: Session }) {
   );
 }
 
-// Styles remain unchanged (beautiful as before)
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
   header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10, backgroundColor: '#F8FDFC', zIndex: 10 },
