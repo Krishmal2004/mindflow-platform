@@ -1,4 +1,4 @@
-FROM node:18-bullseye-slim
+FROM node:20-bookworm-slim
 
 # Install minimal dependencies for running Expo CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \

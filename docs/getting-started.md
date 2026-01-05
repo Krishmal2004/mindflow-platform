@@ -3,7 +3,7 @@
 This guide shows how to run the mobile client (Expo) locally from scratch, plus Docker and production build notes.
 
 ## Prerequisites
-- Node.js v18.x (LTS) + npm (or Yarn)
+- Node.js v20.x (LTS) + npm (or Yarn)
 - Git
 - Expo CLI (optional locally — `npx expo` works)
 - Android Studio / Xcode (only for native emulator/simulator builds)
@@ -23,12 +23,13 @@ This guide shows how to run the mobile client (Expo) locally from scratch, plus 
    yarn install
    ```
 
-3. Prepare Husky hooks (only needed after install to enable pre-commit hooks):
-   ```bash
-   npm run prepare
-   ```
 
-4. Create environment variables (copy from an example if present):
+
+    - `EXPO_PUBLIC_SUPABASE_URL`
+    - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+    - Cloud-storage keys (R2/S3) if applicable
+
+2. Create environment variables (copy from an example if present):
    ```bash
    cp .env.example .env
    # then edit .env to add your keys
@@ -38,14 +39,15 @@ This guide shows how to run the mobile client (Expo) locally from scratch, plus 
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
    - Cloud-storage keys (R2/S3) if applicable
 
-5. Start the Expo dev server:
+3. Start the Expo dev server:
    ```bash
    npm start
    # or with Expo CLI explicitly
-   npx expo start
-   ```
+    # or with Expo CLI explicitly
+    npx expo start
+    ```
 
-6. Run on a device/emulator:
+4. Run on a device/emulator:
 - Android emulator (must have emulator running):
   ```bash
   npm run android
@@ -73,6 +75,8 @@ cd app
 docker build -t mindful-app .
 docker run -it --rm -p 19000:19000 -p 19001:19001 -p 8081:8081 -p 3000:3000 mindful-app
 ```
+
+**Note**: The Dockerfile uses `node:20-bookworm-slim` as the base image.
 
 Open the URL printed by Expo (usually `http://localhost:19002` for the dev tools) or use the QR code.
 

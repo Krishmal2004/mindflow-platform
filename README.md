@@ -1,32 +1,92 @@
-# MindFlow - Mindfulness Research App
+# MindFlow (Mindfulness Research App)
 
-## About This Project
-
-This is a research project conducted by SLIIT and Brain Labs. The application serves as a data collection tool for experimental and control groups participating in a mindfulness study. The app helps researchers gather valuable data on participants' mental wellness through various interactive features.
+**MindFlow** is a comprehensive mobile application designed for mindfulness research. It enables participants to track their daily wellness, engage in weekly reflective voice diaries, and complete standardized psychological assessments.
 
 ## Overview
+The app supports a longitudinal study on mindfulness, offering distinct experiences for:
+- **Experimental Group**: Access to mindfulness/control logic and tailored interventions.
+- **Control Group**: Standard tracking without specific interventions.
 
-MindFlow is a comprehensive mindfulness research application designed specifically for academic research purposes. The app enables participants to track their mental wellness through daily reflections, stress monitoring, and guided breathing exercises. It provides researchers with structured data collection mechanisms while offering participants an engaging way to monitor their mental health journey.
+## Key Features
+
+### 1. Daily Sliders
+Quick, intuitive daily check-ins for tracking:
+- **Stress Levels**: 1-5 scale.
+- **Mood**: Bad to Good spectrum.
+- **Sleep**: Quality and duration.
+- **Completion**: Simple "Done" confirmation for daily logs.
+
+### 2. Weekly Whispers
+A secure voice diary feature allowing participants to:
+- Respond to thought-provoking weekly prompts.
+- Record audio responses directly in the app.
+- Recordings are securely stored (via Cloudflare R2) for analysis.
+
+### 3. Core Insights
+Monthly questionnaires integrating standardized scales:
+- **Perceived Stress Scale (PSS)**
+- **Five Facet Mindfulness Questionnaire (FFMQ)**
+
+### 4. Mindfulness Path (Dashboard)
+A gamified, visual roadmap on the home screen:
+- **Daily Node**: Lights up upon completing daily sliders.
+- **Weekly Node**: Unlocks for weekly voice reflections.
+- **Monthly Node**: Becomes available for "Core Insights".
+- **Visual Feedback**: Icons and animations indicate progress and streaks.
+
+## Tech Stack
+- **Framework**: [Expo](https://expo.dev) (React Native)
+- **Language**: TypeScript
+- **Navigation**: Expo Router (File-based routing)
+- **Backend**: Supabase (Auth, Database)
+- **Storage**: Cloudflare R2 (Audio files), Supabase Storage (Images)
+- **UI/Animation**:
+    - `react-native-reanimated` for smooth interactions.
+    - `react-native-svg` for custom drawing (Path Map).
+    - `expo-linear-gradient` for visual polish.
+
+## Getting Started
+
+### Prerequisites
+- **Node.js**: v20.x (LTS)
+- **npm** or **Yarn**
+
+### Installation
+1.  **Clone the repository**:
+    ```bash
+    git clone <repository-url>
+    cd mindfulness-research-app/app
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Environment Setup**:
+    Create a `.env` file in the `app` directory with your Supabase keys:
+    ```env
+    EXPO_PUBLIC_SUPABASE_URL=your_url
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key
+    ```
+
+### Running the App
+Start the development server:
+```bash
+npx expo start
+```
+- **Android**: Press `a` (requires Emulator or USB device).
+- **iOS**: Press `i` (requires macOS + Simulator).
+- **Web**: Press `w`.
+
+### Building for Production
+Use EAS Build for creating APKs or AABs:
+```bash
+npx eas build -p android --profile preview
+```
 
 ## Documentation
-
-Detailed documentation is available in the following sections:
-
-- [Features](docs/features.md) - Complete overview of all application features
-- [Technical Architecture](docs/architecture.md) - System architecture and project structure
-- [Database Schema](docs/database.md) - Database design and table structures
-- [Getting Started Guide](docs/getting-started.md) - Installation and development setup
-- [Research Methodology](docs/research-methodology.md) - Research design and data collection methods
-- [Admin Dashboard](docs/admin-dashboard.md) - Administrator interface documentation
-
-## Contributing
-
-This project is maintained by the research team at SLIIT and Brain Labs. External contributions are not accepted as this is a controlled research environment.
-
-## License
-
-This project is proprietary software developed for academic research purposes. All rights reserved by SLIIT and Brain Labs.
-
-## Contact
-
-For research inquiries, please contact the principal investigators at SLIIT and Brain Labs.
+For more detailed information, check the `docs/` folder:
+- [Architecture](docs/architecture.md)
+- [Features](docs/features.md)
+- [Getting Started Guide](docs/getting-started.md)
