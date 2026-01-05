@@ -1,5 +1,4 @@
-// app/calendar.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +9,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useSession } from '../../src/contexts/SessionContext';
 import { Svg, Path, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -17,7 +17,9 @@ import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
-// Define the calendar event interface
+/**
+ * Interface defining the structure of calendar events
+ */
 interface CalendarEvent {
   id: number;
   title: string;
@@ -29,35 +31,55 @@ interface CalendarEvent {
   updated_at: string;
 }
 
+/**
+ * Calendar screen component that displays a monthly calendar view
+ * with mindfulness sessions and other events
+ */
 export default function CalendarScreen() {
   const { session, loading } = useSession();
+  // Current date state for month navigation
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [completedDays, setCompletedDays] = useState<Set<string>>(new Set());
+  // Removed completedDays state as we're removing the day completion functionality
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]); // State for calendar events
   const [refreshing, setRefreshing] = useState(false); // State for pull-to-refresh
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Scroll to top
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: false });
+      }
+      // Refresh events
+      fetchCalendarEvents();
+    }, [currentDate])
+  );
 
   useEffect(() => {
     fetchCalendarEvents();
   }, [currentDate]);
 
-  // Function to fetch calendar events from the database
+  /**
+   * Fetches calendar events from the database for the current month
+   * including events from adjacent weeks to show complete calendar view
+   */
   const fetchCalendarEvents = async () => {
     try {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth(); // 0-indexed
-      
+
       // Get the first day of the month
       const firstDay = new Date(year, month, 1);
       // Get the last day of the month
       const lastDay = new Date(year, month + 1, 0);
-      
+
       // Extend the range to include days from previous/next months shown in the calendar
       const startDate = new Date(firstDay);
       startDate.setDate(firstDay.getDate() - firstDay.getDay()); // Start from Sunday of the week containing the 1st
-      
+
       const endDate = new Date(lastDay);
       endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay())); // End on Saturday of the week containing the last day
-      
+
       // Fetch all calendar events for the date range
       const { data, error } = await supabase
         .from('calendar_events')
@@ -67,7 +89,7 @@ export default function CalendarScreen() {
         .order('event_date', { ascending: true });
 
       if (error) throw error;
-      
+
       setCalendarEvents(data || []);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
@@ -75,12 +97,18 @@ export default function CalendarScreen() {
     }
   };
 
+  /**
+   * Handles pull-to-refresh action
+   */
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchCalendarEvents();
     setRefreshing(false);
   };
 
+  /**
+   * Navigates to the previous month
+   */
   const goToPreviousMonth = () => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
@@ -89,6 +117,9 @@ export default function CalendarScreen() {
     });
   };
 
+  /**
+   * Navigates to the next month
+   */
   const goToNextMonth = () => {
     setCurrentDate(prev => {
       const newDate = new Date(prev);
@@ -97,23 +128,32 @@ export default function CalendarScreen() {
     });
   };
 
-  // Format date as YYYY-MM-DD string for comparison
+  /**
+   * Format date as YYYY-MM-DD string for comparison
+   */
   const formatDateKey = (date: Date) => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
-  // Get events for a specific date
+  /**
+   * Get events for a specific date
+   */
   const getEventsForDate = (date: Date) => {
     const dateKey = formatDateKey(date);
     return calendarEvents.filter(event => event.event_date === dateKey);
   };
 
-  // Check if a date has a mindfulness session
+  /**
+   * Check if a date has a mindfulness session
+   */
   const isMindfulnessSession = (date: Date) => {
     const events = getEventsForDate(date);
     return events.some(event => event.title.startsWith('Mindfulness Session'));
   };
 
+  /**
+   * Renders the calendar grid with days, events, and indicators
+   */
   const renderCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -149,7 +189,7 @@ export default function CalendarScreen() {
       const dateKey = formatDateKey(date);
       const isToday = date.toDateString() === today.toDateString();
       const isPast = date < today && !isToday;
-      const isCompleted = completedDays.has(dateKey);
+      // Removed completed day logic
       const hasMindfulnessSession = isMindfulnessSession(date);
       const events = getEventsForDate(date);
       const hasEvents = events.length > 0;
@@ -160,40 +200,28 @@ export default function CalendarScreen() {
           style={[
             styles.dayCell,
             isToday && styles.todayCell,
-            isCompleted && styles.completedCell,
             hasMindfulnessSession && styles.mindfulnessDayCell,
             hasEvents && !hasMindfulnessSession && styles.hasEventsCell,
           ]}
+          // Removed day completion functionality from press
           onPress={() => handleDayPress(date)}
         >
           <Text style={[
             styles.dayText,
             isToday && styles.todayText,
-            isCompleted && styles.completedText,
             hasMindfulnessSession && styles.mindfulnessDayText,
           ]}>
             {day}
           </Text>
-          {isCompleted && !isToday && (
-            <Svg width="20" height="20" viewBox="0 0 24 24" style={styles.checkIcon}>
-              <Path
-                d="M20 6L9 17L4 12"
-                stroke="#64C59A"
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
-          )}
-          {hasMindfulnessSession && !isCompleted && (
+          {/* Removed checkmark icon for completed days */}
+          {hasMindfulnessSession && (
             <View style={styles.sessionIndicator}>
               <Svg width="12" height="12" viewBox="0 0 24 24" fill="#9C27B0">
                 <Circle cx="12" cy="12" r="10" />
               </Svg>
             </View>
           )}
-          {hasEvents && !isCompleted && !hasMindfulnessSession && (
+          {hasEvents && !hasMindfulnessSession && (
             <View style={styles.eventIndicator}>
               <View style={styles.eventDot} />
             </View>
@@ -220,10 +248,7 @@ export default function CalendarScreen() {
           <View style={styles.grid}>{cells}</View>
 
           <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, styles.completedLegend]}></View>
-              <Text style={styles.legendText}>Completed</Text>
-            </View>
+            {/* Removed completed legend */}
             <View style={styles.legendItem}>
               <View style={[styles.legendColor, styles.mindfulnessLegend]}></View>
               <Text style={styles.legendText}>Mindfulness Session</Text>
@@ -242,9 +267,11 @@ export default function CalendarScreen() {
     );
   };
 
+  /**
+   * Handles when a day is pressed on the calendar
+   * Shows events for the selected date if any exist
+   */
   const handleDayPress = (date: Date) => {
-    const dateKey = formatDateKey(date);
-    
     // Show events for the selected date
     const events = getEventsForDate(date);
     if (events.length > 0) {
@@ -256,100 +283,97 @@ export default function CalendarScreen() {
       );
       return;
     }
-    
-    // Toggle regular day completion
-    setCompletedDays(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(dateKey)) {
-        newSet.delete(dateKey);
-      } else {
-        newSet.add(dateKey);
-      }
-      return newSet;
-    });
-    
+
+    // Removed day completion toggle functionality
     Alert.alert(
-      "Day Status",
-      `Marked ${date.toDateString()} as ${completedDays.has(dateKey) ? 'not completed' : 'completed'}!`,
+      "Date Selected",
+      `Selected date: ${date.toDateString()}`,
       [{ text: "OK" }]
     );
   };
 
-  // Filter mindfulness sessions for the upcoming section
+  /**
+   * Gets upcoming mindfulness sessions for display in the events section
+   */
   const getUpcomingMindfulnessSessions = () => {
     const today = new Date();
     const upcomingSessions = calendarEvents
-      .filter(event => 
-        event.title.startsWith('Mindfulness Session') && 
+      .filter(event =>
+        event.title.startsWith('Mindfulness Session') &&
         new Date(event.event_date) >= today
       )
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
       .slice(0, 4);
-    
+
     return upcomingSessions;
   };
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={{ paddingBottom: 40 }}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <View style={styles.container}>
+      {/* Fixed header section that stays at the top */}
       <View style={styles.headerSection}>
         <Text style={styles.title}>Calendar</Text>
         <Text style={styles.subtitle}>Your mindfulness journey, day by day</Text>
       </View>
 
-      {renderCalendar()}
+      {/* Scrollable content area that scrolls below the fixed header */}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {renderCalendar()}
 
-      <View style={styles.eventsSection}>
-        <Text style={styles.sectionTitle}>Upcoming Mindfulness Sessions</Text>
-        
-        {/* Show upcoming mindfulness sessions from events */}
-        {(() => {
-          const upcomingSessions = getUpcomingMindfulnessSessions();
-          
-          if (upcomingSessions.length === 0) {
-            return (
-              <View style={styles.noEventsContainer}>
-                <Text style={styles.noEventsText}>No upcoming mindfulness sessions</Text>
-              </View>
-            );
-          }
-          
-          return upcomingSessions.map((event, index) => {
-            const eventDate = new Date(event.event_date);
-            const isCompleted = event.is_completed;
-            
-            return (
-              <View key={event.id} style={[styles.eventCard, isCompleted && styles.eventCardCompleted]}>
-                <View style={styles.eventIcon}>
-                  <Svg width="24" height="24" viewBox="0 0 24 24" fill="#9C27B0">
-                    <Circle cx="12" cy="12" r="10" />
-                  </Svg>
+        <View style={styles.eventsSection}>
+          <Text style={styles.sectionTitle}>Upcoming Mindfulness Sessions</Text>
+
+          {/* Show upcoming mindfulness sessions from events */}
+          {(() => {
+            const upcomingSessions = getUpcomingMindfulnessSessions();
+
+            if (upcomingSessions.length === 0) {
+              return (
+                <View style={styles.noEventsContainer}>
+                  <Text style={styles.noEventsText}>No upcoming mindfulness sessions</Text>
                 </View>
-                <View style={styles.eventContent}>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <Text style={styles.eventTime}>{eventDate.toDateString()}</Text>
-                  {event.description ? (
-                    <Text style={styles.eventDescription}>{event.description}</Text>
-                  ) : null}
+              );
+            }
+
+            return upcomingSessions.map((event, index) => {
+              const eventDate = new Date(event.event_date);
+              const isCompleted = event.is_completed;
+
+              return (
+                <View key={event.id} style={[styles.eventCard, isCompleted && styles.eventCardCompleted]}>
+                  <View style={styles.eventIcon}>
+                    <Svg width="24" height="24" viewBox="0 0 24 24" fill="#9C27B0">
+                      <Circle cx="12" cy="12" r="10" />
+                    </Svg>
+                  </View>
+                  <View style={styles.eventContent}>
+                    <Text style={styles.eventTitle}>{event.title}</Text>
+                    <Text style={styles.eventTime}>{eventDate.toDateString()}</Text>
+                    {event.description ? (
+                      <Text style={styles.eventDescription}>{event.description}</Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.eventStatus}>
+                    {isCompleted ? (
+                      <Text style={styles.eventStatusTextCompleted}>Completed</Text>
+                    ) : (
+                      <Text style={styles.eventStatusTextPending}>Pending</Text>
+                    )}
+                  </View>
                 </View>
-                <View style={styles.eventStatus}>
-                  {isCompleted ? (
-                    <Text style={styles.eventStatusTextCompleted}>Completed</Text>
-                  ) : (
-                    <Text style={styles.eventStatusTextPending}>Pending</Text>
-                  )}
-                </View>
-              </View>
-            );
-          });
-        })()}
-      </View>
-    </ScrollView>
+              );
+            });
+          })()}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -358,9 +382,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FDFC',
   },
+  content: {
+    flex: 1,
+  },
   headerSection: {
     padding: 24,
     paddingTop: 60,
+    backgroundColor: '#F8FDFC',
+    zIndex: 10,
   },
   title: {
     fontSize: 32,
@@ -443,13 +472,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  completedCell: {
-    position: 'relative',
-  },
-  completedText: {
-    color: '#64C59A',
-    fontWeight: '600',
-  },
+  // Removed completedCell styles
   mindfulnessDayCell: {
     backgroundColor: '#F5EEF8',
   },
@@ -460,10 +483,7 @@ const styles = StyleSheet.create({
   hasEventsCell: {
     backgroundColor: '#E3F2FD',
   },
-  checkIcon: {
-    position: 'absolute',
-    bottom: -6,
-  },
+  // Removed checkIcon styles
   sessionIndicator: {
     position: 'absolute',
     top: 2,
@@ -498,9 +518,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginRight: 8,
   },
-  completedLegend: {
-    backgroundColor: '#64C59A',
-  },
+  // Removed completedLegend styles
   mindfulnessLegend: {
     backgroundColor: '#9C27B0',
   },
@@ -518,6 +536,7 @@ const styles = StyleSheet.create({
   },
   eventsSection: {
     padding: 24,
+    paddingTop: 0,
   },
   sectionTitle: {
     fontSize: 20,

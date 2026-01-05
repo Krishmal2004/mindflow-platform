@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
 import Svg, { Path, Circle, G, Line, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
+import SuccessScreen from './common/SuccessScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -331,65 +332,65 @@ const EXPERIMENT_COLOR = '#6366F1';
 const Icons = {
   mindfulness: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C13.3137 2 14.6136 2.25866 15.8268 2.75866C17.04 3.25866 18.1421 4.00001 19.071 5.00001C20 6.00001 20.7424 7.14214 21.2424 8.35534C21.7424 9.56854 22 10.8137 22 12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M12 22C10.6863 22 9.38642 21.7413 8.17317 21.2413C6.95991 20.7413 5.85786 20 4.92893 19C4 18 3.25759 16.8579 2.75759 15.6447C2.25759 14.4315 2 13.1863 2 12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M8 14C8.65661 14.6278 9.50909 15 10.4142 15C12.2142 15 13.4142 13.6569 13.4142 12C13.4142 10.3431 12.2142 9 10.4142 9C9.50909 9 8.65661 9.37216 8 10" stroke="#64C59A" strokeWidth="2"/>
+      <Path d="M12 2C13.3137 2 14.6136 2.25866 15.8268 2.75866C17.04 3.25866 18.1421 4.00001 19.071 5.00001C20 6.00001 20.7424 7.14214 21.2424 8.35534C21.7424 9.56854 22 10.8137 22 12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M12 22C10.6863 22 9.38642 21.7413 8.17317 21.2413C6.95991 20.7413 5.85786 20 4.92893 19C4 18 3.25759 16.8579 2.75759 15.6447C2.25759 14.4315 2 13.1863 2 12" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M8 14C8.65661 14.6278 9.50909 15 10.4142 15C12.2142 15 13.4142 13.6569 13.4142 12C13.4142 10.3431 12.2142 9 10.4142 9C9.50909 9 8.65661 9.37216 8 10" stroke="#64C59A" strokeWidth="2" />
     </Svg>
   ),
   stress: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C16.9706 2 21 6.02944 21 11C21 15.9706 16.9706 20 12 20C7.02944 20 3 15.9706 3 11C3 6.02944 7.02944 2 12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <Path d="M9 9L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M15 9L9 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M12 2C16.9706 2 21 6.02944 21 11C21 15.9706 16.9706 20 12 20C7.02944 20 3 15.9706 3 11C3 6.02944 7.02944 2 12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M9 9L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M15 9L9 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
     </Svg>
   ),
   mood: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C16.9706 2 21 6.02944 21 11C21 15.9706 16.9706 20 12 20C7.02944 20 3 15.9706 3 11C3 6.02944 7.02944 2 12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M12 2C16.9706 2 21 6.02944 21 11C21 15.9706 16.9706 20 12 20C7.02944 20 3 15.9706 3 11C3 6.02944 7.02944 2 12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <Circle cx="8" cy="9" r="1.5" stroke="#64C59A" strokeWidth="1.5" fill="none" />
       <Circle cx="16" cy="9" r="1.5" stroke="#64C59A" strokeWidth="1.5" fill="none" />
-      <Path d="M7 14C9 16 15 16 17 14" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M7 14C9 16 15 16 17 14" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
     </Svg>
   ),
   sleep: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M17 10C17 12.7614 14.7614 15 12 15C9.23858 15 7 12.7614 7 10C7 7.23858 9.23858 5 12 5C14.7614 5 17 7.23858 17 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <Path d="M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M17 10C17 12.7614 14.7614 15 12 15C9.23858 15 7 12.7614 7 10C7 7.23858 9.23858 5 12 5C14.7614 5 17 7.23858 17 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   ),
   recording: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M14 12L19 8V16L14 12Z" fill="#64C59A" />
       <Path d="M9 12L14 8V16L9 12Z" fill="#64C59A" />
     </Svg>
   ),
   relaxation: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2L21 8.5V15.5L12 22L3 15.5V8.5L12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M12 2L21 8.5V15.5L12 22L3 15.5V8.5L12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M12 7L16.5 10.5L12 14L7.5 10.5L12 7Z" fill="#64C59A" />
       <Path d="M12 11L16.5 14.5L12 18L7.5 14.5L12 11Z" fill="#64C59A" />
     </Svg>
   ),
   factors: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2L21 8.5V15.5L12 22L3 15.5V8.5L12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <Path d="M8 8L16 16" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M16 8L8 16" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M12 6V18" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+      <Path d="M12 2L21 8.5V15.5L12 22L3 15.5V8.5L12 2Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M8 8L16 16" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M16 8L8 16" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M12 6V18" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
     </Svg>
   ),
   schedule: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="4" width="18" height="18" rx="2" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2"/>
+      <Rect x="3" y="4" width="18" height="18" rx="2" stroke="#64C59A" strokeWidth="2" />
+      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+      <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2" />
     </Svg>
   ),
   play: () => (
     <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M5 4L19 12L5 20V4Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M5 4L19 12L5 20V4Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   ),
   stop: () => (
@@ -448,9 +449,9 @@ export default function DailySliders() {
         .select('researchID')
         .eq('id', session.user.id)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') throw error;
-      
+
       if (data?.researchID) {
         if (data.researchID.endsWith('.ex')) {
           setUserExtension('ex');
@@ -487,7 +488,7 @@ export default function DailySliders() {
         setAlreadySubmittedToday(true);
         setEntryId(data[0].id);
       }
-    } catch (error) {}
+    } catch (error) { }
   };
   // Animate stress circle
   useEffect(() => {
@@ -603,7 +604,7 @@ export default function DailySliders() {
         // Persist when video ends
         savePlaybackSeconds(msg.seconds || 0);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const savePlaybackSeconds = async (seconds: number) => {
@@ -799,21 +800,16 @@ export default function DailySliders() {
                 <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </TouchableOpacity>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>Daily Sliders </Text>
-            </View>
-            <View style={styles.progressBadge}>
-              <Text style={styles.progressBadgeText}>100%</Text>
-            </View>
+            <Text style={styles.headerTitle}>Daily Sliders</Text>
+            <View style={{ width: 40 }} />
           </View>
         </View>
-        <View style={styles.completionContainer}>
-          <Text style={styles.celebrationEmoji}>🎉</Text>
-          <Text style={styles.completionTitle}>Great Job Today!</Text>
-          <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-          <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
-          <Text style={styles.happyEmoji}>😊</Text>
-        </View>
+
+        <SuccessScreen
+          title="Great Job Today!"
+          subtitle={["You've completed your daily entry.", "See you tomorrow!"]}
+          onPressHome={() => router.push('/')}
+        />
       </View>
     );
   }
@@ -837,74 +833,74 @@ export default function DailySliders() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Mindfulness Practice moved after Sleep Quality - only for .ex users */}
         {userExtension === 'ex' && (
-        <View style={styles.section}>
-          <View style={styles.questionHeader}>
-            <View style={styles.iconCircle}>
-              <Icons.mindfulness />
-            </View>
-            <View style={styles.questionText}>
-              <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
-              <Text style={styles.sectionSubtitle}>Have you done mindfulness practice today?</Text>
-            </View>
-          </View>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[
-                styles.choiceButton,
-                mindfulnessPractice === 'yes' && styles.choiceButtonSelected,
-                mindfulnessPractice === 'yes' && { backgroundColor: '#64C59A' }
-              ]}
-              onPress={() => setMindfulnessPractice('yes')}
-            >
-              <Text style={[
-                styles.choiceButtonText,
-                mindfulnessPractice === 'yes' && styles.choiceButtonTextSelected
-              ]}>
-                Yes
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.choiceButton,
-                mindfulnessPractice === 'no' && styles.choiceButtonSelected,
-                mindfulnessPractice === 'no' && { backgroundColor: '#EF4444' }
-              ]}
-              onPress={() => setMindfulnessPractice('no')}
-            >
-              <Text style={[
-                styles.choiceButtonText,
-                mindfulnessPractice === 'no' && styles.choiceButtonTextSelected
-              ]}>
-                No
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {mindfulnessPractice === 'yes' && (
-            <View style={styles.practiceDetailsContainer}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Duration (minutes)</Text>
-                <TextInput
-                  style={styles.durationInput}
-                  placeholder="e.g., 10"
-                  value={practiceDuration}
-                  onChangeText={setPracticeDuration}
-                  keyboardType="numeric"
-                />
+          <View style={styles.section}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <Icons.mindfulness />
               </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>What did you practice? (Bullet points)</Text>
-                <TextInput
-                  style={styles.logInput}
-                  placeholder="• Breathing exercise\n• Body scan\n• Walking meditation"
-                  value={practiceLog}
-                  onChangeText={setPracticeLog}
-                  multiline
-                  numberOfLines={4}
-                />
+              <View style={styles.questionText}>
+                <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
+                <Text style={styles.sectionSubtitle}>Have you done mindfulness practice today?</Text>
               </View>
             </View>
-          )}
-        </View>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={[
+                  styles.choiceButton,
+                  mindfulnessPractice === 'yes' && styles.choiceButtonSelected,
+                  mindfulnessPractice === 'yes' && { backgroundColor: '#64C59A' }
+                ]}
+                onPress={() => setMindfulnessPractice('yes')}
+              >
+                <Text style={[
+                  styles.choiceButtonText,
+                  mindfulnessPractice === 'yes' && styles.choiceButtonTextSelected
+                ]}>
+                  Yes
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.choiceButton,
+                  mindfulnessPractice === 'no' && styles.choiceButtonSelected,
+                  mindfulnessPractice === 'no' && { backgroundColor: '#EF4444' }
+                ]}
+                onPress={() => setMindfulnessPractice('no')}
+              >
+                <Text style={[
+                  styles.choiceButtonText,
+                  mindfulnessPractice === 'no' && styles.choiceButtonTextSelected
+                ]}>
+                  No
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {mindfulnessPractice === 'yes' && (
+              <View style={styles.practiceDetailsContainer}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Duration (minutes)</Text>
+                  <TextInput
+                    style={styles.durationInput}
+                    placeholder="e.g., 10"
+                    value={practiceDuration}
+                    onChangeText={setPracticeDuration}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>What did you practice? (Bullet points)</Text>
+                  <TextInput
+                    style={styles.logInput}
+                    placeholder="• Breathing exercise\n• Body scan\n• Walking meditation"
+                    value={practiceLog}
+                    onChangeText={setPracticeLog}
+                    multiline
+                    numberOfLines={4}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
         )}
         {/* Recording modal */}
         <Modal
@@ -971,15 +967,15 @@ export default function DailySliders() {
             </View>
           </View>
           <View style={styles.stressVisualContainer}>
-            <Animated.View 
+            <Animated.View
               style={[styles.iconLarge, { width: 80, height: 80 }, {
                 transform: [
-                  { 
-                    translateX: stressLevel 
+                  {
+                    translateX: stressLevel
                       ? stressAnimation.interpolate({
-                          inputRange: [1, 2, 3, 4, 5],
-                          outputRange: [-30, -15, 0, 15, 30]
-                        })
+                        inputRange: [1, 2, 3, 4, 5],
+                        outputRange: [-30, -15, 0, 15, 30]
+                      })
                       : 0
                   }
                 ]
@@ -1257,39 +1253,39 @@ export default function DailySliders() {
         </View>
         {/* Weekly recordings (YouTube) - moved after Mindfulness Practice */}
         {userExtension === 'ex' && (
-        <View style={styles.section}>
-          <View style={styles.questionHeader}>
-            <View style={styles.iconCircle}>
-              <Icons.recording />
-            </View>
-            <View style={styles.questionText}>
-              <Text style={styles.sectionTitle}>This Week's Recording</Text>
-              <Text style={styles.sectionSubtitle}>Guided practice curated for this week</Text>
-            </View>
-          </View>
-          {loadingRecordings ? (
-            <ActivityIndicator size="small" color="#64C59A" />
-          ) : (weeklyRecordings && weeklyRecordings.length > 0) ? (
-            weeklyRecordings.map((rec: any) => (
-              <View key={rec.id} style={styles.recordingCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.recordingTitle}>{rec.title}</Text>
-                  {rec.description ? <Text style={styles.recordingDesc} numberOfLines={2}>{rec.description}</Text> : null}
-                </View>
-                <TouchableOpacity
-                  style={styles.playButton}
-                  onPress={() => { setSelectedRecording(rec); setShowRecordingModal(true); }}
-                >
-                  <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <Path d="M8 5V19L19 12L8 5Z" fill="#fff" />
-                  </Svg>
-                </TouchableOpacity>
+          <View style={styles.section}>
+            <View style={styles.questionHeader}>
+              <View style={styles.iconCircle}>
+                <Icons.recording />
               </View>
-            ))
-          ) : (
-            <Text style={{ color: '#666' }}>No recordings available this week.</Text>
-          )}
-        </View>
+              <View style={styles.questionText}>
+                <Text style={styles.sectionTitle}>This Week's Recording</Text>
+                <Text style={styles.sectionSubtitle}>Guided practice curated for this week</Text>
+              </View>
+            </View>
+            {loadingRecordings ? (
+              <ActivityIndicator size="small" color="#64C59A" />
+            ) : (weeklyRecordings && weeklyRecordings.length > 0) ? (
+              weeklyRecordings.map((rec: any) => (
+                <View key={rec.id} style={styles.recordingCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.recordingTitle}>{rec.title}</Text>
+                    {rec.description ? <Text style={styles.recordingDesc} numberOfLines={2}>{rec.description}</Text> : null}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.playButton}
+                    onPress={() => { setSelectedRecording(rec); setShowRecordingModal(true); }}
+                  >
+                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <Path d="M8 5V19L19 12L8 5Z" fill="#fff" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <Text style={{ color: '#666' }}>No recordings available this week.</Text>
+            )}
+          </View>
         )}
         <View style={styles.section}>
           <View style={styles.questionHeader}>
@@ -1358,13 +1354,11 @@ export default function DailySliders() {
           </TouchableOpacity>
         )}
         {showCompletion && (
-          <View style={styles.completionContainer}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Great Job Today!</Text>
-            <Text style={styles.completionText}>You've completed your daily mindfulness routine.</Text>
-            <Text style={styles.completionText}>You're all set. Let's meet again tomorrow!</Text>
-            <Text style={styles.happyEmoji}>😊</Text>
-          </View>
+          <SuccessScreen
+            title="Great Job Today!"
+            subtitle={["You've completed your daily mindfulness routine.", "You're all set. Let's meet again tomorrow!"]}
+            onPressHome={() => router.push('/')}
+          />
         )}
       </ScrollView>
     </View>

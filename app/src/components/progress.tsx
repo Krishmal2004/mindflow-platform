@@ -11,13 +11,18 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Rect, Text as SvgText } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
+/**
+ * Interface defining the structure of daily slider data
+ */
 interface DailySliderData {
   id: number;
   stress_level: number;
@@ -29,18 +34,27 @@ interface DailySliderData {
   created_at: string;
 }
 
+/**
+ * Interface defining the structure of weekly progress data
+ */
 interface WeeklyProgressData {
   week: string;
   completed: boolean;
   submitted_at?: string;
 }
 
+/**
+ * Interface defining the structure of main questionnaire data
+ */
 interface MainQuestionnaireData {
   id: number;
   version: string;
   submitted_at: string;
 }
 
+/**
+ * Main progress screen component that displays user's mindfulness journey data
+ */
 export default function ProgressScreen() {
   const { session } = useSession();
   const [dailySliderData, setDailySliderData] = useState<DailySliderData[]>([]);
@@ -54,6 +68,21 @@ export default function ProgressScreen() {
   const [mainModalVisible, setMainModalVisible] = useState(false);
   const [selectedWeeklySubmissions, setSelectedWeeklySubmissions] = useState<WeeklyProgressData[]>([]);
   const [selectedMainSubmissions, setSelectedMainSubmissions] = useState<MainQuestionnaireData[]>([]);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Scroll to top
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: false });
+      }
+
+      // Refresh data
+      if (session?.user?.id) {
+        fetchAllProgressData();
+      }
+    }, [session])
+  );
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -61,12 +90,18 @@ export default function ProgressScreen() {
     }
   }, [session]);
 
+  /**
+   * Handles pull-to-refresh action
+   */
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAllProgressData();
     setRefreshing(false);
   };
 
+  /**
+   * Fetches all progress data from Supabase
+   */
   const fetchAllProgressData = async () => {
     try {
       // Fetch daily slider data
@@ -94,6 +129,7 @@ export default function ProgressScreen() {
       if (voiceRecordings && voiceRecordings.length > 0) {
         voiceRecordings.forEach(recording => {
           // Create a date from week number and year
+          // Using the first day of the specified week
           const date = new Date(recording.year, 0, 1 + (recording.week_number - 1) * 7);
           if (!earliestWeeklyDate || date < earliestWeeklyDate) earliestWeeklyDate = date;
           const [y, w] = getWeekNumber(date);
@@ -105,12 +141,12 @@ export default function ProgressScreen() {
       const weeksList: Array<{ week: string; completed: boolean; submitted_at?: string }> = [];
       if (earliestWeeklyDate) {
         const start = new Date(earliestWeeklyDate);
-        start.setHours(0,0,0,0);
-        const today = new Date(); today.setHours(0,0,0,0);
+        start.setHours(0, 0, 0, 0);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
         let cur = new Date(start);
         while (cur <= today) {
           const [yr, wk] = getWeekNumber(cur);
-          const key = `${yr}-W${wk.toString().padStart(2,'0')}`;
+          const key = `${yr}-W${wk.toString().padStart(2, '0')}`;
           if (!weeksList.find(w => w.week === key)) {
             const weekData = submittedWeeksMap.get(key);
             if (weekData) {
@@ -139,14 +175,14 @@ export default function ProgressScreen() {
       if (sessionData && sessionData.length > 0) {
         const sessionIds = sessionData.map(session => session.id);
         const questionSetIds = sessionData.map(session => session.question_set_id);
-        
+
         const { data: questionSets, error: questionSetsError } = await supabase
           .from('main_question_sets')
           .select('id, version')
           .in('id', questionSetIds);
-          
+
         if (questionSetsError) throw questionSetsError;
-        
+
         // Format the data to match the expected structure
         const formattedMainData = sessionData.map(session => {
           const questionSet = questionSets.find(qs => qs.id === session.question_set_id);
@@ -156,7 +192,7 @@ export default function ProgressScreen() {
             submitted_at: session.started_at
           };
         });
-        
+
         setMainQuestionnaireData(formattedMainData);
       } else {
         setMainQuestionnaireData([]);
@@ -170,7 +206,9 @@ export default function ProgressScreen() {
     }
   };
 
-  // Helper function to get week number
+  /**
+   * Helper function to get week number from a date
+   */
   function getWeekNumber(d: Date): [number, number] {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -179,30 +217,41 @@ export default function ProgressScreen() {
     return [d.getUTCFullYear(), weekNo];
   }
 
+  /**
+   * Formats a date string to a short date format
+   */
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  /**
+   * Formats a date string to include time
+   */
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
   };
 
+  /**
+   * Calculates the average of an array of numbers
+   */
   const average = (arr: number[]) => {
     if (arr.length === 0) return 0;
     return arr.reduce((a, b) => a + b, 0) / arr.length;
   };
 
+  // Extract metric data for calculations
   const stressData = dailySliderData.map(item => item.stress_level);
   const sleepData = dailySliderData.map(item => item.sleep_quality);
   const relaxationData = dailySliderData.map(item => item.relaxation_level);
 
+  // Calculate averages
   const avgStress = average(stressData);
   const avgSleep = average(sleepData);
   const avgRelaxation = average(relaxationData);
@@ -212,9 +261,11 @@ export default function ProgressScreen() {
   let dailyCompletion = 0;
   let earliestDailyDate: Date | null = null;
   if (dailySliderData && dailySliderData.length > 0) {
-    earliestDailyDate = new Date(dailySliderData[dailySliderData.length - 1].created_at);
-    earliestDailyDate.setHours(0,0,0,0);
-    const today = new Date(); today.setHours(0,0,0,0);
+    // Find the earliest date from the data
+    const earliestEntry = [...dailySliderData].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+    earliestDailyDate = new Date(earliestEntry.created_at);
+    earliestDailyDate.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const days = Math.max(1, Math.ceil((today.getTime() - earliestDailyDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
     const completedCount = dailySliderData.length;
     dailyCompletion = Math.min(100, Math.round((completedCount / days) * 100));
@@ -232,13 +283,13 @@ export default function ProgressScreen() {
   let mainCompletion = 0;
   let mainMissedMonths: string[] = [];
   if (mainQuestionnaireData && mainQuestionnaireData.length > 0) {
-    const sortedMain = [...mainQuestionnaireData].sort((a,b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
+    const sortedMain = [...mainQuestionnaireData].sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime());
     const earliest = new Date(sortedMain[0].submitted_at);
-    earliest.setHours(0,0,0,0);
-    const today = new Date(); today.setHours(0,0,0,0);
+    earliest.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const months: string[] = [];
     const monthSet = new Set<string>();
-    const getMonthKey = (d: Date) => `${d.getUTCFullYear()}-${(d.getUTCMonth()+1).toString().padStart(2, '0')}`;
+    const getMonthKey = (d: Date) => `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}`;
     sortedMain.forEach(item => {
       monthSet.add(getMonthKey(new Date(item.submitted_at)));
     });
@@ -253,13 +304,29 @@ export default function ProgressScreen() {
     mainMissedMonths = months.filter(m => !monthSet.has(m));
   }
 
+  /**
+   * Prepares the data for the detailed chart (last 14 entries, reversed for chronological order)
+   */
+  const getChartData = (metric: 'stress' | 'sleep' | 'relax' | null) => {
+    if (!metric) return [];
+    // Take last 14 entries
+    const recentData = dailySliderData.slice(0, 14).reverse();
+
+    return recentData.map(item => ({
+      value: metric === 'stress' ? item.stress_level :
+        metric === 'sleep' ? item.sleep_quality : item.relaxation_level,
+      date: formatDate(item.created_at)
+    }));
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Your Progress</Text>
       </View>
 
-      <ScrollView 
+      <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -283,7 +350,7 @@ export default function ProgressScreen() {
               <Text style={styles.completionValue}>{dailyCompletion}%</Text>
               <Text style={styles.completionLabel}>Daily Sliders</Text>
             </View>
-            
+
             <View style={styles.completionCard}>
               <View style={styles.completionIcon}>
                 <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -296,12 +363,12 @@ export default function ProgressScreen() {
               <Text style={styles.completionValue}>{weeklyCompletion}%</Text>
               <Text style={styles.completionLabel}>Weekly Recordings</Text>
             </View>
-            
+
             <View style={styles.completionCard}>
               <View style={styles.completionIcon}>
                 <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-                  <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                  <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
+                  <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
                 </Svg>
               </View>
               <Text style={styles.completionValue}>{mainCompletion}%</Text>
@@ -314,19 +381,19 @@ export default function ProgressScreen() {
 
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'daily' && styles.activeTab]}
             onPress={() => setActiveTab('daily')}
           >
             <Text style={[styles.tabText, activeTab === 'daily' && styles.activeTabText]}>Daily</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'weekly' && styles.activeTab]}
             onPress={() => setActiveTab('weekly')}
           >
             <Text style={[styles.tabText, activeTab === 'weekly' && styles.activeTabText]}>Weekly</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'main' && styles.activeTab]}
             onPress={() => setActiveTab('main')}
           >
@@ -361,28 +428,41 @@ export default function ProgressScreen() {
                 {/* Missed dates (last 14 days) */}
                 {(() => {
                   if (!dailySliderData || dailySliderData.length === 0) return null;
-                  const today = new Date(); today.setHours(0,0,0,0);
+                  const today = new Date(); today.setHours(0, 0, 0, 0);
                   // Start from the user's first daily entry if available
                   const start = earliestDailyDate ? new Date(earliestDailyDate) : new Date(today);
-                  start.setHours(0,0,0,0);
+                  start.setHours(0, 0, 0, 0);
                   const entrySet = new Set<number>();
-                  dailySliderData.forEach(e => { const d=new Date(e.created_at); d.setHours(0,0,0,0); entrySet.add(d.getTime()); });
-                  const missed: string[] = []; const cur = new Date(start);
-                  while (cur <= today) { if (!entrySet.has(cur.getTime())) missed.push(cur.toLocaleDateString('en-US',{month:'short',day:'numeric'})); cur.setDate(cur.getDate()+1); }
-                  return missed.length>0? (
+                  dailySliderData.forEach(e => {
+                    const d = new Date(e.created_at);
+                    d.setHours(0, 0, 0, 0);
+                    entrySet.add(d.getTime());
+                  });
+                  const missed: string[] = [];
+                  const cur = new Date(start);
+                  while (cur <= today) {
+                    if (!entrySet.has(cur.getTime())) {
+                      missed.push(cur.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    }
+                    cur.setDate(cur.getDate() + 1);
+                  }
+                  return missed.length > 0 ? (
                     <View style={styles.missedDatesContainer}>
                       <Text style={styles.missedDatesTitle}>Missed Dates ({missed.length}):</Text>
                       <View style={styles.missedDatesList}>
-                        {missed.slice(0,5).map((d,i)=> (
+                        {missed.slice(0, 5).map((d, i) => (
                           <View key={i} style={styles.missedDateItem}>
-                            <Svg width="16" height="16" viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" /><Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" /></Svg>
+                            <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                              <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
+                              <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                            </Svg>
                             <Text style={styles.missedDateText}>{d}</Text>
                           </View>
                         ))}
-                        {missed.length>5 && <Text style={styles.moreDatesText}>+ {missed.length-5} more</Text>}
+                        {missed.length > 5 && <Text style={styles.moreDatesText}>+ {missed.length - 5} more</Text>}
                       </View>
                     </View>
-                  ): null;
+                  ) : null;
                 })()}
               </View>
             </View>
@@ -390,51 +470,51 @@ export default function ProgressScreen() {
             <View style={styles.chartSection}>
               <Text style={styles.chartTitle}>Your Well-being Summary (Last 14 Days)</Text>
               <View style={styles.statsGridContainer}>
-                <TouchableOpacity 
-                  style={[styles.statsGridCard, { borderLeftColor: '#EF4444' }]}
+                <TouchableOpacity
+                  style={[styles.statsGridCard, { borderLeftColor: '#64C59A' }]}
                   onPress={() => setSelectedMetric('stress')}
                   activeOpacity={0.7}
                 >
                   <View style={styles.statsGridHeader}>
                     <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#EF4444" strokeWidth="2" />
-                      <Path d="M12 7V12L15 15" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                      <Circle cx="12" cy="12" r="9" stroke="#64C59A" strokeWidth="2" />
+                      <Path d="M12 7V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
                     </Svg>
                     <Text style={styles.statsGridLabel}>Stress</Text>
                   </View>
-                  <Text style={[styles.statsGridValue, { color: '#EF4444' }]}>{avgStress.toFixed(1)}</Text>
+                  <Text style={[styles.statsGridValue, { color: '#64C59A' }]}>{avgStress.toFixed(1)}</Text>
                   <Text style={styles.statsGridSub}>avg. last 14 days</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.statsGridCard, { borderLeftColor: '#3B82F6' }]}
+                <TouchableOpacity
+                  style={[styles.statsGridCard, { borderLeftColor: '#4CAF85' }]}
                   onPress={() => setSelectedMetric('sleep')}
                   activeOpacity={0.7}
                 >
                   <View style={styles.statsGridHeader}>
                     <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#3B82F6" strokeWidth="2" />
-                      <Path d="M12 7V12L15 15" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" />
+                      <Circle cx="12" cy="12" r="9" stroke="#4CAF85" strokeWidth="2" />
+                      <Path d="M12 7V12L15 15" stroke="#4CAF85" strokeWidth="2" strokeLinecap="round" />
                     </Svg>
                     <Text style={styles.statsGridLabel}>Sleep</Text>
                   </View>
-                  <Text style={[styles.statsGridValue, { color: '#3B82F6' }]}>{avgSleep.toFixed(1)}</Text>
+                  <Text style={[styles.statsGridValue, { color: '#4CAF85' }]}>{avgSleep.toFixed(1)}</Text>
                   <Text style={styles.statsGridSub}>avg. last 14 days</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.statsGridCard, { borderLeftColor: '#10B981' }]}
+                <TouchableOpacity
+                  style={[styles.statsGridCard, { borderLeftColor: '#2E8A66' }]}
                   onPress={() => setSelectedMetric('relax')}
                   activeOpacity={0.7}
                 >
                   <View style={styles.statsGridHeader}>
                     <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="9" stroke="#10B981" strokeWidth="2" />
-                      <Path d="M12 7V12L15 15" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+                      <Circle cx="12" cy="12" r="9" stroke="#2E8A66" strokeWidth="2" />
+                      <Path d="M12 7V12L15 15" stroke="#2E8A66" strokeWidth="2" strokeLinecap="round" />
                     </Svg>
                     <Text style={styles.statsGridLabel}>Relax</Text>
                   </View>
-                  <Text style={[styles.statsGridValue, { color: '#10B981' }]}>{avgRelaxation.toFixed(1)}</Text>
+                  <Text style={[styles.statsGridValue, { color: '#2E8A66' }]}>{avgRelaxation.toFixed(1)}</Text>
                   <Text style={styles.statsGridSub}>avg. last 14 days</Text>
                 </TouchableOpacity>
               </View>
@@ -464,7 +544,7 @@ export default function ProgressScreen() {
                 <View style={styles.progressBarTrack}>
                   <Animated.View style={[styles.progressBarFill, { width: `${weeklyCompletion}%`, backgroundColor: '#64C59A' }]} />
                 </View>
-                <Text style={styles.progressBarSubtitle}>{weeklyProgressData.filter(w=>w.completed).length}/{weeklyProgressData.length} weeks completed</Text>
+                <Text style={styles.progressBarSubtitle}>{weeklyProgressData.filter(w => w.completed).length}/{weeklyProgressData.length} weeks completed</Text>
                 {/* Missed weeks inside progress card */}
                 {weeklyProgressData && weeklyProgressData.filter(w => !w.completed).length > 0 && (
                   <View style={styles.missedDatesContainer}>
@@ -472,7 +552,10 @@ export default function ProgressScreen() {
                     <View style={styles.missedDatesList}>
                       {weeklyProgressData.filter(w => !w.completed).slice(0, 6).map((w, i) => (
                         <View key={i} style={styles.missedDateItem}>
-                          <Svg width="16" height="16" viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" /><Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" /></Svg>
+                          <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
+                            <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                          </Svg>
                           <Text style={styles.missedDateText}>{w.week}</Text>
                         </View>
                       ))}
@@ -514,8 +597,8 @@ export default function ProgressScreen() {
                       <View style={styles.statusCell}>
                         <View style={styles.completedIconContainer}>
                           <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-                            <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                            <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
+                            <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
                           </Svg>
                         </View>
                       </View>
@@ -567,16 +650,18 @@ export default function ProgressScreen() {
                   mainQuestionnaireData
                     .slice(0, 5)
                     .map((item) => (
-                      <View key={item.id} style={styles.submissionItem}>
-                        <View style={styles.submissionIcon}>
-                          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                            <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-                            <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-                          </Svg>
+                      <View key={item.id} style={styles.tableRow}>
+                        <View style={styles.weekCell}>
+                          <Text style={styles.dateCell}>{item.version}</Text>
+                          <Text style={styles.submissionTime}>{formatDateTime(item.submitted_at)}</Text>
                         </View>
-                        <View style={styles.submissionText}>
-                          <Text style={styles.submissionVersion}>{item.version}</Text>
-                          <Text style={styles.submissionDate}>{formatDateTime(item.submitted_at)}</Text>
+                        <View style={styles.statusCell}>
+                          <View style={styles.completedIconContainer}>
+                            <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                              <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
+                              <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+                            </Svg>
+                          </View>
                         </View>
                       </View>
                     ))
@@ -588,12 +673,15 @@ export default function ProgressScreen() {
 
             {/* Missed main questionnaires (by month) */}
             {mainMissedMonths && mainMissedMonths.length > 0 && (
-              <View style={[styles.missedDatesContainer, { marginBottom: 12 }] }>
+              <View style={[styles.missedDatesContainer, { marginBottom: 12 }]}>
                 <Text style={styles.missedDatesTitle}>Missed Months ({mainMissedMonths.length}):</Text>
                 <View style={styles.missedDatesList}>
                   {mainMissedMonths.slice(0, 6).map((m, i) => (
                     <View key={i} style={styles.missedDateItem}>
-                      <Svg width="16" height="16" viewBox="0 0 24 24" fill="none"><Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" /><Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" /></Svg>
+                      <Svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <Circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
+                        <Path d="M8 12H16" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                      </Svg>
                       <Text style={styles.missedDateText}>{m}</Text>
                     </View>
                   ))}
@@ -644,8 +732,8 @@ export default function ProgressScreen() {
                   <View style={styles.statusCell}>
                     <View style={styles.completedIconContainer}>
                       <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-                        <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
+                        <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
+                        <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
                       </Svg>
                     </View>
                   </View>
@@ -676,15 +764,17 @@ export default function ProgressScreen() {
             <ScrollView style={styles.allSubmissionsModalBody}>
               {selectedMainSubmissions.map((item) => (
                 <View key={item.id} style={styles.allSubmissionsModalListItem}>
-                  <View style={styles.submissionIcon}>
-                    <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-                      <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-                    </Svg>
+                  <View style={styles.weekCell}>
+                    <Text style={styles.dateCell}>{item.version}</Text>
+                    <Text style={styles.submissionTime}>{formatDateTime(item.submitted_at)}</Text>
                   </View>
-                  <View style={styles.submissionText}>
-                    <Text style={styles.submissionVersion}>{item.version}</Text>
-                    <Text style={styles.submissionDate}>{formatDateTime(item.submitted_at)}</Text>
+                  <View style={styles.statusCell}>
+                    <View style={styles.completedIconContainer}>
+                      <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2" />
+                        <Path d="M12 8V12L15 15" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" />
+                      </Svg>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -700,26 +790,26 @@ export default function ProgressScreen() {
         transparent={true}
         onRequestClose={() => setSelectedMetric(null)}
       >
-        <Pressable 
+        <Pressable
           style={styles.modalOverlay}
           onPress={() => setSelectedMetric(null)}
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleContainer}>
-                <View 
+                <View
                   style={[
                     styles.modalColorDot,
-                    { 
-                      backgroundColor: 
-                        selectedMetric === 'stress' ? '#EF4444' : 
-                        selectedMetric === 'sleep' ? '#3B82F6' : '#10B981'
+                    {
+                      backgroundColor:
+                        selectedMetric === 'stress' ? '#64C59A' :
+                          selectedMetric === 'sleep' ? '#4CAF85' : '#2E8A66'
                     }
-                  ]} 
+                  ]}
                 />
                 <Text style={styles.modalTitle}>
-                  {selectedMetric === 'stress' ? 'Stress Levels' : 
-                   selectedMetric === 'sleep' ? 'Sleep Quality' : 'Relaxation Levels'}
+                  {selectedMetric === 'stress' ? 'Stress Levels' :
+                    selectedMetric === 'sleep' ? 'Sleep Quality' : 'Relaxation Levels'}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedMetric(null)}>
@@ -731,17 +821,24 @@ export default function ProgressScreen() {
 
             <ScrollView style={styles.modalChartContainer} showsVerticalScrollIndicator={false}>
               <View style={styles.modalChartWrapper}>
-                <LineChart 
-                  data={
-                    selectedMetric === 'stress' ? stressData :
-                    selectedMetric === 'sleep' ? sleepData : relaxationData
-                  } 
+                <LineChart
+                  data={getChartData(selectedMetric)}
                   color={
-                    selectedMetric === 'stress' ? '#EF4444' :
-                    selectedMetric === 'sleep' ? '#3B82F6' : '#10B981'
+                    selectedMetric === 'stress' ? '#64C59A' :
+                      selectedMetric === 'sleep' ? '#4CAF85' : '#2E8A66'
                   }
-                  labels={dailySliderData.map(d => formatDate(d.created_at))}
+                  metric={selectedMetric}
                 />
+
+
+                {/* Metric Description */}
+                <View style={styles.metricDescriptionContainer}>
+                  <Text style={styles.metricDescriptionText}>
+                    {selectedMetric === 'stress' ? "Review your Stress level last 14 days 1 is low stress and 5 is high.." :
+                      selectedMetric === 'sleep' ? "Review your Sleep quality last 14 days 1 is bad and 5 is excellent.." :
+                        "Review your Relaxation level last 14 days 1 is not relaxed at all and 5 is fully relaxed.."}
+                  </Text>
+                </View>
               </View>
 
               {/* Data Table */}
@@ -758,7 +855,7 @@ export default function ProgressScreen() {
                     </Text>
                     <Text style={[styles.modalTableCell, { flex: 1, textAlign: 'right' }]}>
                       {selectedMetric === 'stress' ? item.stress_level :
-                       selectedMetric === 'sleep' ? item.sleep_quality : item.relaxation_level}
+                        selectedMetric === 'sleep' ? item.sleep_quality : item.relaxation_level}
                     </Text>
                   </View>
                 ))}
@@ -771,20 +868,31 @@ export default function ProgressScreen() {
   );
 }
 
-const LineChart = ({ data, color, labels }: { data: number[]; color: string; labels: string[] }) => {
+/**
+ * Component to display a line chart for metric data
+ */
+const LineChart = ({ data, color, metric }: {
+  data: { value: number; date: string }[];
+  color: string;
+  metric: 'stress' | 'sleep' | 'relax' | null;
+}) => {
   if (data.length === 0) return null;
 
-  const maxValue = Math.max(...data, 5);
-  const minValue = Math.min(...data, 1);
-  const chartHeight = 200;
+  const chartHeight = 250;
   const chartWidth = width - 48;
-  const pointSpacing = data.length > 1 ? chartWidth / (data.length - 1) : 0;
+  const marginLeft = 35;
+  const graphWidth = chartWidth - marginLeft;
+  const pointSpacing = data.length > 1 ? graphWidth / (data.length - 1) : graphWidth / 2;
+
+  // Fixed range 0-5
+  const minValue = 0;
+  const maxValue = 5;
 
   // Convert data values to coordinates
-  const points = data.map((value, index) => {
-    const x = index * pointSpacing;
-    const y = chartHeight - ((value - minValue) / (maxValue - minValue)) * chartHeight;
-    return { x, y };
+  const points = data.map((item, index) => {
+    const x = marginLeft + index * pointSpacing;
+    const y = chartHeight - ((item.value - minValue) / (maxValue - minValue)) * (chartHeight - 40) - 20;
+    return { x, y, value: item.value, date: item.date };
   });
 
   // Create path for the line
@@ -793,23 +901,40 @@ const LineChart = ({ data, color, labels }: { data: number[]; color: string; lab
     pathData += ` L ${points[i].x},${points[i].y}`;
   }
 
+  // Generate Y-axis labels
+  const yLabels = [0, 1, 2, 3, 4, 5];
+
+  const getLegendForValue = (val: number) => {
+    return val.toString();
+  };
+
   return (
     <View style={styles.chartContainer}>
       <Svg height={chartHeight} width={chartWidth}>
-        {/* Grid lines */}
-        {[1, 3, 5, 7, 9].map((level) => {
-          const y = chartHeight - ((level - minValue) / (maxValue - minValue)) * chartHeight;
+        {/* Y-axis labels */}
+        {yLabels.map((value, index) => {
+          const y = chartHeight - ((value - minValue) / (maxValue - minValue)) * (chartHeight - 40) - 20;
           return (
-            <Line
-              key={level}
-              x1="0"
-              y1={y}
-              x2={chartWidth}
-              y2={y}
-              stroke="#E5E7EB"
-              strokeWidth="1"
-              strokeDasharray="4,4"
-            />
+            <React.Fragment key={index}>
+              <SvgText
+                x={marginLeft - 5}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="10"
+                fill="#666"
+              >
+                {getLegendForValue(value)}
+              </SvgText>
+              <Line
+                x1={marginLeft}
+                y1={y}
+                x2={chartWidth}
+                y2={y}
+                stroke="#E5E7EB"
+                strokeWidth="1"
+                strokeDasharray="4,4"
+              />
+            </React.Fragment>
           );
         })}
 
@@ -827,7 +952,7 @@ const LineChart = ({ data, color, labels }: { data: number[]; color: string; lab
             key={index}
             cx={point.x}
             cy={point.y}
-            r="6"
+            r="4"
             fill={color}
             stroke="#fff"
             strokeWidth="2"
@@ -836,40 +961,45 @@ const LineChart = ({ data, color, labels }: { data: number[]; color: string; lab
       </Svg>
 
       {/* X-axis labels */}
-      <View style={styles.xAxisLabels}>
-        {labels.map((label, index) => (
-          <Text key={index} style={styles.xAxisLabel}>
-            {label}
-          </Text>
+      <View style={[styles.xAxisLabels, { marginLeft: marginLeft }]}>
+        {data.map((item, index) => (
+          (index === 0 || index === data.length - 1 || index % 3 === 0) ? (
+            <Text key={index} style={[styles.xAxisLabel, { left: index * pointSpacing - 20, position: 'absolute', width: 40, textAlign: 'center' }]}>
+              {item.date}
+            </Text>
+          ) : null
         ))}
       </View>
     </View>
   );
 };
 
+/**
+ * Component to display weekly completion chart
+ */
 const WeeklyCompletionChart = ({ data }: { data: WeeklyProgressData[] }) => {
   if (data.length === 0) return null;
 
   const chartHeight = 150;
   const chartWidth = width - 48;
-  const barWidth = Math.max(20, chartWidth / data.length - 4);
+  const barWidth = Math.max(20, chartWidth / Math.min(data.length, 10) - 4); // Limit to 10 bars for readability
   const barSpacing = 4;
 
   return (
     <View style={styles.chartContainer}>
       <Svg height={chartHeight} width={chartWidth}>
-        {data.map((week, index) => {
+        {data.slice(0, 10).map((week, index) => { // Limit to 10 weeks for readability
           const x = index * (barWidth + barSpacing);
-          const y = week.completed ? 20 : 40;
-          const height = week.completed ? chartHeight - 40 : chartHeight - 60;
-          
+          const barHeight = week.completed ? 120 : 60;
+          const y = chartHeight - barHeight;
+
           return (
             <Rect
               key={index}
               x={x}
               y={y}
               width={barWidth}
-              height={height}
+              height={barHeight}
               fill={week.completed ? "#64C59A" : "#E5E7EB"}
               rx="4"
             />
@@ -879,7 +1009,7 @@ const WeeklyCompletionChart = ({ data }: { data: WeeklyProgressData[] }) => {
 
       {/* X-axis labels */}
       <View style={styles.xAxisLabels}>
-        {data.map((week, index) => (
+        {data.slice(0, 10).map((week, index) => (
           <Text key={index} style={styles.xAxisLabel}>
             W{week.week.split('-W')[1]}
           </Text>
@@ -1352,5 +1482,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  metricDescriptionContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#F0F9F6',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#64C59A',
+    width: '100%',
+  },
+  metricDescriptionText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
 });

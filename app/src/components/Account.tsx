@@ -16,8 +16,14 @@ import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
+/**
+ * Account Component
+ * 
+ * Manages user profile display, password updates, and signing out.
+ */
 export default function Account({ session }: { session: Session }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -39,15 +45,23 @@ export default function Account({ session }: { session: Session }) {
 
   // Generate unique cute avatar using DiceBear (fallback to user ID)
   const avatarSeed = session?.user?.id || 'mindful-user';
+  // Use a fixed avatar URL or generate one
   const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${avatarSeed}&backgroundColor=E8F5F1`;
 
-  useEffect(() => {
-    if (session) {
-      setEmail(session.user.email || '');
-      getProfile();
-    }
-  }, [session]);
 
+
+  useFocusEffect(
+    useCallback(() => {
+      if (session) {
+        setEmail(session.user.email || '');
+        getProfile();
+      }
+    }, [session])
+  );
+
+  /**
+   * Fetches user profile details (username, researchID) from Supabase.
+   */
   async function getProfile() {
     try {
       setLoading(true);
@@ -72,6 +86,10 @@ export default function Account({ session }: { session: Session }) {
     }
   }
 
+  /**
+   * Updates the user's password.
+   * Validates length and match before submitting to Supabase.
+   */
   async function changePassword() {
     setPasswordError('');
     if (newPassword.length < 6) {
@@ -99,11 +117,14 @@ export default function Account({ session }: { session: Session }) {
     }
   }
 
+  /**
+   * Signs the user out and redirects to the authentication screen.
+   */
   async function signOut() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // Navigate to auth screen
+      // Navigate to auth screen (root)
       router.replace('/');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to sign out');
@@ -120,13 +141,13 @@ export default function Account({ session }: { session: Session }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>My Account</Text>
-          <Text style={styles.subtitle}>Manage your profile & security</Text>
-        </View>
+      {/* Header - Fixed at Top */}
+      <View style={styles.header}>
+        <Text style={styles.title}>My Account</Text>
+        <Text style={styles.subtitle}>Manage your profile & security</Text>
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingTop: 20 }}>
         {/* Profile Hero */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.profileCard}>
           {/* User Profile Picture */}
@@ -290,7 +311,7 @@ export default function Account({ session }: { session: Session }) {
 // Styles remain unchanged (beautiful as before)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
-  header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10 },
+  header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10, backgroundColor: '#F8FDFC', zIndex: 10 },
   title: {
     fontSize: 32,
     fontWeight: '800',
