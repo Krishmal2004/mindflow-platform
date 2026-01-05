@@ -15,72 +15,13 @@ import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import { r2, BUCKET_NAME, PUBLIC_URL_BASE } from '../lib/r2';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+// Removed inline Svg imports
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { Icons } from './common/AppIcons';
+import AppButton from './common/AppButton';
+import AppCard from './common/AppCard';
 
-// Custom Microphone Icon Component
-const MicrophoneIcon = ({ isRecording }: { isRecording: boolean }) => (
-  <Svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-    {/* Microphone body */}
-    <Rect 
-      x="10" 
-      y="4" 
-      width="4" 
-      height="8" 
-      rx="2" 
-      fill="#fff" 
-    />
-    {/* Microphone head */}
-    <Circle 
-      cx="12" 
-      cy="14" 
-      r="5" 
-      fill={isRecording ? "#EF4444" : "#2E8A66"} 
-      stroke="#fff" 
-      strokeWidth="2" 
-    />
-    {/* Sound waves when recording */}
-    {isRecording && (
-      <>
-        <Circle cx="12" cy="14" r="8" fill="none" stroke="#EF4444" strokeWidth="1" opacity="0.6" />
-        <Circle cx="12" cy="14" r="11" fill="none" stroke="#EF4444" strokeWidth="1" opacity="0.3" />
-      </>
-    )}
-  </Svg>
-);
-
-// Custom Checkmark Icon Component for Recording Complete
-const CheckmarkIcon = () => (
-  <Svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="10" fill="#2E8A66" />
-    <Path 
-      d="M8 12L11 15L16 9" 
-      stroke="#fff" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-    />
-  </Svg>
-);
-
-// Custom Voice Icon Component for Instruction Section
-const VoiceIcon = () => (
-  <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <Path 
-      d="M3 12H6L9 3L15 21L18 12H21" 
-      stroke="#2E8A66" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-    />
-    <Path 
-      d="M9 16C9 16 10 19 12 19C14 19 15 16 15 16" 
-      stroke="#2E8A66" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-    />
-  </Svg>
-);
+// Custom Icons moved to AppIcons.tsx
 
 // ISO Week Number (Monday as first day of week)
 function getWeekNumber(d: Date): [number, number] {
@@ -102,14 +43,14 @@ const PASSAGE_TEXT = "The North Wind and the Sun were disputing which was the st
 export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (recordingId: number) => void }) {
   const router = useRouter();
   const { session } = useSession();
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showLoading, setShowLoading] = useState(false); // New state for 5-second loading screen
-  
+
   const recordingRef = useRef<Audio.Recording | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -152,11 +93,11 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
           mimeType: 'audio/wav',
         }
       });
-      
+
       recordingRef.current = recording;
       setIsRecording(true);
       setRecordingDuration(0);
-      
+
       // Update duration every second
       intervalRef.current = setInterval(() => {
         setRecordingDuration(prev => {
@@ -181,25 +122,25 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
 
   const stopRecording = async () => {
     if (!recordingRef.current) return;
-    
+
     try {
       // Stop the timer
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      
+
       // Stop recording
       await recordingRef.current.stopAndUnloadAsync();
       const uri = recordingRef.current.getURI();
-      
+
       if (uri) {
         setRecordingUri(uri);
-        
+
         // Get the actual duration from the recording object
         const status = await recordingRef.current.getStatusAsync();
         const actualDuration = status.durationMillis / 1000;
-        
+
         // If the actual duration is >= 30 seconds, it was auto-stopped, so skip the minimum duration check
         if (actualDuration >= 30) {
           // This was an auto-stop at 30 seconds, proceed to complete stage
@@ -215,7 +156,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
           setIsRecording(false);
         }
       }
-      
+
     } catch (err) {
       console.error('Failed to stop recording', err);
       Alert.alert('Recording Error', 'Failed to stop recording. Please try again.');
@@ -228,25 +169,25 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
   async function uploadFile(uri: string): Promise<string> {
     try {
       console.log("Starting upload for:", uri);
-      
+
       // Create a File instance and read as base64 using the new API
       const file = new FileSystem.File(uri);
       const base64Data = await file.base64();
-      
+
       // Convert base64 to Uint8Array
       const binaryString = atob(base64Data);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      
+
       // Get current week info
       const [year, week] = getWeekNumber(new Date());
-      
+
       // Generate filename
       const fileName = `weekly-${year}-W${week.toString().padStart(2, '0')}-${session!.user.id}.wav`;
       const fileKey = `WeeklyVoice/${fileName}`;
-      
+
       const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: fileKey,
@@ -257,7 +198,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
       console.log("Sending to R2...");
       await r2.send(command);
       console.log("Upload success!");
-      
+
       return `${PUBLIC_URL_BASE}/${fileKey}`;
     } catch (error: any) {
       console.error("Upload failed:", error);
@@ -267,18 +208,18 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
 
   const uploadRecording = async () => {
     if (!recordingUri || !session?.user?.id) return;
-    
+
     setUploading(true);
     setUploadProgress(0);
-    
+
     try {
       // Get current week info
       const [year, week] = getWeekNumber(new Date());
       const weekId = getCurrentWeekId();
-      
+
       // Upload file to R2
       const fileUrl = await uploadFile(recordingUri);
-      
+
       // Save metadata to database
       const { data: recordingData, error: recordingError } = await supabase
         .from('voice_recordings')
@@ -291,13 +232,13 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
         })
         .select()
         .single();
-      
+
       if (recordingError) throw recordingError;
-      
+
       // Show loading screen for 5 seconds instead of celebration
       setUploading(false);
       setShowLoading(true);
-      
+
       // Wait for 5 seconds
       setTimeout(() => {
         setShowLoading(false);
@@ -332,7 +273,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
             {!recordingUri ? (
               <>
                 <Animated.View entering={FadeInDown.delay(100)} style={styles.instructionContainer}>
-                  <VoiceIcon />
+                  <Icons.Microphone isRecording={isRecording} width={32} height={32} color="#2E8A66" />
                   <Text style={styles.instructionTitle}>Voice Recording</Text>
                   <Text style={styles.instructionText}>
                     Please read the following paragraph aloud in your normal speaking voice. Try to speak clearly.
@@ -343,19 +284,19 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
                   <View style={styles.timerContainer}>
                     <Text style={styles.timerText}>{recordingDuration}s</Text>
                   </View>
-                  
+
                   <TouchableOpacity
                     style={[styles.recordButton, isRecording && styles.recordingActive]}
                     onPress={handleToggleRecording}
                     disabled={uploading}
                   >
-                    <MicrophoneIcon isRecording={isRecording} />
+                    <Icons.Microphone isRecording={isRecording} width={40} height={40} color="#fff" fill={isRecording ? "#EF4444" : "#2E8A66"} />
                   </TouchableOpacity>
-                  
+
                   <Text style={styles.recordButtonText}>
                     {isRecording ? 'Stop Recording' : 'Start Recording'}
                   </Text>
-                  
+
                   {isRecording && (
                     <View style={styles.recordingIndicator}>
                       <View style={styles.pulseDot} />
@@ -369,46 +310,49 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
                 </Animated.View>
               </>
             ) : (
-              <Animated.View entering={FadeInDown.delay(100)} style={styles.reviewContainer}>
-                <CheckmarkIcon />
-                <Text style={styles.reviewTitle}>Recording Complete!</Text>
-                <Text style={styles.reviewText}>Duration: {recordingDuration} seconds</Text>
-                
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity style={styles.secondaryButton} onPress={handleRetry}>
-                    <Text style={styles.secondaryButtonText}>Retake</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.primaryButton} 
-                    onPress={uploadRecording}
-                    disabled={uploading}
-                  >
-                    {uploading ? (
-                      <>
-                        <ActivityIndicator color="#fff" size="small" />
-                        <Text style={styles.primaryButtonText}>Uploading... {uploadProgress}%</Text>
-                      </>
-                    ) : (
-                      <Text style={styles.primaryButtonText}>Submit Recording</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
+              <Animated.View entering={FadeInDown.delay(100)}>
+                <AppCard style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <Icons.Check width={48} height={48} />
+                    <Text style={styles.reviewTitle}>Recording Complete!</Text>
+                  </View>
+
+                  <View style={styles.audioPlaceholder}>
+                    {/* Simulating a waveform visualization */}
+                    <View style={[styles.waveBar, { height: 16 }]} />
+                    <View style={[styles.waveBar, { height: 24 }]} />
+                    <View style={[styles.waveBar, { height: 32 }]} />
+                    <View style={[styles.waveBar, { height: 20 }]} />
+                    <View style={[styles.waveBar, { height: 40 }]} />
+                    <View style={[styles.waveBar, { height: 28 }]} />
+                    <View style={[styles.waveBar, { height: 18 }]} />
+                  </View>
+
+                  <Text style={styles.reviewText}>Duration: {recordingDuration} seconds</Text>
+
+                  <View style={styles.buttonContainer}>
+                    <AppButton
+                      title="Retake"
+                      onPress={handleRetry}
+                      variant="secondary"
+                      style={{ flex: 1, marginRight: 8 }}
+                    />
+                    <AppButton
+                      title={uploading ? `Uploading ${uploadProgress}%` : "Submit Recording"}
+                      onPress={uploadRecording}
+                      loading={uploading}
+                      disabled={uploading}
+                      style={{ flex: 1, marginLeft: 8 }}
+                    />
+                  </View>
+                </AppCard>
               </Animated.View>
             )}
           </>
         )}
       </ScrollView>
-      
-      {/* Loading overlay that appears as modal when processing recording */}
-      {showLoading && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2E8A66" />
-            <Text style={styles.loadingText}>Processing your recording...</Text>
-          </View>
-        </View>
-      )}
+
+
     </View>
   );
 }
@@ -575,28 +519,42 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: '600',
   },
-  reviewContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 32,
+  reviewCard: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
+    padding: 32,
+  },
+  reviewHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
   reviewTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#2E8A66',
-    marginBottom: 16,
-    marginTop: 16,
+    marginBottom: 8,
+  },
+  audioPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,
+    marginBottom: 24,
+    width: '100%',
+    backgroundColor: '#F0F9F6',
+    borderRadius: 12,
+  },
+  waveBar: {
+    width: 6,
+    backgroundColor: '#2E8A66',
+    borderRadius: 3,
+    marginHorizontal: 3,
+    opacity: 0.7,
   },
   reviewText: {
-    fontSize: 18,
-    color: '#333',
+    fontSize: 16,
+    color: '#666',
     marginBottom: 32,
+    fontWeight: '500',
   },
   buttonContainer: {
     flexDirection: 'row',
