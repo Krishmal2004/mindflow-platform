@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
@@ -44,6 +45,7 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
   const router = useRouter();
   const { session } = useSession();
 
+  const [permissionResponse, requestPermission] = Audio.usePermissions();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -56,12 +58,14 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
 
   const startRecording = async () => {
     try {
-      // Request permissions
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) {
-        Alert.alert('Permission Required', 'Microphone permission is required to record audio.');
-        return;
+      if (!permissionResponse || permissionResponse.status !== 'granted') {
+        const { status } = await requestPermission();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Microphone permission is required to record audio. Please enable it in system settings.');
+          return;
+        }
       }
+
 
       // Set audio mode
       await Audio.setAudioModeAsync({
@@ -264,6 +268,27 @@ export default function VocalBiomarkerCapture({ onComplete }: { onComplete: (rec
     setRecordingUri(null);
     setRecordingDuration(0);
   };
+
+  if (!permissionResponse || permissionResponse.status !== 'granted') {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.content, { flex: 1, justifyContent: 'center' }]}>
+          <AppCard style={styles.instructionContainer}>
+            <Icons.Microphone width={48} height={48} color="#2E8A66" />
+            <Text style={styles.instructionTitle}>Microphone Access Required</Text>
+            <Text style={[styles.instructionText, { marginBottom: 24 }]}>
+              This feature requires microphone access to record your voice for analysis.
+              {permissionResponse?.status === 'denied' && "\n\nYou may need to enable it in your device settings."}
+            </Text>
+            <AppButton
+              title={permissionResponse?.status === 'denied' ? "Open Settings" : "Enable Microphone"}
+              onPress={permissionResponse?.status === 'denied' ? Linking.openSettings : requestPermission}
+            />
+          </AppCard>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

@@ -503,7 +503,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                   </SvgLinearGradient>
                 </Defs>
                 <Path
-                  d="M 220 60 C 220 120, 80 120, 80 200 C 80 280, 150 280, 150 340"
+                  d="M 220 60 C 220 120, 80 120, 88 200 C 80 280, 170 280, 190 340"
                   stroke="url(#pathGradient)"
                   strokeWidth="6"
                   fill="none"
