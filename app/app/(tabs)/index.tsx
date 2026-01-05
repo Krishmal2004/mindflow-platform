@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../src/contexts/SessionContext';
 import Dashboard from '../../src/components/Dashboard';
-import AboutMe from '../../src/components/AboutMe';
 import { Session } from '@supabase/supabase-js';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const { session, loading } = useSession();
-  const [showAboutMe, setShowAboutMe] = useState(false);
+  const router = useRouter();
 
   if (loading) {
     return (
@@ -17,13 +18,9 @@ export default function HomeScreen() {
     );
   }
 
-  if (showAboutMe && session) {
-    return <AboutMe session={session} onBack={() => setShowAboutMe(false)} />;
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      <Dashboard session={session as Session} onNavigateToAboutMe={() => setShowAboutMe(true)} />
+      <Dashboard session={session as Session} onNavigateToAboutMe={() => router.push('/about-me')} />
     </SafeAreaView>
   );
 }

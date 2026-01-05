@@ -12,79 +12,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated';
+import { useRouter, Stack } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
-import { useRouter } from 'expo-router';
-// Custom SVG Icons
-const Icons = {
-  school: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 3L1 9L12 15L21 10.09V17H23V9L12 3Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <Path d="M12 15V22" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  graduation: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M22 10L12 5L2 10L12 15L22 10Z" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M6 12V18C6 19.1046 7.89543 20 12 20C16.1046 20 18 19.1046 18 18V12" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  book: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M4 19.5C4 18.837 4.26339 18.2011 4.73223 17.7322C5.20107 17.2634 5.83696 17 6.5 17H20V5H6.5C5.83696 5 5.20107 5.26339 4.73223 5.73223C4.26339 6.20107 4 6.83696 4 7.5V19.5Z" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M20 17H6.5C5.83696 17 5.20107 17.2634 4.73223 17.7322C4.26339 18.2011 4 18.837 4 19.5C4 20.163 4.26339 20.7989 4.73223 21.2678C5.20107 21.7366 5.83696 22 6.5 22H20" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  calendar: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Rect x="3" y="4" width="18" height="18" rx="2" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M16 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M8 2V6" stroke="#64C59A" strokeWidth="2" strokeLinecap="round"/>
-      <Path d="M3 10H21" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  home: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M9 22V12H15V22" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  family: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M6 20C6 16.6863 8.68629 14 12 14C15.3137 14 18 16.6863 18 20" stroke="#64C59A" strokeWidth="2"/>
-      <Circle cx="19" cy="7" r="3" stroke="#64C59A" strokeWidth="2"/>
-      <Circle cx="5" cy="7" r="3" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  globe: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M2 12H22" stroke="#64C59A" strokeWidth="2"/>
-      <Path d="M12 2C14.5013 4.73835 15.9228 8.29203 16 12C15.9228 15.708 14.5013 19.2616 12 22C9.49872 19.2616 8.07725 15.708 8 12C8.07725 8.29203 9.49872 4.73835 12 2Z" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  heart: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M20.84 4.61C20.3292 4.099 19.7228 3.69364 19.0554 3.41708C18.3879 3.14052 17.6725 2.99817 16.95 2.99817C16.2275 2.99817 15.5121 3.14052 14.8446 3.41708C14.1772 3.69364 13.5708 4.099 13.06 4.61L12 5.67L10.94 4.61C9.90836 3.57831 8.50903 2.99884 7.05 2.99884C5.59096 2.99884 4.19164 3.57831 3.16 4.61C2.12831 5.64169 1.54884 7.04102 1.54884 8.5C1.54884 9.95898 2.12831 11.3583 3.16 12.39L4.22 13.45L12 21.23L19.78 13.45L20.84 12.39C21.351 11.8792 21.7564 11.2728 22.0329 10.6054C22.3095 9.93789 22.4518 9.22249 22.4518 8.5C22.4518 7.77751 22.3095 7.0621 22.0329 6.39464C21.7564 5.72718 21.351 5.12075 20.84 4.61Z" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-  target: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10" stroke="#64C59A" strokeWidth="2"/>
-      <Circle cx="12" cy="12" r="6" stroke="#64C59A" strokeWidth="2"/>
-      <Circle cx="12" cy="12" r="2" fill="#64C59A"/>
-    </Svg>
-  ),
-  mindflow: () => (
-    <Svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2C13.3137 2 14.6136 2.25866 15.8268 2.75866C17.04 3.25866 18.1421 4.00001 19.071 5.00001C20 6.00001 20.7424 7.14214 21.2424 8.35534C21.7424 9.56854 22 10.8137 22 12" stroke="#64C59A" strokeWidth="2.5" strokeLinecap="round"/>
-      <Path d="M12 22C10.6863 22 9.38642 21.7413 8.17317 21.2413C6.95991 20.7413 5.85786 20 4.92893 19C4 18 3.25759 16.8579 2.75759 15.6447C2.25759 14.4315 2 13.1863 2 12" stroke="#64C59A" strokeWidth="2.5" strokeLinecap="round"/>
-      <Path d="M8 14C8.65661 14.6278 9.50909 15 10.4142 15C12.2142 15 13.4142 13.6569 13.4142 12C13.4142 10.3431 12.2142 9 10.4142 9C9.50909 9 8.65661 9.37216 8 10" stroke="#64C59A" strokeWidth="2"/>
-    </Svg>
-  ),
-};
+import { Icons } from './common/AppIcons';
+import StandardHeader from './common/StandardHeader';
 interface AboutMeData {
   university_id: string;
   education_level: string;
@@ -98,16 +30,16 @@ interface AboutMeData {
   why_mindflow: string;
 }
 const questions = [
-  { key: 'university_id', Icon: Icons.school, title: 'University ID', subtitle: 'Your official student ID', required: true },
-  { key: 'education_level', Icon: Icons.graduation, title: 'Education Level', subtitle: 'Current academic year', required: true },
-  { key: 'major_field_of_study', Icon: Icons.book, title: 'Major / Field of Study', subtitle: 'What are you studying?', required: true },
-  { key: 'age', Icon: Icons.calendar, title: 'Age', subtitle: 'How old are you?', required: true },
-  { key: 'living_situation', Icon: Icons.home, title: 'Living Situation', subtitle: 'Where do you currently live?', required: true },
-  { key: 'family_background', Icon: Icons.family, title: 'Family Background', subtitle: 'Tell us about your family', required: false },
-  { key: 'cultural_background', Icon: Icons.globe, title: 'Cultural Background', subtitle: 'Your culture & heritage', required: false },
-  { key: 'hobbies_interests', Icon: Icons.heart, title: 'Hobbies & Interests', subtitle: 'What do you enjoy doing?', required: false },
-  { key: 'personal_goals', Icon: Icons.target, title: 'Personal Goals', subtitle: 'What are you working towards?', required: false },
-  { key: 'why_mindflow', Icon: Icons.mindflow, title: 'Why MindFlow?', subtitle: 'What brings you here?', required: true },
+  { key: 'university_id', Icon: Icons.School, title: 'University ID', subtitle: 'Your official student ID', required: true },
+  { key: 'education_level', Icon: Icons.Graduation, title: 'Education Level', subtitle: 'Current academic year', required: true },
+  { key: 'major_field_of_study', Icon: Icons.Book, title: 'Major / Field of Study', subtitle: 'What are you studying?', required: true },
+  { key: 'age', Icon: Icons.Calendar, title: 'Age', subtitle: 'How old are you?', required: true },
+  { key: 'living_situation', Icon: Icons.Home, title: 'Living Situation', subtitle: 'Where do you currently live?', required: true },
+  { key: 'family_background', Icon: Icons.Family, title: 'Family Background', subtitle: 'Tell us about your family', required: false },
+  { key: 'cultural_background', Icon: Icons.Globe, title: 'Cultural Background', subtitle: 'Your culture & heritage', required: false },
+  { key: 'hobbies_interests', Icon: Icons.Heart, title: 'Hobbies & Interests', subtitle: 'What do you enjoy doing?', required: false },
+  { key: 'personal_goals', Icon: Icons.Target, title: 'Personal Goals', subtitle: 'What are you working towards?', required: false },
+  { key: 'why_mindflow', Icon: Icons.Mindflow, title: 'Previous Experience', subtitle: 'Have you done any mindfulness practices?', required: true },
 ];
 const educationLevels = ["First Year", "Second Year", "Third Year", "Fourth Year", "Graduate Student", "Other"];
 const livingSituations = ["Dorm", "Off-campus housing", "With family", "Other"];
@@ -188,7 +120,7 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
         .select('*')
         .eq('id', session?.user.id)
         .single();
-        
+
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
@@ -222,10 +154,10 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     try {
       setSaving(true);
       const hobbiesToSave = [...selectedHobbies.filter(h => h !== 'Other'), ...(otherHobby.trim() ? [otherHobby.trim()] : [])].join(', ');
-      
+
       // Ensure age is properly formatted as an integer
       const ageValue = data.age !== null ? parseInt(data.age.toString(), 10) : null;
-      
+
       const updateData = {
         ...data,
         age: ageValue,
@@ -233,21 +165,21 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
         completion_percentage: completionPercentage,
         is_completed: true,
       };
-      
+
       console.log('Saving data:', { id: session?.user.id, ...updateData });
-      
+
       const { error } = await supabase.from('about_me_profiles').upsert({
         id: session?.user.id,
         ...updateData
       }, {
         onConflict: 'id'
       });
-      
+
       if (error) {
         console.error('Supabase error:', error);
         throw error;
       }
-      
+
       setData(updateData as any);
       setShowCelebration(true);
       setTimeout(() => {
@@ -309,25 +241,16 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     return (
       <View style={styles.container}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile Complete</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        
-        {/* Progress Bar */}
-        <View style={styles.progressBarContainer}>
-          <Text style={styles.progressInfoText}>Your profile is 100% complete</Text>
-          <View style={styles.progressBar}>
-            <Animated.View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
-          </View>
-          <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
-        </View>
-        
+        <StandardHeader
+          title="Profile Complete"
+          onBack={onBack}
+          rightContent={
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressBadgeText}>{`${completionPercentage}%`}</Text>
+            </View>
+          }
+        />
+
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
           <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
             <Text style={styles.helpTitle}>Your Profile Overview</Text>
@@ -373,25 +296,17 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <Path d="M15 18L9 12L15 6" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>About Me</Text>
-        <View style={{ width: 24 }} />
-      </View>
-      
-      {/* Progress Bar */}
-      <View style={styles.progressBarContainer}>
-        <Text style={styles.progressInfoText}>Complete your profile to get started</Text>
-        <View style={styles.progressBar}>
-          <Animated.View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
-        </View>
-        <Text style={styles.progressText}>{completionPercentage}% Complete</Text>
-      </View>
-      
+      {/* Header */}
+      <StandardHeader
+        title="About Me"
+        onBack={onBack}
+        rightContent={
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{`${completionPercentage}%`}</Text>
+          </View>
+        }
+      />
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
           <Text style={styles.helpTitle}>Help us know you better</Text>
@@ -481,15 +396,15 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
             )}
             {['university_id', 'major_field_of_study', 'family_background', 'cultural_background',
               'personal_goals', 'why_mindflow'].includes(q.key) && (
-              <TextInput
-                style={[styles.textInput, q.key.includes('background') || q.key === 'why_mindflow' ? styles.multiline : {}]}
-                value={data[q.key as keyof AboutMeData] as string}
-                onChangeText={t => update(q.key as keyof AboutMeData, t)}
-                placeholder="Type your answer..."
-                multiline={q.key.includes('background') || q.key === 'why_mindflow'}
-                textAlignVertical="top"
-              />
-            )}
+                <TextInput
+                  style={[styles.textInput, q.key.includes('background') || q.key === 'why_mindflow' ? styles.multiline : {}]}
+                  value={data[q.key as keyof AboutMeData] as string}
+                  onChangeText={t => update(q.key as keyof AboutMeData, t)}
+                  placeholder="Type your answer..."
+                  multiline={q.key.includes('background') || q.key === 'why_mindflow'}
+                  textAlignVertical="top"
+                />
+              )}
           </Animated.View>
         ))}
         {/* Declaration */}
@@ -535,44 +450,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   backButton: {
-    width: 24,
-    height: 24,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: -10,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
     color: '#333',
+    flex: 1,
+    textAlign: 'center',
   },
-  progressBarContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
+  progressBadge: {
+    backgroundColor: '#ffffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#838383ff',
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#64C59A',
-    borderRadius: 4,
-  },
-  progressText: {
-    textAlign: 'right',
+  progressBadgeText: {
+    color: '#000000ff',
+    fontWeight: '700',
     fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  progressInfoText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    fontWeight: '500',
   },
   helpCard: { margin: 20, backgroundColor: '#E8F5F1', borderRadius: 20, padding: 20 },
   helpTitle: { fontSize: 18, fontWeight: '700', color: '#2E8A66', marginBottom: 8 },

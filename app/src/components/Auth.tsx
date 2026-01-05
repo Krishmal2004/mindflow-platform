@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 
@@ -29,10 +31,13 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSignUpInfo, setShowSignUpInfo] = useState(false);
 
   async function signInWithEmail() {
+    setErrorMessage(null);
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setErrorMessage('Please fill in all fields');
       return;
     }
     setLoading(true);
@@ -40,15 +45,14 @@ export default function Auth() {
       email,
       password,
     });
-    if (error) Alert.alert('Login Failed', error.message);
+    if (error) {
+      setErrorMessage(error.message);
+    }
     setLoading(false);
   }
 
   function handleSignUpClick() {
-    Alert.alert(
-      'Sign Up',
-      'Research admins will assign you and give you the credentials'
-    );
+    setShowSignUpInfo(true);
   }
 
   return (
@@ -56,7 +60,11 @@ export default function Auth() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.innerContainer}>
           {/* Logo */}
           <MindFlowLogo />
@@ -85,6 +93,8 @@ export default function Auth() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
               />
             </View>
           </View>
@@ -101,9 +111,18 @@ export default function Auth() {
                 onChangeText={setPassword}
                 secureTextEntry
                 autoCapitalize="none"
+                autoComplete="password"
+                textContentType="password"
               />
             </View>
           </View>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
 
           {/* Login Button */}
           <TouchableOpacity
@@ -131,6 +150,34 @@ export default function Auth() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Sign Up Info Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSignUpInfo}
+        onRequestClose={() => setShowSignUpInfo(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowSignUpInfo(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Sign Up</Text>
+            </View>
+            <Text style={styles.modalText}>
+              Research admins will assign you and give you the credentials.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setShowSignUpInfo(false)}
+            >
+              <Text style={styles.modalButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -214,15 +261,6 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: 10,
-  },
-  forgotPasswordText: {
-    color: '#2E8A66',
-    fontSize: 14,
-    fontWeight: '700',
-  },
   loginButton: {
     backgroundColor: '#2E8A66',
     width: '100%',
@@ -244,49 +282,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.5,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 32,
-    width: '100%',
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#999',
-    fontSize: 14,
-  },
-  ssoContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    gap: 16,
-  },
-  ssoButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF',
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#E0EBE8',
-  },
-  ssoIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-  },
-  ssoText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
   },
   signupContainer: {
     flexDirection: 'row',
@@ -310,5 +305,79 @@ const styles = StyleSheet.create({
   },
   flowText: {
     color: '#2E8A66',
+  },
+  errorContainer: {
+    width: '100%',
+    backgroundColor: '#FFE5E5',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFCCCC',
+  },
+  errorText: {
+    color: '#D32F2F',
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#ffffffff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    borderWidth: 2,
+    borderColor: '#A8E6CF',
+  },
+  modalHeader: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(46, 138, 102, 0.1)',
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#2E8A66',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#2E8A66',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+    fontWeight: '500',
+  },
+  modalButton: {
+    backgroundColor: '#2E8A66',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 20,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
