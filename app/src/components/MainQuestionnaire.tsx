@@ -14,6 +14,7 @@ import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import Svg, { Path, Circle } from 'react-native-svg';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import SuccessScreen from './common/SuccessScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -160,7 +161,7 @@ export default function MainQuestionnaire() {
         .eq('question_set_id', questionSetData.id)
         .limit(1)
         .maybeSingle();
-      
+
       // Also check if there's a session record
       const { data: existingSession } = await supabase
         .from('main_questionnaire_sessions')
@@ -168,10 +169,10 @@ export default function MainQuestionnaire() {
         .eq('user_id', session.user.id)
         .eq('question_set_id', questionSetData.id)
         .maybeSingle();
-      
+
       const hasSubmitted = !!existingResponses || !!existingSession;
       setAlreadySubmitted(hasSubmitted);
-      
+
       // If there's no submission yet, automatically start the questionnaire
       if (!hasSubmitted && !showStartScreen && !currentSection) {
         setShowStartScreen(true);
@@ -293,7 +294,7 @@ export default function MainQuestionnaire() {
           <View style={styles.progressBadge}>
             <Text style={styles.progressBadgeText}>Loading</Text>
           </View>
-          
+
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#2E8A66" />
@@ -306,7 +307,7 @@ export default function MainQuestionnaire() {
   // No Questionnaire
   if (!questionSet) {
     return (
-       <View style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.professionalHeader}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerBackButton}>
             <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -319,7 +320,7 @@ export default function MainQuestionnaire() {
           <View style={styles.progressBadge}>
             <Text style={styles.progressBadgeText}>0%</Text>
           </View>
-          
+
         </View>
         <View style={styles.completionContainer}>
           <Text style={styles.completionTitle}>No Questionnaire</Text>
@@ -349,21 +350,11 @@ export default function MainQuestionnaire() {
             <Text style={styles.progressBadgeText}>100%</Text>
           </View>
         </View>
-        <View style={styles.completionContainer}>
-          <Animated.View entering={ZoomIn.duration(600)} style={{ alignItems: 'center' }}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Questionnaire Completed</Text>
-            <Text style={styles.completionText}>You have already completed this questionnaire.</Text>
-            <Text style={styles.happyEmoji}>😊</Text>
-            <TouchableOpacity 
-              style={styles.startButton} 
-              onPress={() => router.push('/')}
-              accessibilityLabel="Go to dashboard"
-            >
-              <Text style={styles.startButtonText}>Go to Dashboard</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+        <SuccessScreen
+          title="Questionnaire Completed"
+          subtitle="You have already completed this questionnaire."
+          onPressHome={() => router.push('/')}
+        />
       </View>
     );
   }
@@ -385,14 +376,11 @@ export default function MainQuestionnaire() {
             <Text style={styles.progressBadgeText}>100%</Text>
           </View>
         </View>
-        <View style={styles.completionContainer}>
-          <Animated.View entering={ZoomIn.duration(600)} style={{ alignItems: 'center' }}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Great Job!</Text>
-            <Text style={styles.completionText}>You've completed the questionnaire.</Text>
-            <Text style={styles.happyEmoji}>😊</Text>
-          </Animated.View>
-        </View>
+        <SuccessScreen
+          title="Great Job!"
+          subtitle="You've completed the questionnaire."
+          onPressHome={() => router.push('/')}
+        />
       </View>
     );
   }
@@ -452,7 +440,7 @@ export default function MainQuestionnaire() {
     const totalQuestions = questions.length;
     const totalAnswered = answers.filter(a => a.value !== null).length;
     const overallProgress = totalQuestions > 0 ? (totalAnswered / totalQuestions) * 100 : 0;
-    
+
     return (
       <View style={styles.container}>
         <View style={styles.professionalHeader}>
@@ -494,8 +482,8 @@ export default function MainQuestionnaire() {
                   <Text style={styles.sectionCardSubtitle}>{sectionQuestions.length} questions</Text>
                   <Text style={styles.sectionCardProgress}>{answeredCount}/{sectionQuestions.length} answered</Text>
                   <View style={styles.sectionProgressBar}>
-                    <View 
-                      style={[styles.sectionProgressBarFill, { width: `${(answeredCount / sectionQuestions.length) * 100}%` }]} 
+                    <View
+                      style={[styles.sectionProgressBarFill, { width: `${(answeredCount / sectionQuestions.length) * 100}%` }]}
                     />
                   </View>
                 </View>
@@ -520,7 +508,7 @@ export default function MainQuestionnaire() {
   const currentSectionQuestions = questions.filter(q => q.section_key === currentSection);
   const answeredCount = answers.filter(a => currentSectionQuestions.some(q => q.question_id === a.questionId) && a.value !== null).length;
   const isLastSection = currentSection === questionSections[questionSections.length - 1].section_key;
-  
+
   // Calculate overall progress
   const totalQuestions = questions.length;
   const totalAnswered = answers.filter(a => a.value !== null).length;

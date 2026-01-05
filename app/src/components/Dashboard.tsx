@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Modal, Alert, ImageBackground, RefreshControl, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown, useSharedValue, withTiming, useAnimatedProps } from 'react-native-reanimated';
 import Svg, { Path, Circle, Pattern } from 'react-native-svg';
@@ -9,6 +10,9 @@ import { Session } from '@supabase/supabase-js';
 
 const { width } = Dimensions.get('window');
 
+/**
+ * Mindfulness tips to display for experimental group (ex).
+ */
 const MINDFULNESS_TIPS = [
   "Take a moment to breathe deeply. Notice how your body feels right now, without judgment.",
   "Pause and observe one thing you can see, hear, and feel in this moment.",
@@ -22,6 +26,9 @@ const MINDFULNESS_TIPS = [
   "This too shall pass. Breathe through it."
 ];
 
+/**
+ * Control facts to display for control group (cg).
+ */
 const CONTROL_FACTS = [
   "Honey never spoils. Archaeologists have found edible honey in ancient Egyptian tombs.",
   "The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion.",
@@ -44,8 +51,34 @@ const CalmBackground = () => (
   />
 );
 
+/**
+ * Dashboard Component
+ * 
+ * The main landing screen for the application. It displays:
+ * - A daily tip or fact based on user group.
+ * - Progress statistics (streak, consistency).
+ * - A roadmap of activities (Daily Sliders, Weekly Whispers, etc.).
+ * - Account management access.
+ */
 export default function Dashboard({ session, onNavigateToAboutMe }: { session: Session; onNavigateToAboutMe: () => void }) {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Scroll to top
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: false });
+      }
+
+      // Refresh data
+      if (session?.user?.id) {
+        Promise.all([fetchResearchID(), fetchUserProgress()]);
+      }
+    }, [session])
+  );
+
+  // -- State Management --
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [streak, setStreak] = useState(0);
   const [completed, setCompleted] = useState(0);
@@ -61,9 +94,9 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
   const [weeklyWhispersCount, setWeeklyWhispersCount] = useState(0);
   const [coreInsightsCount, setCoreInsightsCount] = useState(0);
 
+  // -- Animations --
   const streakProgress = useSharedValue(0);
   const consistencyProgress = useSharedValue(0);
-
   const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
   const animatedPropsStreak = useAnimatedProps(() => ({
@@ -74,6 +107,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     strokeDashoffset: 440 * (1 - consistencyProgress.value / 100),
   }));
 
+  // Cycle tips every 60 seconds
   useEffect(() => {
     const tipsLength = userExtension === 'ex' ? MINDFULNESS_TIPS.length : CONTROL_FACTS.length;
     const interval = setInterval(() => {
@@ -82,6 +116,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     return () => clearInterval(interval);
   }, [userExtension]);
 
+  // Initial data fetch
   useEffect(() => {
     fetchResearchID();
     fetchUserProgress();
@@ -89,10 +124,13 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchUserProgress();
+    await Promise.all([fetchResearchID(), fetchUserProgress()]);
     setRefreshing(false);
   };
 
+  /**
+   * Fetches the user's research ID to determine their group (experimental vs control).
+   */
   const fetchResearchID = async () => {
     if (!session?.user?.id) return;
     try {
@@ -112,89 +150,125 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     }
   };
 
+  /**
+   * Fetches user progress metrics from Supabase.
+   * optimized with Promise.all for parallel fetching.
+   */
   const fetchUserProgress = async () => {
     if (!session?.user?.id) return;
     try {
-      const { data: streakData } = await supabase
+      const today = new Date();
+      const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(today.getMonth() - 6);
+      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(today.getDate() - 30);
+      const oneYearAgo = new Date(); oneYearAgo.setFullYear(today.getFullYear() - 1);
+
+      // 1. Fetch Streak Data (Daily Sliders dates)
+      const streakPromise = supabase
         .from('daily_sliders')
         .select('created_at')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
+      // 2. Fetch Total Count (Daily Sliders > 6mo)
+      const totalCountPromise = supabase
+        .from('daily_sliders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('created_at', sixMonthsAgo.toISOString());
+
+      // 3. Fetch Recent Count (Daily Sliders > 30d) for Consistency
+      const recentCountPromise = supabase
+        .from('daily_sliders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      // 4. Fetch Voice Recordings (Weekly Whispers)
+      const voicePromise = supabase
+        .from('voice_recordings')
+        .select('created_at')
+        .eq('user_id', session.user.id)
+        .gte('created_at', sixMonthsAgo.toISOString());
+
+      // 5. Fetch Main Questionnaire Responses
+      const mainPromise = supabase
+        .from('main_questionnaire_responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('submitted_at', oneYearAgo.toISOString());
+
+      // Execute all requests in parallel
+      const [
+        { data: streakData },
+        { count: totalCount },
+        { count: recentCount },
+        { data: voiceRecordings },
+        { count: mainCount }
+      ] = await Promise.all([
+        streakPromise,
+        totalCountPromise,
+        recentCountPromise,
+        voicePromise,
+        mainPromise
+      ]);
+
+      // -- Calculate Streak --
       let currentStreak = 0;
       if (streakData && streakData.length > 0) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+
+        // Create a set of unique dates (timestamps at midnight)
         const entryDates = new Set(streakData.map(entry => {
           const d = new Date(entry.created_at);
           d.setHours(0, 0, 0, 0);
           return d.getTime();
         }));
-        let checkDate = new Date(today);
+
+        let checkDate = new Date(todayDate);
+        // Check backwards from today
         while (entryDates.has(checkDate.getTime())) {
           currentStreak++;
           checkDate.setDate(checkDate.getDate() - 1);
         }
       }
 
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      const { count: totalCount } = await supabase
-        .from('daily_sliders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .gte('created_at', sixMonthsAgo.toISOString());
-
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const { count: recentCount } = await supabase
-        .from('daily_sliders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .gte('created_at', thirtyDaysAgo.toISOString());
-
+      // -- Calculate Consistency (Entries in last 30 days) --
       const consistencyPercentage = recentCount ? Math.min(100, Math.round((recentCount / 30) * 100)) : 0;
 
-      const { data: voiceRecordings } = await supabase
-        .from('voice_recordings')
-        .select('created_at')
-        .eq('user_id', session.user.id)
-        .gte('created_at', sixMonthsAgo.toISOString());
-
+      // -- Calculate Weekly Progress (Unique weeks with recordings) --
       const uniqueWeeks = new Set(voiceRecordings?.map(a => {
         const d = new Date(a.created_at);
         const [year, week] = getWeekNumber(d);
         return `${year}-W${week.toString().padStart(2, '0')}`;
       }) || []);
-
       const weeklyProgressPercentage = uniqueWeeks.size ? Math.min(100, Math.round((uniqueWeeks.size / 26) * 100)) : 0;
 
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      const { count: mainCount } = await supabase
-        .from('main_questionnaire_responses')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .gte('submitted_at', oneYearAgo.toISOString());
-
+      // -- Calculate Main Questionnaire Progress --
       const mainProgress = mainCount ? Math.min(100, Math.round((mainCount / 4) * 100)) : 0;
 
+      // Update State
       setStreak(currentStreak);
       setCompleted(totalCount || 0);
       setConsistency(consistencyPercentage);
       setWeeklyProgress(weeklyProgressPercentage);
       setMainQuestionnaireProgress(mainProgress);
       setDailySlidersCount(totalCount || 0);
-      setWeeklyWhispersCount(uniqueWeeks.size); // This now reflects voice recordings
+      setWeeklyWhispersCount(uniqueWeeks.size);
       setCoreInsightsCount(mainCount || 0);
 
+      // Trigger Animations
       streakProgress.value = withTiming(currentStreak > 10 ? 100 : currentStreak * 10, { duration: 1000 });
       consistencyProgress.value = withTiming(consistencyPercentage, { duration: 1000 });
+
     } catch (error) {
       console.error('Error fetching user progress:', error);
     }
   };
 
+  /**
+   * Helper to get ISO week number.
+   */
   function getWeekNumber(d: Date): [number, number] {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -203,6 +277,10 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
     return [d.getUTCFullYear(), weekNo];
   }
 
+  /**
+   * Handles user sign out.
+   * Signs out from Supabase and redirects to the root auth screen.
+   */
   const handleSignOut = async () => {
     setShowAccountModal(false);
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -214,7 +292,10 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           try {
             const { error } = await supabase.auth.signOut();
             if (error) Alert.alert("Error", error.message);
-            else router.replace('/');
+            else {
+              // Redirect to main auth screen
+              router.replace('/');
+            }
           } catch (error: any) {
             Alert.alert("Error", error.message || 'Failed to sign out');
           }
@@ -246,6 +327,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -525,28 +607,28 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
             </View>
           </LinearGradient>
         </Animated.View>
-      </ScrollView>
 
-      {/* Account Modal */}
-      <Modal visible={showAccountModal} transparent animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); router.push('/account'); }}>
-              <Image source={require('../../assets/images/user.png')} style={styles.modalIcon} />
-              <Text style={styles.modalText}>Manage Account</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
-              <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <Path d="M9 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H9" stroke="#EF4444" strokeWidth="2" />
-                <Path d="M16 17L20 12L16 7" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
-                <Path d="M20 12H8" stroke="#EF4444" strokeWidth="2" />
-              </Svg>
-              <Text style={[styles.modalText, styles.logoutText]}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        {/* Account Modal */}
+        <Modal visible={showAccountModal} transparent animationType="fade">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowAccountModal(false)}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHandle} />
+              <TouchableOpacity style={styles.modalRow} onPress={() => { setShowAccountModal(false); router.push('/account'); }}>
+                <Image source={require('../../assets/images/user.png')} style={styles.modalIcon} />
+                <Text style={styles.modalText}>Manage Account</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalRow, styles.logoutRow]} onPress={handleSignOut}>
+                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <Path d="M9 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H9" stroke="#EF4444" strokeWidth="2" />
+                  <Path d="M16 17L20 12L16 7" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                  <Path d="M20 12H8" stroke="#EF4444" strokeWidth="2" />
+                </Svg>
+                <Text style={[styles.modalText, styles.logoutText]}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </ScrollView>
     </View>
   );
 }
@@ -601,14 +683,14 @@ const styles = StyleSheet.create({
   roadmapSectionTitle: { fontSize: 28, fontWeight: '900', color: '#1A1A1A', marginBottom: 8 },
   roadmapSectionSubtitle: { fontSize: 16, color: '#777', marginBottom: 32, fontWeight: '500' },
   roadmapPathContainer: { position: 'relative', paddingVertical: 40 },
-  roadmapMapPath: { position: 'absolute', left: width / 2 - 2.5,  top: 0, bottom: 80, width: 5, backgroundColor: '#A8E6CF', borderRadius: 5},
-  roadmapStartMarker: {position: 'absolute',left: width / 2 - 10,top: 0,width: 20,height: 20,borderRadius: 100,backgroundColor: '#64C59A',borderWidth: 4,borderColor: '#A8E6CF',shadowColor: '#64C59A',shadowOffset: { width: 0, height: 0 },shadowOpacity: 0.4,shadowRadius: 12,elevation: 12,zIndex: 10,},
+  roadmapMapPath: { position: 'absolute', left: width / 2 - 2.5, top: 0, bottom: 80, width: 5, backgroundColor: '#A8E6CF', borderRadius: 5 },
+  roadmapStartMarker: { position: 'absolute', left: width / 2 - 10, top: 0, width: 20, height: 20, borderRadius: 100, backgroundColor: '#64C59A', borderWidth: 4, borderColor: '#A8E6CF', shadowColor: '#64C59A', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 12, zIndex: 10, },
   roadmapCards: { position: 'relative' },
-  roadmapCardWrapper: { marginVertical:32},
+  roadmapCardWrapper: { marginVertical: 32 },
   roadmapCardWrapperLeft: { alignSelf: 'flex-start', width: '95%', maxWidth: 340 },
   roadmapCardWrapperRight: { alignSelf: 'flex-end', width: '95%', maxWidth: 340 },
   roadmapCardInner: { borderRadius: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 12 },
-  roadmapCardInnerDefault: { borderRadius: 28, overflow: 'hidden',  backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E8F5F1', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 12},
+  roadmapCardInnerDefault: { borderRadius: 28, overflow: 'hidden', backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E8F5F1', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 12 },
   roadmapCardContent: { padding: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   roadmapMarker: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#E8F5F1', borderWidth: 4, borderColor: '#A8E6CF', justifyContent: 'center', alignItems: 'center', shadowColor: '#64C59A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 10 },
   roadmapMarkerCompleted: { backgroundColor: '#64C59A', borderColor: '#4CAF85' },

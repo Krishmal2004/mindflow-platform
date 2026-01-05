@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
 import { supabase } from '../lib/supabase';
 import Svg, { Path } from 'react-native-svg';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import SuccessScreen from './common/SuccessScreen';
 import VocalBiomarkerCapture from './VocalBiomarkerCapture';
 
 // ISO Week Number (Monday as first day of week)
@@ -63,7 +63,7 @@ export default function WeeklyQuestions() {
         .maybeSingle();
 
       if (error) throw error;
-      
+
       const isSubmitted = !!existing;
       setAlreadySubmitted(isSubmitted);
     } catch (err: any) {
@@ -77,11 +77,11 @@ export default function WeeklyQuestions() {
 
     try {
       setLoading(true);
-      
+
       // Extract week number from weekId (format: YYYY-W##-WQ)
       const weekNumber = parseInt(weekId.split('-')[1].replace('W', ''));
       const year = parseInt(weekId.split('-')[0]);
-      
+
       // Check if user already has a voice recording for this week
       const { data: existing, error } = await supabase
         .from('voice_recordings')
@@ -92,10 +92,10 @@ export default function WeeklyQuestions() {
         .maybeSingle();
 
       if (error) throw error;
-      
+
       const hasRecording = !!existing;
       setHasVoiceRecording(hasRecording);
-      
+
       // Only show vocal capture if user doesn't have a recording yet
       setShowVocalCapture(!hasRecording);
     } catch (err: any) {
@@ -111,7 +111,7 @@ export default function WeeklyQuestions() {
     setShowVocalCapture(false);
     setHasVoiceRecording(true); // Mark that we now have a recording
     setShowCelebration(true); // Show the celebration screen
-    
+
     // After a delay, reset to show the success message
     setTimeout(() => {
       setShowCelebration(false);
@@ -154,22 +154,11 @@ export default function WeeklyQuestions() {
           <Text style={styles.headerTitle}>Weekly Whispers</Text>
           <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.completionContainer}>
-          <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Great Job For This Week!</Text>
-            <Text style={styles.completionText}>You've completed your Weekly Whisper routine.</Text>
-            <Text style={styles.completionText}>You're all set. Let's meet again Next Week!</Text>
-            <Text style={styles.happyEmoji}>😊</Text>
-            
-            <TouchableOpacity 
-              style={styles.dashboardButton}
-              onPress={() => router.push('/')}
-            >
-              <Text style={styles.dashboardButtonText}>Go to Dashboard</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+        <SuccessScreen
+          title="Great Job For This Week!"
+          subtitle={["You've completed your Weekly Whisper routine.", "You're all set. Let's meet again Next Week!"]}
+          onPressHome={() => router.push('/')}
+        />
       </View>
     );
   }
@@ -191,22 +180,11 @@ export default function WeeklyQuestions() {
       {showVocalCapture ? (
         <VocalBiomarkerCapture onComplete={handleVocalCaptureComplete} />
       ) : (
-        <View style={styles.completionContainer}>
-          <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Already Completed!</Text>
-            <Text style={styles.completionText}>You've already submitted your voice recording for this week.</Text>
-            <Text style={styles.completionText}>Great job staying consistent with your practice!</Text>
-            <Text style={styles.happyEmoji}>😊</Text>
-            
-            <TouchableOpacity 
-              style={styles.dashboardButton}
-              onPress={() => router.push('/')}
-            >
-              <Text style={styles.dashboardButtonText}>Go to Dashboard</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+        <SuccessScreen
+          title="Already Completed!"
+          subtitle={["You've already submitted your voice recording for this week.", "Great job staying consistent with your practice!"]}
+          onPressHome={() => router.push('/')}
+        />
       )}
     </View>
   );
