@@ -38,8 +38,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const value = React.useMemo(() => ({ session, loading }), [session, loading]);
+
   return (
-    <SessionContext.Provider value={{ session, loading }}>
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );

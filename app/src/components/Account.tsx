@@ -129,8 +129,6 @@ export default function Account({ session }: { session: Session }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // Navigate to auth screen (root)
-      router.replace('/');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to sign out');
     }

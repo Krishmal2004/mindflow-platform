@@ -324,7 +324,6 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           try {
             const { error } = await supabase.auth.signOut();
             if (error) Alert.alert("Error", error.message);
-            else router.replace('/');
           } catch (error: any) {
             Alert.alert("Error", error.message || 'Failed to sign out');
           }

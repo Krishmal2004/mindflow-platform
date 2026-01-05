@@ -240,6 +240,50 @@ export const Icons = {
             <Path d="M8 14C8.65661 14.6278 9.50909 15 10.4142 15C12.2142 15 13.4142 13.6569 13.4142 12C13.4142 10.3431 12.2142 9 10.4142 9C9.50909 9 8.65661 9.37216 8 10" stroke={color} strokeWidth={strokeWidth} />
         </Svg>
     ),
+    TabHome: ({ focused }: { focused: boolean }) => (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill={focused ? '#64C59A' : 'none'}>
+            <Path
+                d="M3 9L12 2L21 9V20C21 21.1046 20.1046 22 19 22H5C3.89543 22 3 21.1046 3 20V9Z"
+                stroke={focused ? '#64C59A' : '#999999'}
+                strokeWidth="2"
+                fill={focused ? '#64C59A' : 'none'}
+            />
+            <Path d="M9 22V12H15V22" stroke={focused ? '#fff' : '#999999'} strokeWidth="2" />
+        </Svg>
+    ),
+    TabCalendar: ({ focused }: { focused: boolean }) => (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                stroke={focused ? '#64C59A' : '#999999'}
+                strokeWidth="2"
+            />
+            <Path d="M16 2V6" stroke={focused ? '#64C59A' : '#999999'} strokeWidth="2" />
+            <Path d="M8 2V6" stroke={focused ? '#64C59A' : '#999999'} strokeWidth="2" />
+            <Path d="M3 10H21" stroke={focused ? '#64C59A' : '#999999'} strokeWidth="2" />
+        </Svg>
+    ),
+    TabProgress: ({ focused }: { focused: boolean }) => (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2Z"
+                stroke={focused ? '#64C59A' : '#999999'}
+                strokeWidth="2"
+            />
+            <Path d="M12 6V12L16 14" stroke={focused ? '#64C59A' : '#999999'} strokeWidth="2" strokeLinecap="round" />
+        </Svg>
+    ),
+    TabAccount: ({ focused }: { focused: boolean }) => (
+        <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+            <Path
+                d="M20 21V19C20 16.7909 18.2091 15 16 15H8C5.79086 15 4 16.7909 4 19V21"
+                stroke={focused ? '#64C59A' : '#999999'}
+                strokeWidth="2"
+                strokeLinecap="round"
+            />
+            <Circle cx="12" cy="7" r="4" stroke={focused ? '#64C59A' : '#999999'} strokeWidth="2" />
+        </Svg>
+    ),
 };
 
 // Emojis from DailySliders
