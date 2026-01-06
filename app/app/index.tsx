@@ -2,14 +2,11 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { useSession } from '../src/contexts/SessionContext';
 import Auth from '../src/components/Auth';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 
 export default function RootScreen() {
   const { session, loading } = useSession();
   const router = useRouter();
-
-  // Redirect logic moved to app/_layout.tsx
-
 
   if (loading) {
     return (
@@ -19,12 +16,10 @@ export default function RootScreen() {
     );
   }
 
-  // If there's a session, we are redirecting, so show nothing or loading
   if (session) {
-    return null;
+    return <Redirect href="/(tabs)" />;
   }
 
-  // Otherwise, show the auth screen
   return <Auth />;
 }
 
