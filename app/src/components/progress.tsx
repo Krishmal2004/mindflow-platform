@@ -354,6 +354,7 @@ export default function ProgressScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Your Progress</Text>
+        <Text style={styles.subtitle}>Track your mindfulness journey</Text>
       </View>
 
       <ScrollView
@@ -989,13 +990,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FDFC',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
+    padding: 24,
     paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FDFC',
+    zIndex: 10,
   },
   title: {
     fontSize: 32,

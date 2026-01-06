@@ -150,7 +150,7 @@ export default function Account({ session }: { session: Session }) {
         <Text style={styles.subtitle}>Manage your profile & security</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingTop: 20 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0, paddingTop: 10 }}>
         {/* Profile Hero */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.profileCard}>
           {/* User Profile Picture */}
@@ -320,7 +320,7 @@ export default function Account({ session }: { session: Session }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
-  header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 10, backgroundColor: '#F8FDFC', zIndex: 10 },
+  header: { paddingTop: 45, padding: 24, backgroundColor: '#F8FDFC', zIndex: 10 },
   title: {
     fontSize: 32,
     fontWeight: '800',
@@ -334,10 +334,10 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     marginHorizontal: 24,
-    marginTop: 20,
+    marginTop: 0,
     backgroundColor: '#fff',
     borderRadius: 32,
-    paddingVertical: 40,
+    paddingVertical: 30,
     alignItems: 'center',
     shadowColor: '#64C59A',
     shadowOffset: { width: 0, height: 12 },
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   actionLeft: { flexDirection: 'row', alignItems: 'center' },
   iconCircle: {
     width: 44,
-    height: 44,
+    height: 40,
     borderRadius: 22,
     backgroundColor: '#E6F4F0',
     justifyContent: 'center',
