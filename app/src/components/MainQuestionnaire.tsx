@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSession } from '../contexts/SessionContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import SuccessScreen from './common/SuccessScreen';
 import StandardHeader from './common/StandardHeader';
@@ -155,9 +156,27 @@ export default function MainQuestionnaire() {
       const hasSubmitted = !!existingResponses || !!existingSession;
       setAlreadySubmitted(hasSubmitted);
 
-      // If there's no submission yet, automatically start the questionnaire
-      if (!hasSubmitted && !showStartScreen && !currentSection) {
-        setShowStartScreen(true);
+      // If there's no submission yet, check for local progress or start new
+      if (!hasSubmitted) {
+        // Try to restore from AsyncStorage
+        const savedProgressJson = await AsyncStorage.getItem(`main_questionnaire_progress_${session.user.id}`);
+        if (savedProgressJson) {
+          const savedProgress = JSON.parse(savedProgressJson);
+          if (savedProgress.questionSetId === questionSetData.id) {
+            setAnswers(savedProgress.answers);
+            if (savedProgress.startTime) setStartTime(new Date(savedProgress.startTime));
+            if (savedProgress.currentSection) {
+              setCurrentSection(savedProgress.currentSection);
+              setShowStartScreen(false);
+            } else if (!showStartScreen && !currentSection) {
+              setShowStartScreen(true);
+            }
+          } else {
+            if (!showStartScreen && !currentSection) setShowStartScreen(true);
+          }
+        } else {
+          if (!showStartScreen && !currentSection) setShowStartScreen(true);
+        }
       }
     } catch (err: any) {
       console.error('Error loading questionnaire:', err);
@@ -209,79 +228,31 @@ export default function MainQuestionnaire() {
 
     setSubmitting(true);
     try {
-      // 1. Ensure a session exists or create one
-      let sessionId = null;
-      const { data: existingSession } = await supabase
-        .from('main_questionnaire_sessions')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq('question_set_id', questionSet.id)
-        .maybeSingle();
+      // Save current state to AsyncStorage for backup
+      const progressData = {
+        answers,
+        startTime: startTime?.toISOString(),
+        currentSection,
+        questionSetId: questionSet.id,
+        userId: session.user.id
+      };
+      await AsyncStorage.setItem(`main_questionnaire_progress_${session.user.id}`, JSON.stringify(progressData));
 
-      if (existingSession) {
-        sessionId = existingSession.id;
-        // Update time spent
-        await supabase
-          .from('main_questionnaire_sessions')
-          .update({ time_to_complete: getTimeSpent() })
-          .eq('id', sessionId);
+      // Determine next section
+      const currentIndex = questionSections.findIndex(s => s.section_key === currentSection);
+      const nextSection = questionSections[currentIndex + 1];
+
+      if (nextSection) {
+        setCurrentSection(nextSection.section_key);
+        // Scroll to top or reset view if needed
       } else {
-        const { data: newSession, error: sessionError } = await supabase
-          .from('main_questionnaire_sessions')
-          .insert({
-            user_id: session.user.id,
-            question_set_id: questionSet.id,
-            time_to_complete: getTimeSpent(),
-            started_at: startTime?.toISOString(),
-          })
-          .select()
-          .single();
-        if (sessionError) throw sessionError;
-        sessionId = newSession.id;
+        // If no next section, we are likely at the end, but this function is usually for "Next"
+        // handleSubmit handles the final "Submit"
       }
-
-      // 2. Save answers for the current section
-      const currentSectionQuestions = questions.filter(q => q.section_key === currentSection);
-      const sectionAnswers = answers.filter(a => currentSectionQuestions.some(q => q.question_id === a.questionId) && a.value !== null);
-
-      if (sectionAnswers.length === 0) {
-        goBackToSections();
-        return;
-      }
-
-      // Delete existing responses for these questions to avoid conflict errors
-      const questionIds = sectionAnswers.map(a => a.questionId);
-      const { error: deleteError } = await supabase
-        .from('main_questionnaire_responses')
-        .delete()
-        .eq('session_id', sessionId)
-        .in('question_id', questionIds);
-
-      if (deleteError) {
-        console.warn('Delete old responses error (non-fatal):', deleteError);
-      }
-
-      const responses = sectionAnswers.map(answer => ({
-        session_id: sessionId,
-        user_id: session.user.id,
-        question_set_id: questionSet.id,
-        question_id: answer.questionId,
-        response_value: answer.value,
-      }));
-
-      const { error: insertError } = await supabase
-        .from('main_questionnaire_responses')
-        .insert(responses);
-
-      if (insertError) throw insertError;
-
-      // 3. Navigate back to sections list
-      setCurrentSection(null);
-      // Ensure we clear any other transient state if needed
 
     } catch (err: any) {
-      console.error('Save progress error:', err);
-      Alert.alert('Save Failed', `Could not save your progress: ${err.message || 'Unknown error'}`);
+      console.error('Save local progress error:', err);
+      // We don't block navigation on local save failure, but we log it
     } finally {
       setSubmitting(false);
     }
@@ -296,37 +267,97 @@ export default function MainQuestionnaire() {
     // Check if ALL questions are answered
     const unanswered = answers.find(a => a.value === null);
     if (unanswered) {
-      // Optional: Allow partial submission or enforce strict completion?
-      // Currently enforcing strict completion for "Submit"
       Alert.alert('Incomplete', 'Please answer all questions before submitting.');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Re-save everything to be safe, or just finalize
-      // Logic assumes saveSectionProgress handles upserts, so we can just finalize here
-      await saveSectionProgress();
+      // 1. Create the session record
+      const { data: newSession, error: sessionError } = await supabase
+        .from('main_questionnaire_sessions')
+        .insert({
+          user_id: session.user.id,
+          question_set_id: questionSet.id,
+          time_to_complete: getTimeSpent(),
+          started_at: startTime?.toISOString(),
+        })
+        .select()
+        .single();
 
-      // Update the submission status locally
+      if (sessionError) throw sessionError;
+      const sessionId = newSession.id;
+
+      // 2. Prepare all responses
+      // Filter only answers that belong to current question set (though state should be clean)
+      // and map to DB format
+      const validAnswers = answers.filter(a => a.value !== null);
+      const responses = validAnswers.map(answer => ({
+        session_id: sessionId,
+        user_id: session.user.id,
+        question_set_id: questionSet.id,
+        question_id: answer.questionId,
+        response_value: answer.value,
+      }));
+
+      // 3. Insert all responses in batch
+      const { error: insertError } = await supabase
+        .from('main_questionnaire_responses')
+        .insert(responses);
+
+      if (insertError) throw insertError;
+
+      // 4. Cleanup and Success
+      await AsyncStorage.removeItem(`main_questionnaire_progress_${session.user.id}`);
+
       setAlreadySubmitted(true);
       setShowCelebration(true);
       setTimeout(() => {
         setShowCelebration(false);
-        // router.push('/(tabs)/progress');
+        // router.push('/(tabs)/progress'); // Uncomment if auto-redirect is desired
       }, 3000);
+
     } catch (err: any) {
       console.error('Submit error:', err);
-      Alert.alert('Submission Failed', err.message);
+      Alert.alert('Submission Failed', err.message || 'Failed to submit questionnaire. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleExit = () => {
+    Alert.alert(
+      'Exit Questionnaire?',
+      'Your progress will be lost. Are you sure you want to exit?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Exit',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (session?.user?.id) {
+                await AsyncStorage.removeItem(`main_questionnaire_progress_${session.user.id}`);
+              }
+              const resetAnswers = questions.map(q => ({ questionId: q.question_id, value: null }));
+              setAnswers(resetAnswers);
+              setStartTime(null);
+              setCurrentSection(null);
+              router.back();
+            } catch (err) {
+              console.error('Error clearing progress:', err);
+              router.back();
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const startQuestionnaire = () => {
     setShowStartScreen(false);
     setStartTime(new Date());
-    setCurrentSection(questionSections[0]?.section_key || null); // Auto start Part A
+    setCurrentSection(null);
   };
 
   const goToSection = (section: string) => {
@@ -409,6 +440,7 @@ export default function MainQuestionnaire() {
       <View style={styles.container}>
         <StandardHeader
           title="Main Questionnaire"
+          onBack={handleExit}
           rightContent={
             <View style={styles.progressBadge}>
               <Text style={styles.progressBadgeText}>0%</Text>
@@ -453,6 +485,7 @@ export default function MainQuestionnaire() {
       <View style={styles.container}>
         <StandardHeader
           title="Main Questionnaire"
+          onBack={handleExit}
           rightContent={
             <View style={styles.progressBadge}>
               <Text style={styles.progressBadgeText}>{totalAnswered}/{totalQuestions}</Text>
@@ -929,7 +962,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   sectionInstructionsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#E8F5F1',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -938,6 +971,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#64C59A',
   },
   scaleLabelsContainer: {
     flexDirection: 'row',
@@ -963,14 +998,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#F0F9F6',
+    backgroundColor: '#64C59A',
     justifyContent: 'center',
     alignItems: 'center',
   },
   scaleNumberText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#2E8A66',
   },
   questionContainer: {
     marginBottom: 20,
