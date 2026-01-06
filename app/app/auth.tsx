@@ -1,9 +1,10 @@
 import React from "react";
 import { StyleSheet, View, ActivityIndicator } from "react-native";
-import { useSession } from "../src/contexts/SessionContext";
 import { Redirect } from "expo-router";
+import Auth from "../src/components/Auth";
+import { useSession } from "../src/contexts/SessionContext";
 
-export default function RootScreen() {
+export default function AuthScreen() {
   const { session, loading } = useSession();
 
   if (loading) {
@@ -18,7 +19,7 @@ export default function RootScreen() {
     return <Redirect href="/(tabs)" />;
   }
 
-  return <Redirect href="/auth" />;
+  return <Auth />;
 }
 
 const styles = StyleSheet.create({
