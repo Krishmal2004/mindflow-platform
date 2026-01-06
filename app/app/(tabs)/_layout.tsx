@@ -1,11 +1,11 @@
-import { Tabs, useRouter } from 'expo-router';
-import { StyleSheet, Text, ActivityIndicator, View } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { useSession } from '../../src/contexts/SessionContext';
-import { useEffect } from 'react';
-import { Icons } from '../../src/components/common/AppIcons';
+import { Tabs } from "expo-router";
+import { StyleSheet, Text } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
+import { Icons } from "../../src/components/common/AppIcons";
 
-// Animated + Fixed Label Component
 const TabIconWithLabel = ({
   Icon,
   label,
@@ -35,27 +35,13 @@ const TabIconWithLabel = ({
 };
 
 export default function TabLayout() {
-  const { session, loading } = useSession();
-  const router = useRouter();
-
-  // Redirect logic moved to app/_layout.tsx
-
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#64C59A" />
-      </View>
-    );
-  }
-
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: "#FFFFFF",
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
@@ -69,36 +55,52 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ focused }) => (
-            <TabIconWithLabel Icon={Icons.TabHome} label="Home" focused={focused} />
+            <TabIconWithLabel
+              Icon={Icons.TabHome}
+              label="Home"
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
-          title: 'Calendar',
+          title: "Calendar",
           tabBarIcon: ({ focused }) => (
-            <TabIconWithLabel Icon={Icons.TabCalendar} label="Calendar" focused={focused} />
+            <TabIconWithLabel
+              Icon={Icons.TabCalendar}
+              label="Calendar"
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="progress"
         options={{
-          title: 'Progress',
+          title: "Progress",
           tabBarIcon: ({ focused }) => (
-            <TabIconWithLabel Icon={Icons.TabProgress} label="Progress" focused={focused} />
+            <TabIconWithLabel
+              Icon={Icons.TabProgress}
+              label="Progress"
+              focused={focused}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
-          title: 'Account',
+          title: "Account",
           tabBarIcon: ({ focused }) => (
-            <TabIconWithLabel Icon={Icons.TabAccount} label="Account" focused={focused} />
+            <TabIconWithLabel
+              Icon={Icons.TabAccount}
+              label="Account"
+              focused={focused}
+            />
           ),
         }}
       />
@@ -109,19 +111,19 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     minWidth: 60,
   },
   label: {
     marginTop: 6,
     fontSize: 11,
-    color: '#999999',
-    fontWeight: '600',
+    color: "#999999",
+    fontWeight: "600",
     letterSpacing: 0.2,
   },
   labelActive: {
-    color: '#64C59A',
-    fontWeight: '700',
+    color: "#64C59A",
+    fontWeight: "700",
   },
 });

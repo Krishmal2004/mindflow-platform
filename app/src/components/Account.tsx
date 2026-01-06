@@ -1,5 +1,5 @@
 // app/account.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,16 +11,16 @@ import {
   ActivityIndicator,
   Modal,
   Image,
-} from 'react-native';
-import { supabase } from '../lib/supabase';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Icons } from './common/AppIcons';
-import { useCallback } from 'react';
+} from "react-native";
+import { supabase } from "../lib/supabase";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { useRouter, useFocusEffect } from "expo-router";
+import { Icons } from "./common/AppIcons";
+import { useCallback } from "react";
 
 /**
  * Account Component
- * 
+ *
  * Manages user profile display, password updates, and signing out.
  */
 export default function Account({ session }: { session: any }) {
@@ -30,26 +30,30 @@ export default function Account({ session }: { session: any }) {
   const [saving, setSaving] = useState(false);
 
   // Profile data
-  const [username, setUsername] = useState('');
-  const [researchID, setResearchID] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState("");
+  const [researchID, setResearchID] = useState("");
+  const [email, setEmail] = useState("");
 
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [feedbackModal, setFeedbackModal] = useState<{ visible: boolean; type: 'success' | 'error'; message: string }>({
+  const [feedbackModal, setFeedbackModal] = useState<{
+    visible: boolean;
+    type: "success" | "error";
+    message: string;
+  }>({
     visible: false,
-    type: 'success',
-    message: ''
+    type: "success",
+    message: "",
   });
 
   useFocusEffect(
     useCallback(() => {
       if (session) {
-        setEmail(session.user.email || '');
+        setEmail(session.user.email || "");
         getProfile();
       }
     }, [session])
@@ -62,20 +66,20 @@ export default function Account({ session }: { session: any }) {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('profiles')
-        .select('username, researchID')
-        .eq('id', session?.user.id)
+        .from("profiles")
+        .select("username, researchID")
+        .eq("id", session?.user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== "PGRST116") throw error;
 
       if (data) {
-        setUsername(data.username || 'Mindful User');
-        setResearchID(data.researchID || 'Not set');
+        setUsername(data.username || "Mindful User");
+        setResearchID(data.researchID || "Not set");
       }
     } catch (error) {
       if (error instanceof Error) {
-        console.error('Error loading profile:', error.message);
+        console.error("Error loading profile:", error.message);
       }
     } finally {
       setLoading(false);
@@ -87,49 +91,51 @@ export default function Account({ session }: { session: any }) {
    * Validates length and match before submitting to Supabase.
    */
   async function changePassword() {
-    setPasswordError('');
+    setPasswordError("");
     if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+      setPasswordError("Password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError("Passwords do not match");
       return;
     }
 
     try {
       setSaving(true);
-      const { error } = await (supabase.auth as any).updateUser({ password: newPassword });
+      const { error } = await (supabase.auth as any).updateUser({
+        password: newPassword,
+      });
       if (error) throw error;
 
       setFeedbackModal({
         visible: true,
-        type: 'success',
-        message: 'Your password has been changed!'
+        type: "success",
+        message: "Your password has been changed!",
       });
       setShowPasswordModal(false);
-      setNewPassword('');
-      setConfirmPassword('');
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (error: any) {
       setFeedbackModal({
         visible: true,
-        type: 'error',
-        message: error.message || 'Failed to update password'
+        type: "error",
+        message: error.message || "Failed to update password",
       });
     } finally {
       setSaving(false);
     }
   }
 
-  /**
-   * Signs the user out and redirects to the authentication screen.
-   */
   async function signOut() {
     try {
-      const { error } = await (supabase.auth as any).signOut();
+      setShowSignOutModal(false);
+      const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      // After a successful sign-out, go directly to the auth route.
+      router.replace("/auth");
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to sign out');
+      Alert.alert("Error", error.message || "Failed to sign out");
     }
   }
 
@@ -149,12 +155,21 @@ export default function Account({ session }: { session: any }) {
         <Text style={styles.subtitle}>Manage your profile & security</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0, paddingTop: 10 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 0, paddingTop: 10 }}
+      >
         {/* Profile Hero */}
-        <Animated.View entering={FadeInDown.duration(600)} style={styles.profileCard}>
+        <Animated.View
+          entering={FadeInDown.duration(600)}
+          style={styles.profileCard}
+        >
           {/* User Profile Picture */}
           <View style={styles.avatarCircle}>
-            <Image source={require('../../assets/images/user.png')} style={styles.avatarImage} />
+            <Image
+              source={require("../../assets/images/user.png")}
+              style={styles.avatarImage}
+            />
           </View>
 
           <Text style={styles.userName}>{username}</Text>
@@ -162,12 +177,15 @@ export default function Account({ session }: { session: any }) {
         </Animated.View>
 
         {/* Profile Information */}
-        <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(600)}
+          style={styles.section}
+        >
           <Text style={styles.sectionTitle}>Profile Information</Text>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Username</Text>
-              <Text style={styles.infoValue}>{username || 'Not set'}</Text>
+              <Text style={styles.infoValue}>{username || "Not set"}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Research ID</Text>
@@ -186,27 +204,56 @@ export default function Account({ session }: { session: any }) {
         </Animated.View>
 
         {/* Security Section */}
-        <Animated.View entering={FadeInDown.delay(400).duration(600)} style={styles.section}>
+        <Animated.View
+          entering={FadeInDown.delay(400).duration(600)}
+          style={styles.section}
+        >
           <Text style={styles.sectionTitle}>Security</Text>
 
-          <TouchableOpacity style={styles.actionButton} onPress={() => setShowPasswordModal(true)}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setShowPasswordModal(true)}
+          >
             <View style={styles.actionLeft}>
               <View style={styles.iconCircle}>
-                <Icons.Lock width={24} height={24} color="#64C59A" strokeWidth={1.8} />
+                <Icons.Lock
+                  width={24}
+                  height={24}
+                  color="#64C59A"
+                  strokeWidth={1.8}
+                />
               </View>
               <Text style={styles.actionText}>Change Password</Text>
             </View>
-            <Icons.ChevronRight width={20} height={20} color="#64C59A" strokeWidth={2.5} />
+            <Icons.ChevronRight
+              width={20}
+              height={20}
+              color="#64C59A"
+              strokeWidth={2.5}
+            />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionButton, styles.dangerButton]} onPress={() => setShowSignOutModal(true)}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.dangerButton]}
+            onPress={() => setShowSignOutModal(true)}
+          >
             <View style={styles.actionLeft}>
-              <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
-                <Icons.LogOut width={24} height={24} color="#EF4444" strokeWidth={1.8} />
+              <View style={[styles.iconCircle, { backgroundColor: "#FEE2E2" }]}>
+                <Icons.LogOut
+                  width={24}
+                  height={24}
+                  color="#EF4444"
+                  strokeWidth={1.8}
+                />
               </View>
               <Text style={styles.dangerText}>Sign Out from Device</Text>
             </View>
-            <Icons.ChevronRight width={20} height={20} color="#EF4444" strokeWidth={2.5} />
+            <Icons.ChevronRight
+              width={20}
+              height={20}
+              color="#EF4444"
+              strokeWidth={2.5}
+            />
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
@@ -242,16 +289,18 @@ export default function Account({ session }: { session: any }) {
               />
             </View>
 
-            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+            {passwordError ? (
+              <Text style={styles.errorText}>{passwordError}</Text>
+            ) : null}
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => {
                   setShowPasswordModal(false);
-                  setPasswordError('');
-                  setNewPassword('');
-                  setConfirmPassword('');
+                  setPasswordError("");
+                  setNewPassword("");
+                  setConfirmPassword("");
                 }}
               >
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -262,7 +311,7 @@ export default function Account({ session }: { session: any }) {
                 disabled={saving}
               >
                 <Text style={styles.confirmText}>
-                  {saving ? 'Updating...' : 'Update Password'}
+                  {saving ? "Updating..." : "Update Password"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -270,14 +319,18 @@ export default function Account({ session }: { session: any }) {
         </View>
       </Modal>
 
-      {/* Sign Out Confirmation Modal */}
       <Modal visible={showSignOutModal} transparent animationType="fade">
         <View style={styles.signOutModalOverlay}>
           <View style={styles.alertModal}>
             <Text style={styles.alertTitle}>Sign Out?</Text>
-            <Text style={styles.alertMessage}>You will need to log in again.</Text>
+            <Text style={styles.alertMessage}>
+              You will need to log in again.
+            </Text>
             <View style={styles.alertActions}>
-              <TouchableOpacity style={styles.alertCancel} onPress={() => setShowSignOutModal(false)}>
+              <TouchableOpacity
+                style={styles.alertCancel}
+                onPress={() => setShowSignOutModal(false)}
+              >
                 <Text style={styles.alertCancelText}>Stay</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.alertConfirm} onPress={signOut}>
@@ -288,24 +341,40 @@ export default function Account({ session }: { session: any }) {
         </View>
       </Modal>
 
-      {/* Success/Error Feedback Modal */}
       <Modal visible={feedbackModal.visible} transparent animationType="fade">
         <View style={styles.signOutModalOverlay}>
           <View style={styles.feedbackModal}>
-            <View style={[styles.feedbackIconContainer, feedbackModal.type === 'error' && styles.feedbackIconError]}>
-              {feedbackModal.type === 'success' ? (
-                <Icons.Check width={40} height={40} color="#fff" strokeWidth={3} />
+            <View
+              style={[
+                styles.feedbackIconContainer,
+                feedbackModal.type === "error" && styles.feedbackIconError,
+              ]}
+            >
+              {feedbackModal.type === "success" ? (
+                <Icons.Check
+                  width={40}
+                  height={40}
+                  color="#fff"
+                  strokeWidth={3}
+                />
               ) : (
-                <Icons.RemoveCircle width={40} height={40} color="#fff" strokeWidth={3} />
+                <Icons.RemoveCircle
+                  width={40}
+                  height={40}
+                  color="#fff"
+                  strokeWidth={3}
+                />
               )}
             </View>
             <Text style={styles.feedbackTitle}>
-              {feedbackModal.type === 'success' ? 'Success!' : 'Error'}
+              {feedbackModal.type === "success" ? "Success!" : "Error"}
             </Text>
             <Text style={styles.feedbackMessage}>{feedbackModal.message}</Text>
             <TouchableOpacity
               style={styles.feedbackButton}
-              onPress={() => setFeedbackModal(prev => ({ ...prev, visible: false }))}
+              onPress={() =>
+                setFeedbackModal((prev) => ({ ...prev, visible: false }))
+              }
             >
               <Text style={styles.feedbackButtonText}>Close</Text>
             </TouchableOpacity>
@@ -316,29 +385,33 @@ export default function Account({ session }: { session: any }) {
   );
 }
 
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FDFC' },
-  header: { paddingTop: 45, padding: 24, backgroundColor: '#F8FDFC', zIndex: 10 },
+  container: { flex: 1, backgroundColor: "#F8FDFC" },
+  header: {
+    paddingTop: 45,
+    padding: 24,
+    backgroundColor: "#F8FDFC",
+    zIndex: 10,
+  },
   title: {
     fontSize: 32,
-    fontWeight: '800',
-    color: '#2E8A66',
+    fontWeight: "800",
+    color: "#2E8A66",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     lineHeight: 22,
   },
   profileCard: {
     marginHorizontal: 24,
     marginTop: 0,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 32,
     paddingVertical: 30,
-    alignItems: 'center',
-    shadowColor: '#64C59A',
+    alignItems: "center",
+    shadowColor: "#64C59A",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
     shadowRadius: 25,
@@ -348,119 +421,221 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: '#E8F5F1',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#E8F5F1",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 8,
-    borderColor: '#fff',
-    shadowColor: '#64C59A',
+    borderColor: "#fff",
+    shadowColor: "#64C59A",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 25,
     elevation: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   avatarImage: {
     width: 140,
     height: 140,
-    resizeMode: 'cover',
+    resizeMode: "cover",
     marginTop: 8,
   },
-  userName: { fontSize: 26, fontWeight: '700', color: '#1A1A1A', marginTop: 12 },
-  userEmail: { fontSize: 16, color: '#64C59A', marginTop: 6, fontWeight: '500' },
+  userName: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginTop: 12,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: "#64C59A",
+    marginTop: 6,
+    fontWeight: "500",
+  },
   section: { marginTop: 32, paddingHorizontal: 24 },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    color: "#666",
+    textTransform: "uppercase",
     letterSpacing: 1.5,
     marginBottom: 16,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 24,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 8,
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
-  infoLabel: { fontSize: 16, color: '#555', fontWeight: '500' },
-  infoValue: { fontSize: 16, color: '#1A1A1A', fontWeight: '600', flex: 1, textAlign: 'right', marginLeft: 20 },
-  infoNote: { marginTop: 16, padding: 16, backgroundColor: '#F0FDF9', borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#64C59A' },
-  noteText: { fontSize: 14, color: '#2E8A66', lineHeight: 20 },
+  infoLabel: { fontSize: 16, color: "#555", fontWeight: "500" },
+  infoValue: {
+    fontSize: 16,
+    color: "#1A1A1A",
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "right",
+    marginLeft: 20,
+  },
+  infoNote: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: "#F0FDF9",
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#64C59A",
+  },
+  noteText: { fontSize: 14, color: "#2E8A66", lineHeight: 20 },
   actionButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 6,
   },
-  actionLeft: { flexDirection: 'row', alignItems: 'center' },
+  actionLeft: { flexDirection: "row", alignItems: "center" },
   iconCircle: {
     width: 44,
     height: 40,
     borderRadius: 22,
-    backgroundColor: '#E6F4F0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#E6F4F0",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
-  actionText: { fontSize: 17, color: '#333', fontWeight: '500' },
-  dangerButton: { backgroundColor: '#FFFBFA' },
-  dangerText: { fontSize: 17, color: '#EF4444', fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  signOutModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 20, paddingHorizontal: 24, paddingBottom: 40 },
-  modalHandle: { width: 50, height: 5, backgroundColor: '#ddd', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 24 },
+  actionText: { fontSize: 17, color: "#333", fontWeight: "500" },
+  dangerButton: { backgroundColor: "#FFFBFA" },
+  dangerText: { fontSize: 17, color: "#EF4444", fontWeight: "600" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  signOutModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 50,
+    height: 5,
+    backgroundColor: "#ddd",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    textAlign: "center",
+    marginBottom: 24,
+  },
   inputGroup: { marginBottom: 20 },
-  inputLabel: { fontSize: 16, color: '#333', marginBottom: 10, fontWeight: '500' },
+  inputLabel: {
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 10,
+    fontWeight: "500",
+  },
   input: {
-    backgroundColor: '#F7F7F7',
+    backgroundColor: "#F7F7F7",
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
     fontSize: 17,
-    color: '#333',
+    color: "#333",
   },
-  errorText: { color: '#EF4444', fontSize: 15, textAlign: 'center', marginTop: 10 },
-  modalActions: { flexDirection: 'row', marginTop: 20 },
-  cancelBtn: { flex: 1, paddingVertical: 16, marginRight: 12, backgroundColor: '#F0F0F0', borderRadius: 16, alignItems: 'center' },
-  cancelText: { fontSize: 17, color: '#666', fontWeight: '600' },
-  confirmBtn: { flex: 1, paddingVertical: 16, marginLeft: 12, backgroundColor: '#64C59A', borderRadius: 16, alignItems: 'center' },
-  confirmText: { fontSize: 17, color: '#fff', fontWeight: '600' },
-  alertModal: { backgroundColor: '#fff', marginHorizontal: 40, borderRadius: 24, padding: 32, alignItems: 'center' },
-  alertTitle: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
-  alertMessage: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 32 },
-  alertActions: { flexDirection: 'row', width: '100%' },
-  alertCancel: { flex: 1, paddingVertical: 16, backgroundColor: '#F0F0F0', borderRadius: 16, marginRight: 12, alignItems: 'center' },
-  alertCancelText: { fontSize: 17, color: '#666', fontWeight: '600' },
-  alertConfirm: { flex: 1, paddingVertical: 16, backgroundColor: '#EF4444', borderRadius: 16, marginLeft: 12, alignItems: 'center' },
-  alertConfirmText: { fontSize: 17, color: '#fff', fontWeight: '600' },
+  errorText: {
+    color: "#EF4444",
+    fontSize: 15,
+    textAlign: "center",
+    marginTop: 10,
+  },
+  modalActions: { flexDirection: "row", marginTop: 20 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    marginRight: 12,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  cancelText: { fontSize: 17, color: "#666", fontWeight: "600" },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    marginLeft: 12,
+    backgroundColor: "#64C59A",
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  confirmText: { fontSize: 17, color: "#fff", fontWeight: "600" },
+  alertModal: {
+    backgroundColor: "#fff",
+    marginHorizontal: 40,
+    borderRadius: 24,
+    padding: 32,
+    alignItems: "center",
+  },
+  alertTitle: { fontSize: 22, fontWeight: "700", marginBottom: 12 },
+  alertMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  alertActions: { flexDirection: "row", width: "100%" },
+  alertCancel: {
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 16,
+    marginRight: 12,
+    alignItems: "center",
+  },
+  alertCancelText: { fontSize: 17, color: "#666", fontWeight: "600" },
+  alertConfirm: {
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: "#EF4444",
+    borderRadius: 16,
+    marginLeft: 12,
+    alignItems: "center",
+  },
+  alertConfirmText: { fontSize: 17, color: "#fff", fontWeight: "600" },
   feedbackModal: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 24,
     padding: 30,
-    alignItems: 'center',
-    width: '85%',
+    alignItems: "center",
+    width: "85%",
     maxWidth: 340,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 10,
@@ -469,38 +644,38 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: '#64C59A',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#64C59A",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
   },
   feedbackIconError: {
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
   },
   feedbackTitle: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#333',
+    fontWeight: "800",
+    color: "#333",
     marginBottom: 10,
   },
   feedbackMessage: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 24,
     lineHeight: 22,
   },
   feedbackButton: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 16,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
   },
   feedbackButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
