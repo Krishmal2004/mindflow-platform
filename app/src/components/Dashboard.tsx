@@ -257,7 +257,12 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
           return d.getTime();
         }));
 
+        // Check streak starting from today if done, otherwise from yesterday
         let checkDate = new Date(todayDate);
+        if (!isDailyDone) {
+          checkDate.setDate(checkDate.getDate() - 1);
+        }
+
         while (entryDates.has(checkDate.getTime())) {
           currentStreak++;
           checkDate.setDate(checkDate.getDate() - 1);
@@ -355,7 +360,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
       </View>
 
       {loading ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 28 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 0, paddingHorizontal: 28 }}>
           {/* Tip Card Skeleton */}
           <SkeletonItem style={{ height: 180, width: '100%', borderRadius: 32, marginTop: 10 }} />
 
@@ -384,7 +389,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         <ScrollView
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 60 }}
+          contentContainerStyle={{ paddingBottom: 0 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           {userExtension && (
@@ -476,10 +481,10 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.aboutMeTitle, { color: '#000' }]}>
-                    {aboutMeCompleted ? 'About Me' : 'Complete Your Profile'}
+                    {aboutMeCompleted ? 'About Me' : 'Start From Here'}
                   </Text>
                   <Text style={[styles.aboutMeSubtitle, { color: '#666' }]}>
-                    {aboutMeCompleted ? 'View your details' : 'Tell us a bit about yourself to get started (1 min)'}
+                    {aboutMeCompleted ? 'View your details' : 'We want to get to know you'}
                   </Text>
                 </View>
                 {!aboutMeCompleted && <Icons.Check width={24} height={24} color="#000" />}
@@ -589,8 +594,8 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 28, paddingTop: 64, paddingBottom: 20 },
+  container: { flex: 1, backgroundColor: '#E8F5F1' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 28, paddingTop: 40, paddingBottom: 20 },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
   mindText: { color: '#3bcc97ff' },
   flowText: { color: '#2E8A66' },

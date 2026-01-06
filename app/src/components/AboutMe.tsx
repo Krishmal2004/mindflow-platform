@@ -8,15 +8,16 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown, ZoomIn, BounceIn } from 'react-native-reanimated';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Icons } from './common/AppIcons';
 import StandardHeader from './common/StandardHeader';
+import SuccessScreen from './common/SuccessScreen';
+
 interface AboutMeData {
   university_id: string;
   education_level: string;
@@ -29,40 +30,33 @@ interface AboutMeData {
   personal_goals: string;
   why_mindflow: string;
 }
+
 const questions = [
   { key: 'university_id', Icon: Icons.School, title: 'University ID', subtitle: 'Your official student ID', required: true },
   { key: 'education_level', Icon: Icons.Graduation, title: 'Education Level', subtitle: 'Current academic year', required: true },
   { key: 'major_field_of_study', Icon: Icons.Book, title: 'Major / Field of Study', subtitle: 'What are you studying?', required: true },
   { key: 'age', Icon: Icons.Calendar, title: 'Age', subtitle: 'How old are you?', required: true },
   { key: 'living_situation', Icon: Icons.Home, title: 'Living Situation', subtitle: 'Where do you currently live?', required: true },
-  { key: 'family_background', Icon: Icons.Family, title: 'Family Background', subtitle: 'Tell us about your family', required: false },
-  { key: 'cultural_background', Icon: Icons.Globe, title: 'Cultural Background', subtitle: 'Your culture & heritage', required: false },
-  { key: 'hobbies_interests', Icon: Icons.Heart, title: 'Hobbies & Interests', subtitle: 'What do you enjoy doing?', required: false },
+  { key: 'family_background', Icon: Icons.Family, title: 'Family Background', subtitle: 'Tell us about your family', required: true },
+  { key: 'cultural_background', Icon: Icons.Globe, title: 'Cultural Background', subtitle: 'Your culture & heritage', required: true },
+  { key: 'hobbies_interests', Icon: Icons.Heart, title: 'Hobbies & Interests', subtitle: 'What do you enjoy doing?', required: true },
   { key: 'personal_goals', Icon: Icons.Target, title: 'Personal Goals', subtitle: 'What are you working towards?', required: false },
   { key: 'why_mindflow', Icon: Icons.Mindflow, title: 'Previous Experience', subtitle: 'Have you done any mindfulness practices?', required: true },
 ];
+
 const educationLevels = ["First Year", "Second Year", "Third Year", "Fourth Year", "Graduate Student", "Other"];
 const livingSituations = ["Dorm", "Off-campus housing", "With family", "Other"];
 const hobbiesOptions = [
-  "Reading",
-  "Sports & Fitness",
-  "Music",
-  "Travel",
-  "Cooking & Baking",
-  "Video Gaming",
-  "Art & Crafts",
-  "Hiking & Outdoors",
-  "Watching Movies/TV",
-  "Photography",
-  "Other"
+  "Reading", "Sports & Fitness", "Music", "Travel", "Cooking & Baking",
+  "Video Gaming", "Art & Crafts", "Hiking & Outdoors", "Watching Movies/TV", "Photography", "Other"
 ];
+
 export default function AboutMe({ session, onBack }: { session: Session; onBack: () => void }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [declarationChecked, setDeclarationChecked] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
   const [data, setData] = useState<AboutMeData>({
     university_id: '',
     education_level: '',
@@ -77,6 +71,7 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
   });
   const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
   const [otherHobby, setOtherHobby] = useState('');
+
   // Compute completion percentage
   const requiredQuestions = questions.filter(q => q.required);
   const allQuestions = questions;
@@ -91,9 +86,11 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     const value = data[q.key as keyof AboutMeData];
     return value !== '' && value !== null && value !== undefined;
   }).length;
+
   useEffect(() => {
     fetchData();
   }, []);
+
   useEffect(() => {
     const hobbiesStr = data.hobbies_interests || '';
     if (hobbiesStr) {
@@ -108,10 +105,12 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
       setOtherHobby('');
     }
   }, [data.hobbies_interests]);
+
   useEffect(() => {
     const hobbiesStr = [...selectedHobbies.filter(h => h !== 'Other'), otherHobby.trim()].filter(Boolean).join(', ');
     update('hobbies_interests', hobbiesStr);
   }, [selectedHobbies, otherHobby]);
+
   async function fetchData() {
     try {
       setLoading(true);
@@ -121,12 +120,9 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
         .eq('id', session?.user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
+      if (error && error.code !== 'PGRST116') throw error;
 
       if (profile) {
-        // Ensure age is properly parsed as a number
         const profileData = {
           ...profile,
           age: profile.age !== null ? Number(profile.age) : null
@@ -142,6 +138,7 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
       setLoading(false);
     }
   }
+
   async function save() {
     if (!declarationChecked) {
       Alert.alert("Declaration Required", "Please confirm that your information is accurate before submitting.");
@@ -154,8 +151,6 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
     try {
       setSaving(true);
       const hobbiesToSave = [...selectedHobbies.filter(h => h !== 'Other'), ...(otherHobby.trim() ? [otherHobby.trim()] : [])].join(', ');
-
-      // Ensure age is properly formatted as an integer
       const ageValue = data.age !== null ? parseInt(data.age.toString(), 10) : null;
 
       const updateData = {
@@ -166,8 +161,6 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
         is_completed: true,
       };
 
-      console.log('Saving data:', { id: session?.user.id, ...updateData });
-
       const { error } = await supabase.from('about_me_profiles').upsert({
         id: session?.user.id,
         ...updateData
@@ -175,45 +168,37 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
         onConflict: 'id'
       });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       setData(updateData as any);
-      setShowCelebration(true);
-      setTimeout(() => {
-        setShowCelebration(false);
-        setProfileCompleted(true);
-      }, 5000);
+      setProfileCompleted(true);
     } catch (e: any) {
-      console.error('Save error:', e);
       Alert.alert('Error', e.message || 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
   }
+
   const update = (key: keyof AboutMeData, value: any) => {
-    // Ensure age is always a number or null
     if (key === 'age') {
       setData(prev => ({ ...prev, [key]: value === '' || value === null ? null : Number(value) }));
     } else {
       setData(prev => ({ ...prev, [key]: value }));
     }
   };
+
   const toggleHobby = (hobby: string) => {
     setSelectedHobbies(prev => {
       if (prev.includes(hobby)) {
         const newSelected = prev.filter(h => h !== hobby);
-        if (hobby === 'Other') {
-          setOtherHobby('');
-        }
+        if (hobby === 'Other') setOtherHobby('');
         return newSelected;
       } else {
         return [...prev, hobby];
       }
     });
   };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -221,82 +206,27 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
       </View>
     );
   }
-  if (showCelebration) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.completionContainer}>
-          <Animated.View entering={ZoomIn.duration(800)} style={{ alignItems: 'center' }}>
-            <Text style={styles.celebrationEmoji}>🎉</Text>
-            <Text style={styles.completionTitle}>Great Job!</Text>
-            <Text style={styles.completionText}>You've completed your About Me routine.</Text>
-            <Text style={styles.completionText}>You're all set. Let's see the summary!</Text>
-            <Text style={styles.happyEmoji}>😊</Text>
-          </Animated.View>
-        </View>
-      </View>
-    );
-  }
-  // If profile is completed, show the success page instead of the form
+
+  // Success Screen
   if (profileCompleted) {
     return (
       <View style={styles.container}>
-        {/* Header */}
         <StandardHeader
           title="Profile Complete"
           onBack={onBack}
-          rightContent={
-            <View style={styles.progressBadge}>
-              <Text style={styles.progressBadgeText}>{`${completionPercentage}%`}</Text>
-            </View>
-          }
         />
-
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.helpCard}>
-            <Text style={styles.helpTitle}>Your Profile Overview</Text>
-            <Text style={styles.helpText}>
-              We've captured all your details. This helps us tailor your MindFlow journey perfectly.
-            </Text>
-          </Animated.View>
-          <View style={styles.summaryContainer}>
-            {questions.map((q, i) => {
-              let displayValue: string;
-              const rawValue = data[q.key as keyof AboutMeData];
-              switch (q.key) {
-                case 'age':
-                  displayValue = rawValue ? `${rawValue} years old` : 'Not specified';
-                  break;
-                case 'hobbies_interests':
-                  displayValue = data.hobbies_interests ? data.hobbies_interests : 'None selected';
-                  break;
-                default:
-                  displayValue = (rawValue as string) || 'Not specified';
-              }
-              return (
-                <Animated.View key={q.key} entering={FadeInDown.delay(150 + i * 60)} style={styles.summaryQuestionCard}>
-                  <View style={styles.summaryQuestionHeader}>
-                    <View style={styles.iconCircle}>
-                      <q.Icon />
-                    </View>
-                    <View style={styles.questionText}>
-                      <Text style={styles.questionTitle}>{q.title}</Text>
-                      <Text style={styles.summaryValue} numberOfLines={4}>{displayValue}</Text>
-                    </View>
-                    <View style={styles.dotFilled} />
-                  </View>
-                </Animated.View>
-              );
-            })}
-          </View>
-        </ScrollView>
+        <SuccessScreen
+          title="All Set!"
+          subtitle={["You've completed your profile.", "We can now personalize your experience."]}
+          buttonText="Back to Dashboard"
+          onPressHome={onBack}
+        />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      {/* Header */}
       <StandardHeader
         title="About Me"
         onBack={onBack}
@@ -314,21 +244,22 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
             Please provide accurate and truthful information. This helps us personalize your MindFlow experience.
           </Text>
         </Animated.View>
+
         {questions.map((q, i) => (
-          <Animated.View key={q.key} entering={FadeInDown.delay(150 + i * 60)} style={styles.questionCard}>
+          <Animated.View key={q.key} entering={FadeInDown.delay(150 + i * 60)} style={styles.section}>
             <View style={styles.questionHeader}>
               <View style={styles.iconCircle}>
-                <q.Icon />
+                <q.Icon width={24} height={24} color="#2E8A66" />
               </View>
               <View style={styles.questionText}>
-                <Text style={styles.questionTitle}>
+                <Text style={styles.sectionTitle}>
                   {q.title} {q.required && <Text style={{ color: '#FF6B6B' }}>*</Text>}
                 </Text>
-                <Text style={styles.questionSubtitle}>{q.subtitle}</Text>
+                <Text style={styles.sectionSubtitle}>{q.subtitle}</Text>
               </View>
-              <View style={[styles.dot, data[q.key as keyof AboutMeData] ? styles.dotFilled : {}]} />
             </View>
-            {/* Special Inputs */}
+
+            {/* Content Inputs */}
             {q.key === 'education_level' && (
               <View style={styles.pillContainer}>
                 {educationLevels.map(level => (
@@ -373,13 +304,13 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
                   </TouchableOpacity>
                 ))}
                 {selectedHobbies.includes('Other') && (
-                  <View style={{ marginTop: 12, paddingHorizontal: 4 }}>
-                    <Text style={styles.questionSubtitle}>Other hobby:</Text>
+                  <View style={{ marginTop: 12, paddingHorizontal: 4, width: '100%' }}>
+                    <Text style={styles.sectionSubtitle}>Other hobby:</Text>
                     <TextInput
                       style={styles.textInput}
                       value={otherHobby}
                       onChangeText={setOtherHobby}
-                      placeholder="e.g., Dancing, Singing"
+                      placeholder="e.g., Dancing"
                     />
                   </View>
                 )}
@@ -407,6 +338,7 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
               )}
           </Animated.View>
         ))}
+
         {/* Declaration */}
         <TouchableOpacity
           style={[styles.checkboxContainer, declarationChecked && styles.checkboxChecked]}
@@ -419,17 +351,28 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
             I hereby confirm that all information provided above is true, accurate, and complete to the best of my knowledge.
           </Text>
         </TouchableOpacity>
+
         {/* Submit Button */}
         <TouchableOpacity
-          style={[
-            styles.saveBtn,
-            (!declarationChecked || filledRequired < requiredQuestions.length) && styles.saveBtnDisabled
-          ]}
+          activeOpacity={0.8}
           onPress={save}
           disabled={saving || !declarationChecked || filledRequired < requiredQuestions.length}
         >
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Submit My Profile</Text>}
+          <LinearGradient
+            colors={(!declarationChecked || filledRequired < requiredQuestions.length)
+              ? ['#d1e7dd', '#d1e7dd']
+              : ['#2E8A66', '#3bcc97']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[
+              styles.saveBtn,
+              (!declarationChecked || filledRequired < requiredQuestions.length) && styles.saveBtnDisabled
+            ]}
+          >
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Submit My Profile</Text>}
+          </LinearGradient>
         </TouchableOpacity>
+
         <Text style={styles.footerNote}>
           This information is used to improve your experience and will not be shared without consent.
         </Text>
@@ -440,102 +383,133 @@ export default function AboutMe({ session, onBack }: { session: Session; onBack:
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FDFC' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: -10,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-    flex: 1,
-    textAlign: 'center',
-  },
   progressBadge: {
-    backgroundColor: '#ffffffff',
-    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    borderRadius: 18,
     paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#838383ff',
+    borderColor: '#E6F6EE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   progressBadgeText: {
-    color: '#000000ff',
-    fontWeight: '700',
+    color: '#2E8A66',
+    fontWeight: '800',
     fontSize: 14,
   },
-  helpCard: { margin: 20, backgroundColor: '#E8F5F1', borderRadius: 20, padding: 20 },
+  helpCard: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 0,
+    backgroundColor: '#E8F5F1',
+    borderRadius: 24,
+    padding: 24,
+  },
   helpTitle: { fontSize: 18, fontWeight: '700', color: '#2E8A66', marginBottom: 8 },
   helpText: { fontSize: 15, color: '#444', lineHeight: 22 },
-  questionCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 8 },
-  summaryQuestionCard: { marginHorizontal: 20, marginBottom: 16, backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 8 },
-  summaryQuestionHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  questionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#F0F9F6', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  questionText: { flex: 1 },
-  questionTitle: { fontSize: 17, fontWeight: '600', color: '#333' },
-  questionSubtitle: { fontSize: 14, color: '#888', marginTop: 4 },
-  summaryValue: { fontSize: 16, color: '#333', marginTop: 8, lineHeight: 22 },
-  dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#E0E0E0' },
-  dotFilled: { backgroundColor: '#64C59A' },
-  textInput: { backgroundColor: '#F7FAF9', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, fontSize: 16, borderWidth: 1.5, borderColor: '#E8F5E9' },
-  multiline: { minHeight: 100 },
-  pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  pill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 30, backgroundColor: '#F0F9F6', borderWidth: 1.5, borderColor: '#64C59A' },
-  pillActive: { backgroundColor: '#64C59A' },
-  pillText: { color: '#2E8A66', fontWeight: '600' },
-  pillTextActive: { color: '#fff' },
-  checkboxContainer: { flexDirection: 'row', marginHorizontal: 20, marginTop: 20, padding: 16, backgroundColor: '#fff', borderRadius: 16, alignItems: 'flex-start' },
-  checkboxChecked: { borderColor: '#64C59A', borderWidth: 2 },
-  checkbox: { width: 28, height: 28, borderRadius: 8, borderWidth: 2, borderColor: '#ccc', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  checkboxActive: { backgroundColor: '#64C59A', borderColor: '#64C59A' },
-  checkboxLabel: { flex: 1, fontSize: 15, color: '#333', lineHeight: 22 },
-  saveBtn: { marginHorizontal: 20, marginTop: 20, backgroundColor: '#64C59A', paddingVertical: 18, borderRadius: 30, alignItems: 'center', shadowColor: '#64C59A', shadowOpacity: 0.4, shadowRadius: 20, elevation: 12 },
-  saveBtnDisabled: { backgroundColor: '#aaa', shadowOpacity: 0.2 },
-  saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  footerNote: { textAlign: 'center', marginTop: 20, marginBottom: 40, color: '#666', fontSize: 13, paddingHorizontal: 30, lineHeight: 20 },
-  // Success Page Styles
-  summaryContainer: { flexGrow: 1 },
-  // Celebration Styles
-  completionContainer: {
-    flex: 1,
+
+  // Section Styles (Matching DailySliders)
+  section: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 24,
+    backgroundColor: '#fff',
+    borderRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  questionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F0F9F6',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#F8FDFC',
+    marginRight: 16,
   },
-  celebrationEmoji: {
-    fontSize: 60,
-    marginBottom: 20,
-  },
-  completionTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#333',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  completionText: {
+  questionText: { flex: 1 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1A1A1A', marginBottom: 4 },
+  sectionSubtitle: { fontSize: 14, color: '#666', lineHeight: 20, fontWeight: '500' },
+
+  // Input Styles
+  textInput: {
+    backgroundColor: '#FAFEFD',
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 8,
-    lineHeight: 24,
+    borderWidth: 1,
+    borderColor: '#E8F5F1',
+    color: '#333',
+    // Slight shadow for depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  happyEmoji: {
-    fontSize: 40,
-    marginTop: 20,
+  multiline: { minHeight: 120 },
+
+  pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  pill: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#E8F5F1',
   },
+  pillActive: {
+    backgroundColor: '#E8F5F1',
+    borderColor: '#64C59A',
+  },
+  pillText: { color: '#666', fontWeight: '600' },
+  pillTextActive: { color: '#2E8A66', fontWeight: '700' },
+
+  // Footer/Submit
+  checkboxContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 10,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  checkboxChecked: { borderColor: '#64C59A', borderWidth: 2 },
+  checkbox: { width: 24, height: 24, borderRadius: 8, borderWidth: 2, borderColor: '#ccc', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  checkboxActive: { backgroundColor: '#64C59A', borderColor: '#64C59A' },
+  checkboxLabel: { flex: 1, fontSize: 14, color: '#444', lineHeight: 20 },
+
+  saveBtn: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    paddingVertical: 20,
+    borderRadius: 24,
+    alignItems: 'center',
+    shadowColor: '#2E8A66',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  saveBtnDisabled: {
+    shadowOpacity: 0.1,
+    elevation: 0,
+  },
+  saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  footerNote: { textAlign: 'center', marginTop: 20, marginBottom: 40, color: '#999', fontSize: 12 },
 });
