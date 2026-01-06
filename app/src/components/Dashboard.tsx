@@ -7,8 +7,7 @@ import Animated, { FadeIn, FadeInDown, useSharedValue, withTiming, useAnimatedPr
 import Svg, { Path, Circle, Pattern, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
 import { supabase } from '../lib/supabase';
-import { Session } from '@supabase/supabase-js';
-import { Icons } from './common/AppIcons'; // Import shared icons
+import { Icons } from './common/AppIcons';
 
 const { width } = Dimensions.get('window');
 
@@ -85,7 +84,7 @@ const SkeletonItem = ({ style, borderRadius = 12 }: { style?: any; borderRadius?
  * - A "Mindfulness Path" map (Daily -> Weekly -> Monthly).
  * - Account management access.
  */
-export default function Dashboard({ session, onNavigateToAboutMe }: { session: Session; onNavigateToAboutMe: () => void }) {
+export default function Dashboard({ session, onNavigateToAboutMe }: { session: any; onNavigateToAboutMe: () => void }) {
   const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -327,7 +326,7 @@ export default function Dashboard({ session, onNavigateToAboutMe }: { session: S
         style: "destructive",
         onPress: async () => {
           try {
-            const { error } = await supabase.auth.signOut();
+            const { error } = await (supabase.auth as any).signOut();
             if (error) Alert.alert("Error", error.message);
           } catch (error: any) {
             console.error('Error signing out:', error);

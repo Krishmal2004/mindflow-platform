@@ -13,7 +13,6 @@ import {
   Image,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { Session } from '@supabase/supabase-js';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Icons } from './common/AppIcons';
@@ -24,7 +23,7 @@ import { useCallback } from 'react';
  * 
  * Manages user profile display, password updates, and signing out.
  */
-export default function Account({ session }: { session: Session }) {
+export default function Account({ session }: { session: any }) {
   const router = useRouter();
   // State management
   const [loading, setLoading] = useState(true);
@@ -100,7 +99,7 @@ export default function Account({ session }: { session: Session }) {
 
     try {
       setSaving(true);
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { error } = await (supabase.auth as any).updateUser({ password: newPassword });
       if (error) throw error;
 
       setFeedbackModal({
@@ -127,7 +126,7 @@ export default function Account({ session }: { session: Session }) {
    */
   async function signOut() {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await (supabase.auth as any).signOut();
       if (error) throw error;
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to sign out');
