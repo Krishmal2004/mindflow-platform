@@ -388,7 +388,7 @@ export default function Dashboard({
               return;
             }
             // After sign-out, navigate directly to the auth route.
-            router.replace("/auth");
+            router.replace("/auth" as any);
           } catch (error: any) {
             console.error("Error signing out:", error);
             Alert.alert("Error", error.message || "Failed to sign out");
@@ -762,8 +762,8 @@ export default function Dashboard({
                       styles.nodeStatus,
                       weeklyDoneThisWeek && styles.nodeStatusDone,
                       dailyDoneToday &&
-                        !weeklyDoneThisWeek &&
-                        styles.nodeStatusActive,
+                      !weeklyDoneThisWeek &&
+                      styles.nodeStatusActive,
                     ]}
                   >
                     {weeklyDoneThisWeek ? "Completed" : "Start Week"}
@@ -800,8 +800,8 @@ export default function Dashboard({
                       styles.nodeStatus,
                       monthlyDoneThisMonth && styles.nodeStatusDone,
                       weeklyDoneThisWeek &&
-                        !monthlyDoneThisMonth &&
-                        styles.nodeStatusActive,
+                      !monthlyDoneThisMonth &&
+                      styles.nodeStatusActive,
                     ]}
                   >
                     {monthlyDoneThisMonth ? "Completed" : "Monthly Check-in"}

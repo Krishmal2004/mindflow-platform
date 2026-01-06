@@ -18,7 +18,7 @@ export default function RootScreen() {
     return <Redirect href="/(tabs)" />;
   }
 
-  return <Redirect href="/auth" />;
+  return <Redirect href={"/auth" as any} />;
 }
 
 const styles = StyleSheet.create({
