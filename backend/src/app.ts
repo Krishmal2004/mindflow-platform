@@ -17,7 +17,12 @@ app.use(express.json());
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || ''; // Fallback for now
 
+import dashboardRoutes from './routes/dashboardRoutes';
+
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Routes
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
