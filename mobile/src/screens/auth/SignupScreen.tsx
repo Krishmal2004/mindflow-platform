@@ -5,31 +5,25 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
-type RootStackParamList = {
-    Login: undefined;
-    Signup: undefined;
-    Dashboard: undefined; // Or whatever the main app route is
-};
+import { RootStackParamList } from '../../types/navigation';
 
-export default function LoginScreen() {
+export default function SignupScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        // Mock login logic
+    const handleSignup = () => {
         setLoading(true);
+        // Mock signup logic
         setTimeout(() => {
             setLoading(false);
-            // Verify inputs (mock)
-            if (email && password) {
-                // Navigate to Main App (need to define this route later, assume 'Dashboard' or similar)
-                // For now, let's just log and maybe alert nicely
-                Alert.alert('Success', 'Logged in successfully!');
-                navigation.replace('Dashboard');
+            if (name && email && password) {
+                Alert.alert('Success', 'Account created successfully!');
+                navigation.navigate('Login');
             } else {
-                Alert.alert('Error', 'Please enter email and password');
+                Alert.alert('Error', 'Please fill in all fields');
             }
         }, 1500);
     };
@@ -41,18 +35,28 @@ export default function LoginScreen() {
                 colors={['#F8FDFC', '#F0F7F4']}
                 style={StyleSheet.absoluteFill}
             />
-
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.keyboardView}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.header}>
-                        <Text style={styles.welcomeText}>Welcome Back</Text>
-                        <Text style={styles.subtitleText}>Sign in to continue your journey</Text>
+                        <Text style={styles.title}>Create Account</Text>
+                        <Text style={styles.subtitle}>Start your mindfulness journey today</Text>
                     </View>
 
                     <View style={styles.form}>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Full Name</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter your full name"
+                                value={name}
+                                onChangeText={setName}
+                                autoCapitalize="words"
+                            />
+                        </View>
+
                         <View style={styles.inputContainer}>
                             <Text style={styles.label}>Email</Text>
                             <TextInput
@@ -69,20 +73,16 @@ export default function LoginScreen() {
                             <Text style={styles.label}>Password</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter your password"
+                                placeholder="Create a password"
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.forgotPassword}>
-                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                        </TouchableOpacity>
-
                         <TouchableOpacity
-                            style={styles.loginButton}
-                            onPress={handleLogin}
+                            style={styles.signupButton}
+                            onPress={handleSignup}
                             disabled={loading}
                         >
                             <LinearGradient
@@ -91,15 +91,15 @@ export default function LoginScreen() {
                                 end={{ x: 1, y: 0 }}
                                 style={styles.gradientButton}
                             >
-                                <Text style={styles.loginButtonText}>{loading ? 'Signing In...' : 'Sign In'}</Text>
+                                <Text style={styles.signupButtonText}>{loading ? 'Creating Account...' : 'Sign Up'}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.footer}>
-                        <Text style={styles.footerText}>Don't have an account? </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                            <Text style={styles.signupText}>Sign Up</Text>
+                        <Text style={styles.footerText}>Already have an account? </Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                            <Text style={styles.loginText}>Sign In</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
@@ -125,13 +125,13 @@ const styles = StyleSheet.create({
         marginBottom: 40,
         alignItems: 'flex-start',
     },
-    welcomeText: {
+    title: {
         fontSize: 32,
         fontWeight: 'bold',
         color: '#1B5E45',
         marginBottom: 8,
     },
-    subtitleText: {
+    subtitle: {
         fontSize: 16,
         color: '#62656b',
     },
@@ -164,19 +164,10 @@ const styles = StyleSheet.create({
         shadowRadius: 3.84,
         elevation: 2,
     },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-        marginBottom: 30,
-    },
-    forgotPasswordText: {
-        color: '#2E8A66',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    loginButton: {
+    signupButton: {
         borderRadius: 12,
         overflow: 'hidden',
-        marginTop: 10,
+        marginTop: 20,
         shadowColor: "#2E8A66",
         shadowOffset: {
             width: 0,
@@ -190,7 +181,7 @@ const styles = StyleSheet.create({
         paddingVertical: 18,
         alignItems: 'center',
     },
-    loginButtonText: {
+    signupButtonText: {
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
@@ -204,7 +195,7 @@ const styles = StyleSheet.create({
         color: '#666',
         fontSize: 14,
     },
-    signupText: {
+    loginText: {
         color: '#2E8A66',
         fontSize: 14,
         fontWeight: 'bold',

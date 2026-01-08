@@ -7,10 +7,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Types
-type RootStackParamList = {
-    Login: undefined;
-    Signup: undefined;
-};
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootStackParamList } from '../types/navigation';
+
+// ... (existing OnboardingItem types)
 
 type OnboardingItem = {
     id: string;
@@ -18,6 +18,8 @@ type OnboardingItem = {
     description: string;
     // image: any; // Add image support later
 };
+
+// ... (existing slides array)
 
 const slides: OnboardingItem[] = [
     {
@@ -37,7 +39,10 @@ const slides: OnboardingItem[] = [
     },
 ];
 
+// ... (existing OnboardingItem and Paginator components) 
+
 const OnboardingItem = ({ item, index, x }: { item: OnboardingItem, index: number, x: SharedValue<number> }) => {
+    // ... (implementation same as before, see context)
     const { width } = useWindowDimensions();
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -47,27 +52,19 @@ const OnboardingItem = ({ item, index, x }: { item: OnboardingItem, index: numbe
             [0, 1, 0],
             Extrapolation.CLAMP
         );
-
         const translateY = interpolate(
             x.value,
             [(index - 1) * width, index * width, (index + 1) * width],
             [100, 0, 100],
             Extrapolation.CLAMP
         );
-
-        return {
-            opacity,
-            transform: [{ translateY }],
-        };
+        return { opacity, transform: [{ translateY }] };
     });
 
     return (
         <View style={[styles.itemContainer, { width }]}>
             <View style={styles.imagePlaceholder}>
-                <LinearGradient
-                    colors={['#A8E6CF', '#64C59A']}
-                    style={styles.imageGradient}
-                />
+                <LinearGradient colors={['#A8E6CF', '#64C59A']} style={styles.imageGradient} />
                 <Text style={styles.placeholderText}>{index + 1}</Text>
             </View>
             <Animated.View style={[styles.textContainer, animatedStyle]}>
@@ -80,29 +77,14 @@ const OnboardingItem = ({ item, index, x }: { item: OnboardingItem, index: numbe
 
 const Paginator = ({ data, x }: { data: OnboardingItem[], x: SharedValue<number> }) => {
     const { width } = useWindowDimensions();
-
     return (
         <View style={styles.paginatorContainer}>
             {data.map((_, i) => {
                 const animatedDotStyle = useAnimatedStyle(() => {
-                    const widthAnim = interpolate(
-                        x.value,
-                        [(i - 1) * width, i * width, (i + 1) * width],
-                        [10, 20, 10],
-                        Extrapolation.CLAMP
-                    );
-                    const opacity = interpolate(
-                        x.value,
-                        [(i - 1) * width, i * width, (i + 1) * width],
-                        [0.3, 1, 0.3],
-                        Extrapolation.CLAMP
-                    );
-                    return {
-                        width: widthAnim,
-                        opacity,
-                    };
+                    const widthAnim = interpolate(x.value, [(i - 1) * width, i * width, (i + 1) * width], [10, 20, 10], Extrapolation.CLAMP);
+                    const opacity = interpolate(x.value, [(i - 1) * width, i * width, (i + 1) * width], [0.3, 1, 0.3], Extrapolation.CLAMP);
+                    return { width: widthAnim, opacity };
                 });
-
                 return <Animated.View style={[styles.dot, animatedDotStyle]} key={i.toString()} />;
             })}
         </View>
@@ -130,15 +112,25 @@ export default function OnboardingScreen() {
 
     const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentIndex < slides.length - 1) {
             flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
         } else {
+            try {
+                await AsyncStorage.setItem('alreadyLaunched', 'true');
+            } catch (e) {
+                console.error('Error saving onboarding status', e);
+            }
             navigation.replace('Login');
         }
     };
 
-    const handleSkip = () => {
+    const handleSkip = async () => {
+        try {
+            await AsyncStorage.setItem('alreadyLaunched', 'true');
+        } catch (e) {
+            console.error('Error saving onboarding status', e);
+        }
         navigation.replace('Login');
     };
 

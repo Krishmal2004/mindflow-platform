@@ -13,15 +13,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-const { width } = Dimensions.get('window');
-
-// Define navigation types locally for now or import from a types file later
-type RootStackParamList = {
-    Onboarding: undefined;
-    Login: undefined;
-    // Add other routes here
-};
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootStackParamList } from '../types/navigation';
 
 type ScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -51,14 +44,28 @@ export default function SplashScreen() {
             true
         );
 
-        // Mock loading or check auth state
-        const timer = setTimeout(() => {
-            // Navigate to Onboarding after 3 seconds
-            // In a real app, check AsyncStorage or Auth Context here
-            navigation.replace('Onboarding');
-        }, 3000);
+        const checkFirstLaunch = async () => {
+            try {
+                // Wait for at least 3 seconds for the splash animation
+                const [value] = await Promise.all([
+                    AsyncStorage.getItem('alreadyLaunched'),
+                    new Promise(resolve => setTimeout(resolve, 3000))
+                ]);
 
-        return () => clearTimeout(timer);
+                if (value === null) {
+                    // First time launch
+                    navigation.replace('Onboarding');
+                } else {
+                    // Not first time, go to Login (or Dashboard if persistent auth is added later)
+                    navigation.replace('Login');
+                }
+            } catch (error) {
+                console.error('Error checking first launch:', error);
+                navigation.replace('Login');
+            }
+        };
+
+        checkFirstLaunch();
     }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({

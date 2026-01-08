@@ -1,0 +1,13 @@
+export type RootStackParamList = {
+    Splash: undefined;
+    Onboarding: undefined;
+    Login: undefined;
+    Signup: undefined;
+    MainTabs: undefined;
+    Dashboard: undefined;
+    DailySliders: undefined;
+    WeeklyWhispers: undefined;
+    ThriveTracker: undefined;
+    StressSnapshot: undefined;
+    MindfulMirror: undefined;
+};
