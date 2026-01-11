@@ -370,6 +370,8 @@ export default function DailySliders() {
       return;
     }
     setIsSubmitting(true);
+
+
     try {
       let data;
       if (isEdit && entryId) {
@@ -416,7 +418,8 @@ export default function DailySliders() {
       setShowCompletion(true);
       setAlreadySubmittedToday(true);
     } catch (error) {
-      Alert.alert('Submission Error', 'Failed to save data. Please try again.');
+      console.error('Submission error details:', error);
+      Alert.alert('Submission Error', `Failed to save data: ${(error as any)?.message || 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
