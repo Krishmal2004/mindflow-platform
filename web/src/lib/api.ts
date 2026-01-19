@@ -50,8 +50,23 @@ class ApiClient {
         return this.get('/roadmap/daily/status');
     }
 
-    async submitDailyEntry(data: any) {
+    async submitDailyEntry(data: {
+        mindfulness_practice?: 'yes' | 'no' | null;
+        practice_duration?: number | null;
+        practice_log?: string | null;
+        stress_level: number;
+        mood: number;
+        sleep_quality: number;
+        relaxation_level: number;
+        sleep_start_time: string;
+        wake_up_time: string;
+        feelings: string;
+    }) {
         return this.post('/roadmap/daily', data);
+    }
+
+    async updateVideoProgress(seconds: number) {
+        return this.post('/roadmap/daily/video-progress', { seconds });
     }
 
     // Roadmap - Weekly
@@ -59,8 +74,30 @@ class ApiClient {
         return this.get('/roadmap/weekly/status');
     }
 
+    async getWeeklyVideo() {
+        return this.get('/roadmap/weekly/video');
+    }
+
     async submitWeeklyEntry(data: any) {
         return this.post('/roadmap/weekly', data);
+    }
+
+    async uploadWeeklyAudio(formData: FormData) {
+        const response = await fetch(`${API_BASE_URL}/roadmap/weekly/upload`, {
+            method: 'POST',
+            headers: {
+                // Don't set Content-Type for FormData, browser sets it with boundary
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || `Upload failed with status ${response.status}`);
+        }
+
+        return response.json();
     }
 
     // Roadmap - Questionnaire

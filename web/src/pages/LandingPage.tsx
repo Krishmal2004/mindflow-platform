@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button"
+import AuthLogo from "@/assets/Auth.png"
 
 export default function LandingPage() {
     const navigate = useNavigate();
@@ -26,7 +27,7 @@ export default function LandingPage() {
                 {/* Header */}
                 <header className="w-full py-6 px-8 flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold text-xs">MF</div>
+                        <img src={AuthLogo} alt="MindFlow Logo" className="h-8 w-8" />
                         <span className="text-xl font-bold text-slate-900 tracking-tight">MindFlow</span>
                     </div>
                     <Button variant="outline" onClick={() => navigate('/login')} className="border-teal-200 text-teal-700 hover:bg-teal-50">

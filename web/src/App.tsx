@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import AdminDashboard from '@/pages/AdminDashboard';
@@ -23,6 +24,7 @@ function App() {
         <Route path="/dashboard/calendar" element={<CalendarPage />} />
         <Route path="/dashboard/progress" element={<ProgressPage />} />
       </Routes>
+      <Toaster />
     </Router>
   )
 }

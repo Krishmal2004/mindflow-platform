@@ -1,22 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, Square, Play, RotateCcw, Upload, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Mic, Square, RotateCcw, Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { r2, BUCKET_NAME, PUBLIC_URL_BASE } from '@/lib/r2';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { supabase } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
 
 const PASSAGE_TEXT = "The North Wind and the Sun were disputing which was the stronger, when a traveler came along wrapped in a warm cloak. They agreed that the one who first succeeded in making the traveler take his cloak off should be considered stronger than the other. Then the North Wind blew as hard as he could, but the more he blew the more closely did the traveler fold his cloak around him; and at last the North Wind gave up the attempt. Then the Sun shone out warmly, and immediately the traveler took off his cloak. And so the North Wind was obliged to confess that the Sun was the stronger of the two.";
-
-function getWeekNumber(d: Date): [number, number] {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-    return [date.getUTCFullYear(), weekNo];
-}
 
 export default function WeeklyWhispers() {
     const navigate = useNavigate();
@@ -30,12 +20,27 @@ export default function WeeklyWhispers() {
     const [duration, setDuration] = useState(0);
     const [uploading, setUploading] = useState(false);
 
+    // Refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<any>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const durationRef = useRef(0); // To access fresh duration inside callbacks
+
+    // Keep durationRef in sync with state
+    useEffect(() => {
+        durationRef.current = duration;
+    }, [duration]);
 
     useEffect(() => {
         checkStatus();
+        return () => {
+            // Cleanup on unmount
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
     }, []);
 
     const checkStatus = async () => {
@@ -51,7 +56,18 @@ export default function WeeklyWhispers() {
 
     const startRecording = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Audio constraints for 44.1kHz, 2 channels
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 44100,
+                    channelCount: 2,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                }
+            });
+
+            streamRef.current = stream;
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
             chunksRef.current = [];
@@ -61,38 +77,69 @@ export default function WeeklyWhispers() {
             };
 
             mediaRecorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: 'audio/wav' }); // or webm
-                setAudioBlob(blob);
-                setAudioUrl(URL.createObjectURL(blob));
+                // Determine if valid based on durationRef
+                const finalDuration = durationRef.current;
+
+                if (finalDuration < 15) {
+                    toast.error("Recording is less than 15 seconds. Please retake.");
+                    setAudioBlob(null);
+                    setAudioUrl(null);
+                    // Reset duration/recording state is handled in handleStop usually, 
+                    // but onstop is called exactly when recorder stops.
+                } else {
+                    const blob = new Blob(chunksRef.current, { type: 'audio/wav' });
+                    setAudioBlob(blob);
+                    setAudioUrl(URL.createObjectURL(blob));
+                }
+
+                // Stop all tracks
                 stream.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
             };
 
             mediaRecorder.start();
             setIsRecording(true);
             setDuration(0);
+            durationRef.current = 0;
 
+            if (timerRef.current) clearInterval(timerRef.current);
             timerRef.current = setInterval(() => {
-                setDuration(prev => prev + 1);
+                setDuration(prev => {
+                    const next = prev + 1;
+                    if (next >= 30) {
+                        // Auto-stop at 30s
+                        stopRecordingInternal();
+                    }
+                    return next;
+                });
             }, 1000);
 
         } catch (err) {
             console.error("Error accessing microphone:", err);
-            alert("Microphone access is required to record.");
+            toast.error("Microphone access is required to record.");
         }
     };
 
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
+    const stopRecordingInternal = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            if (timerRef.current) clearInterval(timerRef.current);
         }
+        setIsRecording(false);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    };
+
+    const handleStopClick = () => {
+        stopRecordingInternal();
     };
 
     const handleReset = () => {
         setAudioBlob(null);
         setAudioUrl(null);
         setDuration(0);
+        durationRef.current = 0;
     };
 
     const handleUpload = async () => {
@@ -100,39 +147,28 @@ export default function WeeklyWhispers() {
         setUploading(true);
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("User not authenticated");
+            // 1. Prepare FormData
+            const formData = new FormData();
+            formData.append('file', audioBlob);
 
-            const [year, week] = getWeekNumber(new Date());
-            const fileName = `weekly-${year}-W${week.toString().padStart(2, '0')}-${user.id}.wav`;
-            const fileKey = `WeeklyVoice/${fileName}`;
+            // 2. Upload via Backend Proxy
+            const { fileKey, fileUrl } = await api.uploadWeeklyAudio(formData);
 
-            // Convert Blob to ArrayBuffer
-            const buffer = await audioBlob.arrayBuffer();
-
-            const command = new PutObjectCommand({
-                Bucket: BUCKET_NAME,
-                Key: fileKey,
-                Body: new Uint8Array(buffer),
-                ContentType: audioBlob.type,
-            });
-
-            await r2.send(command);
-
-            const fileUrl = `${PUBLIC_URL_BASE}/${fileKey}`;
-
+            // 3. Submit Metadata to Backend
             await api.submitWeeklyEntry({
                 file_url: fileUrl,
                 file_key: fileKey,
                 duration
             });
 
+            toast.success("Recording submitted successfully!");
             // Refresh status to show completion
             checkStatus();
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Upload failed", error);
-            alert("Failed to upload recording. Please try again.");
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            toast.error(`Upload failed: ${errorMessage}`);
         } finally {
             setUploading(false);
         }
@@ -174,7 +210,7 @@ export default function WeeklyWhispers() {
                             <div className="space-y-4">
                                 <h3 className="font-semibold text-lg text-teal-800">Instructions</h3>
                                 <p className="text-slate-600">
-                                    Please read the following passage aloud. Speak naturally and clearly.
+                                    Please read the following passage aloud. Speak naturally and clearly. Recording will auto-stop at 30 seconds.
                                 </p>
                                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 italic text-slate-700 leading-relaxed">
                                     "{PASSAGE_TEXT}"
@@ -182,19 +218,28 @@ export default function WeeklyWhispers() {
                             </div>
 
                             <div className="flex flex-col items-center justify-center pt-4 space-y-4">
-                                <div className="text-4xl font-mono font-bold text-slate-700">
-                                    {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')}
+                                <div className={`text-4xl font-mono font-bold ${duration >= 25 ? 'text-red-500' : 'text-slate-700'}`}>
+                                    {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, '0')}{duration === 30 ? '' : ''}
                                 </div>
+
+                                {isRecording && (
+                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden max-w-[200px]">
+                                        <div
+                                            className="h-full bg-teal-500 transition-all duration-1000 ease-linear"
+                                            style={{ width: `${(duration / 30) * 100}%` }}
+                                        />
+                                    </div>
+                                )}
 
                                 <Button
                                     size="lg"
                                     className={`h-20 w-20 rounded-full ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-teal-600 hover:bg-teal-700'}`}
-                                    onClick={isRecording ? stopRecording : startRecording}
+                                    onClick={isRecording ? handleStopClick : startRecording}
                                 >
                                     {isRecording ? <Square className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
                                 </Button>
                                 <p className="text-sm text-slate-500">
-                                    {isRecording ? 'Tap to Stop' : 'Tap to Record'}
+                                    {isRecording ? 'Tap to Stop' : 'Tap to Record (Min 15s)'}
                                 </p>
                             </div>
                         </>
