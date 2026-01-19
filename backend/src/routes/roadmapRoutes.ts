@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middlewares/authMiddleware';
+import { upload } from '../middlewares/uploadMiddleware';
 import * as dailyController from '../controllers/dailyController';
 import * as weeklyController from '../controllers/weeklyController';
 import * as questionnaireController from '../controllers/questionnaireController';
@@ -9,10 +10,13 @@ const router = Router();
 
 // Daily Sliders
 router.get('/daily/status', requireAuth, dailyController.getDailyStatus);
+router.post('/daily/video-progress', requireAuth, dailyController.updateVideoProgress);
 router.post('/daily', requireAuth, dailyController.submitDailyEntry);
 
 // Weekly Whispers
 router.get('/weekly/status', requireAuth, weeklyController.getWeeklyStatus);
+router.get('/weekly/video', requireAuth, weeklyController.getWeeklyVideo);
+router.post('/weekly/upload', requireAuth, upload.single('file'), weeklyController.uploadAudio);
 router.post('/weekly', requireAuth, weeklyController.submitWeeklyEntry);
 
 // Main Questionnaire

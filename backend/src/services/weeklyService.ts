@@ -1,4 +1,7 @@
 import { supabase } from '../app';
+import { r2, BUCKET_NAME, PUBLIC_URL_BASE } from '../config/r2';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export class WeeklyService {
     private getWeekNumber(d: Date): [number, number] {
@@ -22,6 +25,66 @@ export class WeeklyService {
 
         if (error) throw error;
         return { completed: data && data.length > 0, week, year };
+    }
+
+    // Generate Presigned URL (Optional: Kept for reference or mobile use)
+    public async getUploadUrl(userId: string) {
+        const [year, week] = this.getWeekNumber(new Date());
+        const weekStr = week.toString().padStart(2, '0');
+        const fileName = `weekly-${year}-W${weekStr}-${userId}.wav`;
+        const fileKey = `WeeklyVoice/${fileName}`;
+
+        const command = new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: fileKey,
+            ContentType: 'audio/wav',
+        });
+
+        // Expires in 5 minutes
+        const url = await getSignedUrl(r2, command, { expiresIn: 300 });
+
+        return {
+            url,
+            fileKey,
+            fileUrl: `${PUBLIC_URL_BASE}/${fileKey}`
+        };
+    }
+
+    // Proxy Upload: Receive Buffer and Upload to R2
+    public async uploadAudio(userId: string, fileBuffer: Buffer, mimeType: string) {
+        const [year, week] = this.getWeekNumber(new Date());
+        const weekStr = week.toString().padStart(2, '0');
+        const fileName = `weekly-${year}-W${weekStr}-${userId}.wav`;
+        const fileKey = `WeeklyVoice/${fileName}`;
+
+        const command = new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: fileKey,
+            Body: fileBuffer,
+            ContentType: mimeType || 'audio/wav',
+        });
+
+        await r2.send(command);
+
+        return {
+            fileKey,
+            fileUrl: `${PUBLIC_URL_BASE}/${fileKey}`
+        };
+    }
+
+    public async getWeeklyVideo() {
+        const [year, week] = this.getWeekNumber(new Date());
+
+        const { data, error } = await supabase
+            .from('weekly_recordings')
+            .select('*')
+            .eq('week_no', week)
+            .order('published_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error; // Ignore not found
+        return data || null;
     }
 
     // Submit metadata for the uploaded recording
