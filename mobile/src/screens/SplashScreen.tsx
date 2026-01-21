@@ -1,66 +1,35 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withRepeat,
-    withTiming,
-    withSequence,
-    Easing,
-    FadeIn,
-    runOnJS
-} from 'react-native-reanimated';
+import { StyleSheet, View, Text, Image } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RootStackParamList } from '../types/navigation';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
-type ScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { RootStackParamList } from '../types/navigation';
+import { Colors } from '../constants/colors';
+
+const AppLogo = require('../../assets/app-icon.png');
 
 export default function SplashScreen() {
-    const navigation = useNavigation<ScreenNavigationProp>();
-    const scale = useSharedValue(1);
-    const opacity = useSharedValue(0.5);
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const opacity = useSharedValue(0);
+    const scale = useSharedValue(0.8);
 
     useEffect(() => {
-        // Breathing Animation
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-                withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
-            ),
-            -1,
-            true
-        );
-
-        // Pulse Opacity
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 1500 }),
-                withTiming(0.5, { duration: 1500 })
-            ),
-            -1,
-            true
-        );
+        opacity.value = withTiming(1, { duration: 1500 });
+        scale.value = withTiming(1, { duration: 1500, easing: Easing.out(Easing.exp) });
 
         const checkFirstLaunch = async () => {
             try {
-                // Wait for at least 3 seconds for the splash animation
-                const [value] = await Promise.all([
-                    AsyncStorage.getItem('alreadyLaunched'),
-                    new Promise(resolve => setTimeout(resolve, 3000))
-                ]);
-
+                await new Promise(resolve => setTimeout(resolve, 2500));
+                const value = await AsyncStorage.getItem('alreadyLaunched');
                 if (value === null) {
-                    // First time launch
                     navigation.replace('Onboarding');
                 } else {
-                    // Not first time, go to Login (or Dashboard if persistent auth is added later)
                     navigation.replace('Login');
                 }
             } catch (error) {
-                console.error('Error checking first launch:', error);
                 navigation.replace('Login');
             }
         };
@@ -69,45 +38,21 @@ export default function SplashScreen() {
     }, []);
 
     const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-    }));
-
-    const textStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
+        transform: [{ scale: scale.value }],
     }));
 
     return (
         <View style={styles.container}>
-            <LinearGradient
-                colors={['#F8FDFC', '#E8F5F1']}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            />
-
-            <View style={styles.content}>
-                <Animated.View style={[styles.circle, animatedStyle]}>
-                    <LinearGradient
-                        colors={['#A8E6CF', '#64C59A']}
-                        style={styles.innerCircle}
-                    />
-                </Animated.View>
-
-                <Animated.View entering={FadeIn.duration(1000).delay(300)}>
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.titleThin}>Mind</Text>
-                        <Text style={styles.titleBold}>Flow</Text>
-                    </View>
-                </Animated.View>
-
-                <Animated.Text style={[styles.subtitle, textStyle]}>
-                    Enterprise Edition
-                </Animated.Text>
-            </View>
-
-            <View style={styles.footer}>
-                <Text style={styles.version}>v2.0.0 (Alpha)</Text>
-            </View>
+            <StatusBar style="dark" />
+            <Animated.View style={[styles.content, animatedStyle]}>
+                <Image source={AppLogo} style={styles.logo} resizeMode="contain" />
+                <View style={styles.titleContainer}>
+                    <Text style={styles.titleThin}>Mind</Text>
+                    <Text style={styles.titleBold}>Flow</Text>
+                </View>
+                <Text style={styles.subtitle}>Find your inner peace</Text>
+            </Animated.View>
         </View>
     );
 }
@@ -115,55 +60,38 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: Colors.background, // Light Theme
         justifyContent: 'center',
         alignItems: 'center',
     },
     content: {
         alignItems: 'center',
-        justifyContent: 'center',
     },
-    circle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        opacity: 0.2,
-        marginBottom: -80, // Overlap effect
-    },
-    innerCircle: {
-        flex: 1,
-        borderRadius: 60,
+    logo: {
+        width: 140,
+        height: 140,
+        marginBottom: 20,
     },
     titleContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 40,
+        marginBottom: 8,
     },
     titleThin: {
-        fontSize: 42,
+        fontSize: 48,
         fontWeight: '300',
-        color: '#2E8A66',
-        letterSpacing: 1,
+        color: Colors.textPrimary,
+        letterSpacing: 2,
     },
     titleBold: {
-        fontSize: 42,
+        fontSize: 48,
         fontWeight: '700',
-        color: '#1B5E45',
-        letterSpacing: 1,
+        color: Colors.textPrimary,
+        letterSpacing: 2,
     },
     subtitle: {
-        marginTop: 10,
-        fontSize: 14,
-        color: '#64C59A',
-        letterSpacing: 2,
+        fontSize: 16,
+        color: Colors.textSecondary,
+        letterSpacing: 4,
         textTransform: 'uppercase',
-        fontWeight: '600',
     },
-    footer: {
-        position: 'absolute',
-        bottom: 40,
-    },
-    version: {
-        fontSize: 12,
-        color: '#aaa',
-    }
 });

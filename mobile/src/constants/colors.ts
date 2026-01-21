@@ -1,25 +1,28 @@
 export const Colors = {
-    // Primary Palette (Muted Blue-Greens)
-    primary: '#88B04B', // Sage Green - Primary actions, active states
-    secondary: '#64C5EB', // Soft Teal - Secondary accents, gradients
-    highlight: '#E0F7FA', // Mist Blue - Subtle highlights, backgrounds
+  // Light Theme Palette
+  background: '#F6F8F9', // Soft Cream/White (Main Background)
+  surface: '#FFFFFF',    // Pure White (Cards)
 
-    // Neutral Palette (Off-Whites)
-    background: '#F5F5F5', // Warm Gray - Main background
-    surface: '#FFFFFF', // White - Cards, inputs, modals
-    textPrimary: '#2C3E50', // Dark Slate - Main text
-    textSecondary: '#546E7A', // Blue Gray - Secondary text
-    border: '#CFD8DC', // Light Blue Gray - Borders, dividers
+  primary: '#749F82',    // Sage Green (Buttons, Accents)
+  secondary: '#A8E6CF',  // Mint Green
+  accentBlue: '#A1C4FD', // Soft Blue (Meditation Card)
+  accentPurple: '#C2E9FB', // Soft Purple/Blue (Yoga Card)
 
-    // Functional Colors
-    error: '#EF5350', // Soft Red - Errors
-    success: '#66BB6A', // Soft Green - Success
-    warning: '#FFCA28', // Soft Amber - Warnings
-    info: '#42A5F5', // Soft Blue - Info
+  textPrimary: '#2D3436', // Dark Slate Gray (Headings)
+  textSecondary: '#636E72', // Medium Gray (Body)
+  textPlaceholder: '#B2BEC3',
 
-    // Gradients (Array format for LinearGradient)
-    gradients: {
-        primary: ['#88B04B', '#64C5EB'], // Sage to Teal
-        surface: ['#FFFFFF', '#F5F5F5'], // White to Warm Gray
-    }
+  border: '#DFE6E9',
+
+  // Functional
+  success: '#7ED1A6',
+  warning: '#FD79A8', // Pinkish warn
+  error: '#FF7675',
+
+  gradients: {
+    primary: ['#749F82', '#5D856D'], // Sage Gradient
+    blueMethods: ['#E3F2FD', '#BBDEFB'],
+    purpleYoga: ['#F3E5F5', '#E1BEE7'],
+    darkCard: ['#4B4E6D', '#2D3436'], // For the grid cards
+  },
 };

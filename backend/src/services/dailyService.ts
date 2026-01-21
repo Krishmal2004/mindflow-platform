@@ -1,4 +1,4 @@
-import { supabase } from '../app';
+import { supabase } from '../config/supabase';
 
 export class DailyService {
     // Check if user has submitted today (and completed the core sliders)

@@ -1,4 +1,4 @@
-import { supabase } from '../app';
+import { supabase } from '../config/supabase';
 
 export class QuestionnaireService {
     public async getActiveQuestionnaire() {

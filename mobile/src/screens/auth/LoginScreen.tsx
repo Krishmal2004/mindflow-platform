@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ImageBackground, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Image, Keyboard } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing, ReduceMotion } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../../types/navigation';
-import { Notification, NotificationType } from '../../components/Notification';
 import { Colors } from '../../constants/colors';
+import { MeditationIllustration } from '../../components/MeditationIllustration';
+import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { Notification, NotificationType } from '../../components/Notification';
 
 const { width, height } = Dimensions.get('window');
+
+import { AUTH_ENDPOINTS } from '../../config/api';
 
 export default function LoginScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -18,10 +22,20 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Notification state
+    // Animation Values
+    const fadeAnim = useSharedValue(0);
+    const scaleAnim = useSharedValue(0.9);
+
+    // Notification State
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
+
+    useEffect(() => {
+        // Simple Fade In and slight scale up
+        fadeAnim.value = withTiming(1, { duration: 800, reduceMotion: ReduceMotion.System });
+        scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp), reduceMotion: ReduceMotion.System });
+    }, []);
 
     const showNotification = (type: NotificationType, message: string) => {
         setNotificationType(type);
@@ -29,37 +43,76 @@ export default function LoginScreen() {
         setNotificationVisible(true);
     };
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (!email || !password) {
             showNotification('error', 'Please enter both email and password');
             return;
         }
-
         setLoading(true);
-        // Mock login delay
-        setTimeout(() => {
-            setLoading(false);
-            // Mock success
-            if (email.includes('@') && password.length >= 6) {
-                showNotification('success', 'Welcome back!');
-                setTimeout(() => {
-                    navigation.replace('MainTabs' as any); // Cast to any or update types
-                }, 1000); // Wait for notification
-            } else {
-                showNotification('error', 'Invalid email or password');
+
+        try {
+            const response = await fetch(AUTH_ENDPOINTS.LOGIN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                // Check for specific error messages
+                if (result.error && result.error.includes('Email not confirmed')) {
+                    showNotification('error', 'Please verify your email first.');
+                    setTimeout(() => navigation.navigate('OtpVerification', { email }), 1500);
+                } else {
+                    throw new Error(result.error || 'Login failed');
+                }
+                setLoading(false);
+                return;
             }
-        }, 1500);
+
+            // Save display name from backend response
+            if (result.user && result.user.display_name) {
+                await AsyncStorage.setItem('userName', result.user.display_name);
+            } else {
+                await AsyncStorage.setItem('userName', email.split('@')[0]);
+            }
+
+            setLoading(false);
+            showNotification('success', 'Welcome back!');
+            setTimeout(() => navigation.replace('MainTabs' as any), 1000);
+
+        } catch (error: any) {
+            console.error('Login Error:', error.message);
+            setLoading(false);
+            showNotification('error', error.message || 'Invalid credentials');
+        }
     };
+
+    // Simple Animated Styles
+    const headerStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ scale: scaleAnim.value }],
+    }));
+
+    const illustrationStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ scale: scaleAnim.value }],
+    }));
+
+    const panelStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        // Removed large slide up, just subtle fade in
+    }));
 
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <Notification
-                type={notificationType}
-                message={notificationMessage}
-                visible={notificationVisible}
-                onHide={() => setNotificationVisible(false)}
-            />
+
+            {/* Background Decoration */}
+            <View style={styles.decorationContainer}>
+                <LeavesDecoration width={width} height={height * 0.6} />
+            </View>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -68,66 +121,70 @@ export default function LoginScreen() {
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
-                    <View style={styles.header}>
-                        <Text style={styles.welcomeText}>Welcome Back</Text>
-                        <Text style={styles.subtitleText}>Sign in to continue your journey</Text>
-                    </View>
+                    {/* Header Title */}
+                    <Animated.View style={headerStyle}>
+                        <Text style={styles.headerText}>MindFlow</Text>
+                    </Animated.View>
 
-                    <View style={styles.formContainer}>
-                        <View style={styles.inputWrapper}>
-                            <Ionicons name="mail-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Email Address"
-                                placeholderTextColor="#999"
-                                value={email}
-                                onChangeText={setEmail}
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                            />
-                        </View>
+                    {/* Illustration - Centered */}
+                    <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                        <MeditationIllustration width={width * 0.75} height={width * 0.75} />
+                    </Animated.View>
 
-                        <View style={styles.inputWrapper}>
-                            <Ionicons name="lock-closed-outline" size={20} color={Colors.textSecondary} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                placeholderTextColor="#999"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-                        </View>
+                    {/* Bottom Panel Form - Animated Slide Up */}
+                    <Animated.View style={[styles.bottomPanel, panelStyle]}>
+                        <Text style={styles.panelTitle}>WELCOME BACK</Text>
+                        <Text style={styles.panelSubtitle}>LOGIN TO CONTINUE</Text>
 
-                        <TouchableOpacity style={styles.forgotPassword}>
-                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                        </TouchableOpacity>
+                        <View style={styles.formContainer}>
+                            <View style={styles.inputWrapper}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Email Address"
+                                    placeholderTextColor="#90A4AE"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    autoCapitalize="none"
+                                    keyboardType="email-address"
+                                />
+                            </View>
 
-                        <TouchableOpacity
-                            style={styles.loginButton}
-                            onPress={handleLogin}
-                            disabled={loading}
-                        >
-                            <LinearGradient
-                                colors={Colors.gradients.primary as any} // Sage Green -> Soft Teal
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.gradientButton}
+                            <View style={styles.inputWrapper}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    placeholderTextColor="#90A4AE"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.loginButton}
+                                onPress={handleLogin}
+                                disabled={loading}
                             >
-                                <Text style={styles.loginButtonText}>{loading ? 'Signing In...' : 'Sign In'}</Text>
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </View>
+                                <Text style={styles.loginButtonText}>{loading ? 'LOGGING IN...' : 'LOG IN'}</Text>
+                            </TouchableOpacity>
 
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>Don't have an account? </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                            <Text style={styles.signupText}>Sign Up</Text>
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={styles.switchButton}>
+                                <Text style={styles.switchText}>OR SIGN UP</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <Notification
+                type={notificationType}
+                message={notificationMessage}
+                visible={notificationVisible}
+                onHide={() => setNotificationVisible(false)}
+            />
         </View>
     );
 }
@@ -135,102 +192,118 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: '#F6F8F9',
+    },
+    decorationContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
     },
     keyboardView: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
-        justifyContent: 'center',
-        padding: 24,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 60,
     },
-    header: {
-        marginBottom: 40,
-        alignItems: 'flex-start',
-    },
-    welcomeText: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: Colors.primary,
-        marginBottom: 8,
-    },
-    subtitleText: {
+    headerText: {
         fontSize: 16,
-        color: Colors.textSecondary,
-        fontWeight: '500',
+        fontWeight: '600',
+        color: '#636E72', // Text Secondary
+        letterSpacing: 2,
+        marginBottom: 20,
+        textTransform: 'uppercase',
+    },
+    illustrationContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    bottomPanel: {
+        backgroundColor: '#E3F2FD', // Soft Blue
+        width: '100%',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingTop: 30,
+        paddingBottom: 40,
+        paddingHorizontal: 30,
+        alignItems: 'center',
+        flex: 1, // Take remaining space
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 10,
+    },
+    panelTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#636E72',
+        letterSpacing: 2,
+        marginBottom: 5,
+    },
+    panelSubtitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#2D3436',
+        letterSpacing: 1,
+        marginBottom: 30,
     },
     formContainer: {
         width: '100%',
+        gap: 15,
     },
     inputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        marginBottom: 16,
-        paddingHorizontal: 16,
-        height: 60,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 30,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowRadius: 3,
         elevation: 2,
     },
-    inputIcon: {
-        marginRight: 12,
-    },
     input: {
-        flex: 1,
-        color: '#333',
         fontSize: 16,
-        height: '100%',
-    },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-        marginBottom: 24,
-    },
-    forgotPasswordText: {
-        color: '#6f9e9a',
-        fontSize: 14,
-        fontWeight: '600',
+        color: '#2D3436',
     },
     loginButton: {
-        borderRadius: 16,
-        overflow: 'hidden',
-        shadowColor: Colors.primary,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    gradientButton: {
+        backgroundColor: Colors.primary,
+        borderRadius: 30,
         paddingVertical: 18,
         alignItems: 'center',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 4,
+        marginTop: 10,
     },
     loginButtonText: {
-        color: Colors.surface, // Sand White
-        fontSize: 18,
+        color: '#FFFFFF',
         fontWeight: 'bold',
+        fontSize: 16,
         letterSpacing: 1,
     },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 32,
+    switchButton: {
+        backgroundColor: '#95C27E', // Light Green
+        borderRadius: 30,
+        paddingVertical: 18,
+        alignItems: 'center',
+        shadowColor: '#95C27E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 4,
     },
-    footerText: {
-        color: '#888',
-        fontSize: 14,
-    },
-    signupText: {
-        color: Colors.secondary, // Soft Teal
+    switchText: {
+        color: '#FFFFFF',
         fontWeight: 'bold',
-        textDecorationLine: 'underline',
+        fontSize: 16,
+        letterSpacing: 1,
     },
 });

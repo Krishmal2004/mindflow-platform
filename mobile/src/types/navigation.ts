@@ -3,6 +3,7 @@ export type RootStackParamList = {
     Onboarding: undefined;
     Login: undefined;
     Signup: undefined;
+    OtpVerification: { email: string };
     MainTabs: undefined;
     Dashboard: undefined;
     DailySliders: undefined;
