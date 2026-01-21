@@ -5,6 +5,9 @@ import * as dailyController from '../controllers/dailyController';
 import * as weeklyController from '../controllers/weeklyController';
 import * as questionnaireController from '../controllers/questionnaireController';
 import * as calendarController from '../controllers/calendarController';
+import * as thriveController from '../controllers/thriveController';
+import * as stressController from '../controllers/stressController';
+import * as mindfulController from '../controllers/mindfulController';
 
 const router = Router();
 
@@ -26,5 +29,17 @@ router.post('/questionnaire/submit', requireAuth, questionnaireController.submit
 
 // Calendar
 router.get('/calendar/events', requireAuth, calendarController.getCalendarEvents);
+
+// Thrive Tracker (WEMWBS)
+router.get('/thrive/status', requireAuth, thriveController.getThriveStatus);
+router.post('/thrive', requireAuth, thriveController.submitThriveEntry);
+
+// Stress Snapshot (PSS-10)
+router.get('/stress/status', requireAuth, stressController.getStressStatus);
+router.post('/stress', requireAuth, stressController.submitStressEntry);
+
+// Mindful Mirror (FFMQ-15)
+router.get('/mindful/status', requireAuth, mindfulController.getMindfulStatus);
+router.post('/mindful', requireAuth, mindfulController.submitMindfulEntry);
 
 export default router;
