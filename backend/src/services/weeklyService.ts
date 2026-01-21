@@ -1,4 +1,4 @@
-import { supabase } from '../app';
+import { supabase } from '../config/supabase';
 import { r2, BUCKET_NAME, PUBLIC_URL_BASE } from '../config/r2';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';

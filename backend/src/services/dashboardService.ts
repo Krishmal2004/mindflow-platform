@@ -1,4 +1,4 @@
-import { supabase } from '../app';
+import { supabase } from '../config/supabase';
 
 export class DashboardService {
     /**
@@ -120,7 +120,7 @@ export class DashboardService {
         // 3. Weekly Progress
         const uniqueWeeksLines = voiceRecordings || [];
         const uniqueWeeks = new Set(
-            uniqueWeeksLines.map((a) => {
+            uniqueWeeksLines.map((a: { created_at: string }) => {
                 const d = new Date(a.created_at);
                 const [year, week] = this.getWeekNumber(d);
                 return `${year}-W${week.toString().padStart(2, "0")}`;

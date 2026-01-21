@@ -1,175 +1,87 @@
-import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, useWindowDimensions, TouchableOpacity, ViewToken } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Animated, { useSharedValue, SharedValue, useAnimatedScrollHandler, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
-
-// Types
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, ReduceMotion } from 'react-native-reanimated';
+
 import { RootStackParamList } from '../types/navigation';
+import { Colors } from '../constants/colors';
+import { MeditationIllustration } from '../components/MeditationIllustration';
+import { LeavesDecoration } from '../components/LeavesDecoration';
 
-// ... (existing OnboardingItem types)
-
-type OnboardingItem = {
-    id: string;
-    title: string;
-    description: string;
-    // image: any; // Add image support later
-};
-
-// ... (existing slides array)
-
-const slides: OnboardingItem[] = [
-    {
-        id: '1',
-        title: 'Track Your Progress',
-        description: 'Monitor your mindfulness journey with detailed analytics and insights.',
-    },
-    {
-        id: '2',
-        title: 'Daily Exercises',
-        description: 'Access a library of guided meditations and breathing exercises tailored for you.',
-    },
-    {
-        id: '3',
-        title: 'Stay Connected',
-        description: 'Join a community of like-minded individuals and share your experiences.',
-    },
-];
-
-// ... (existing OnboardingItem and Paginator components) 
-
-const OnboardingItem = ({ item, index, x }: { item: OnboardingItem, index: number, x: SharedValue<number> }) => {
-    // ... (implementation same as before, see context)
-    const { width } = useWindowDimensions();
-
-    const animatedStyle = useAnimatedStyle(() => {
-        const opacity = interpolate(
-            x.value,
-            [(index - 1) * width, index * width, (index + 1) * width],
-            [0, 1, 0],
-            Extrapolation.CLAMP
-        );
-        const translateY = interpolate(
-            x.value,
-            [(index - 1) * width, index * width, (index + 1) * width],
-            [100, 0, 100],
-            Extrapolation.CLAMP
-        );
-        return { opacity, transform: [{ translateY }] };
-    });
-
-    return (
-        <View style={[styles.itemContainer, { width }]}>
-            <View style={styles.imagePlaceholder}>
-                <LinearGradient colors={['#A8E6CF', '#64C59A']} style={styles.imageGradient} />
-                <Text style={styles.placeholderText}>{index + 1}</Text>
-            </View>
-            <Animated.View style={[styles.textContainer, animatedStyle]}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.description}>{item.description}</Text>
-            </Animated.View>
-        </View>
-    );
-};
-
-const Paginator = ({ data, x }: { data: OnboardingItem[], x: SharedValue<number> }) => {
-    const { width } = useWindowDimensions();
-    return (
-        <View style={styles.paginatorContainer}>
-            {data.map((_, i) => {
-                const animatedDotStyle = useAnimatedStyle(() => {
-                    const widthAnim = interpolate(x.value, [(i - 1) * width, i * width, (i + 1) * width], [10, 20, 10], Extrapolation.CLAMP);
-                    const opacity = interpolate(x.value, [(i - 1) * width, i * width, (i + 1) * width], [0.3, 1, 0.3], Extrapolation.CLAMP);
-                    return { width: widthAnim, opacity };
-                });
-                return <Animated.View style={[styles.dot, animatedDotStyle]} key={i.toString()} />;
-            })}
-        </View>
-    );
-};
+const { width, height } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { width } = useWindowDimensions();
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const x = useSharedValue(0);
-    const flatListRef = useRef<FlatList>(null);
+    const fadeAnim = useSharedValue(0);
+    const slideAnim = useSharedValue(50);
 
-    const scrollHandler = useAnimatedScrollHandler({
-        onScroll: (event) => {
-            x.value = event.contentOffset.x;
-        },
-    });
+    useEffect(() => {
+        fadeAnim.value = withTiming(1, { duration: 1000, reduceMotion: ReduceMotion.System });
+        slideAnim.value = withDelay(300, withTiming(0, { duration: 800, reduceMotion: ReduceMotion.System }));
+    }, []);
 
-    const viewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-        if (viewableItems[0] && viewableItems[0].index !== null) {
-            setCurrentIndex(viewableItems[0].index);
-        }
-    }).current;
-
-    const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-
-    const handleNext = async () => {
-        if (currentIndex < slides.length - 1) {
-            flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
-        } else {
-            try {
-                await AsyncStorage.setItem('alreadyLaunched', 'true');
-            } catch (e) {
-                console.error('Error saving onboarding status', e);
-            }
-            navigation.replace('Login');
-        }
-    };
-
-    const handleSkip = async () => {
-        try {
-            await AsyncStorage.setItem('alreadyLaunched', 'true');
-        } catch (e) {
-            console.error('Error saving onboarding status', e);
-        }
+    const handleLogin = async () => {
+        await AsyncStorage.setItem('alreadyLaunched', 'true');
         navigation.replace('Login');
     };
 
+    const handleSignup = async () => {
+        await AsyncStorage.setItem('alreadyLaunched', 'true');
+        navigation.replace('Signup');
+    };
+
+    const headerStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ translateY: withDelay(100, slideAnim.value) }],
+    }));
+
+    const illustrationStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ scale: withDelay(200, withTiming(1, { duration: 1000 })) }],
+    }));
+
+    const animatedContentStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ translateY: slideAnim.value }],
+    }));
+
     return (
         <View style={styles.container}>
-            <Animated.FlatList
-                data={slides}
-                renderItem={({ item, index }) => <OnboardingItem item={item} index={index} x={x} />}
-                keyExtractor={(item) => item.id}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                pagingEnabled
-                bounces={false}
-                onScroll={scrollHandler}
-                scrollEventThrottle={16}
-                onViewableItemsChanged={viewableItemsChanged}
-                viewabilityConfig={viewConfig}
-                ref={flatListRef}
-            />
+            <StatusBar style="dark" />
 
-            <Paginator data={slides} x={x} />
-
-            <View style={styles.footer}>
-                {currentIndex < slides.length - 1 ? (
-                    <View style={styles.buttonContainer}>
-                        <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-                            <Text style={styles.skipText}>Skip</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
-                            <Text style={styles.nextText}>Next</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <TouchableOpacity onPress={handleNext} style={styles.getStartedButton}>
-                        <Text style={styles.getStartedText}>Get Started</Text>
-                    </TouchableOpacity>
-                )}
+            {/* Background Decoration */}
+            <View style={styles.decorationContainer}>
+                <LeavesDecoration width={width} height={height * 0.6} />
             </View>
-            <StatusBar style="auto" />
+
+            {/* Header */}
+            <Animated.View style={[styles.header, headerStyle]}>
+                <Text style={styles.headerText}>MindFlow</Text>
+            </Animated.View>
+
+            {/* Illustration */}
+            <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                <MeditationIllustration width={width * 0.85} height={width * 0.85} />
+            </Animated.View>
+
+            {/* Bottom Content Panel */}
+            <Animated.View style={[styles.bottomPanel, animatedContentStyle]}>
+                <Text style={styles.welcomeTitle}>WELCOME</Text>
+                <Text style={styles.welcomeSubtitle}>START YOUR JOURNEY</Text>
+
+                <View style={styles.buttonGroup}>
+                    <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} activeOpacity={0.8}>
+                        <Text style={styles.primaryButtonText}>LOG IN</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.secondaryButton} onPress={handleSignup} activeOpacity={0.8}>
+                        <Text style={styles.secondaryButtonText}>OR SIGN UP</Text>
+                    </TouchableOpacity>
+                </View>
+            </Animated.View>
         </View>
     );
 }
@@ -177,108 +89,99 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.background,
         alignItems: 'center',
-        justifyContent: 'center',
     },
-    itemContainer: {
+    decorationContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 0,
+    },
+    header: {
+        marginTop: 60,
+        marginBottom: 20,
+        zIndex: 1,
+    },
+    headerText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+        letterSpacing: 3,
+        textTransform: 'uppercase',
+    },
+    illustrationContainer: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    imagePlaceholder: {
-        width: 300,
-        height: 300,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 50,
-        borderRadius: 150, // Circle
-        overflow: 'hidden',
-        backgroundColor: '#f0f0f0',
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
+        zIndex: 1,
+        marginTop: -30, // Pull up slightly
     },
-    imageGradient: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    placeholderText: {
-        fontSize: 100,
-        color: 'white',
-        fontWeight: 'bold',
-        opacity: 0.8,
-    },
-    textContainer: {
-        alignItems: 'center',
-        paddingHorizontal: 20,
-    },
-    title: {
-        fontWeight: '800',
-        fontSize: 28,
-        marginBottom: 10,
-        color: '#1B5E45',
-        textAlign: 'center',
-    },
-    description: {
-        fontWeight: '400',
-        fontSize: 16,
-        color: '#62656b',
-        textAlign: 'center',
-        lineHeight: 24,
-    },
-    paginatorContainer: {
-        flexDirection: 'row',
-        height: 64,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    dot: {
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#64C59A',
-        marginHorizontal: 8,
-    },
-    footer: {
-        marginBottom: 50,
+    bottomPanel: {
+        backgroundColor: '#E3F2FD', // Soft Blue background from reference
         width: '100%',
-        paddingHorizontal: 20,
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    skipButton: {
-        padding: 15,
-    },
-    skipText: {
-        color: '#aaa',
-        fontSize: 16,
-    },
-    nextButton: {
-        backgroundColor: '#2E8A66',
-        paddingVertical: 15,
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingVertical: 40,
         paddingHorizontal: 30,
-        borderRadius: 30,
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 10,
     },
-    nextText: {
-        color: '#fff',
+    welcomeTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+        letterSpacing: 2,
+        marginBottom: 8,
+    },
+    welcomeSubtitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: Colors.textPrimary,
+        letterSpacing: 2,
+        marginBottom: 30,
+    },
+    buttonGroup: {
+        width: '100%',
+        gap: 16,
+    },
+    primaryButton: {
+        backgroundColor: Colors.primary,
+        borderRadius: 30,
+        paddingVertical: 18,
+        alignItems: 'center',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    primaryButtonText: {
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: 'bold',
+        letterSpacing: 1,
     },
-    getStartedButton: {
-        backgroundColor: '#2E8A66',
-        paddingVertical: 15,
+    secondaryButton: {
+        backgroundColor: '#95C27E', // Slightly lighter Green
         borderRadius: 30,
+        paddingVertical: 18,
         alignItems: 'center',
-        width: '100%',
+        shadowColor: '#95C27E',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
     },
-    getStartedText: {
-        color: '#fff',
-        fontSize: 18,
+    secondaryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
         fontWeight: 'bold',
+        letterSpacing: 1,
     },
 });

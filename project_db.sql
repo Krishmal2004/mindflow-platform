@@ -292,131 +292,134 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- ==============================================================================
--- 3. QUESTIONNAIRE SYSTEM
+-- 3. QUESTIONNAIRE SYSTEM (Specific Research Instruments)
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
--- Table: main_question_sets
--- Purpose: Headers for different questionnaires (e.g., PSMA 2025-Q1).
+-- Table: questionnaire_pss10_responses
+-- Purpose: Responses for Perceived Stress Scale (PSS-10).
+-- Structure: 10 items (q1-q10), answering scale 1-5.
 -- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS main_question_sets (
+CREATE TABLE IF NOT EXISTS questionnaire_pss10_responses (
     id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    version TEXT UNIQUE NOT NULL, -- e.g., '2025-Q1'
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    q1 INTEGER NOT NULL CHECK (q1 BETWEEN 1 AND 5),
+    q2 INTEGER NOT NULL CHECK (q2 BETWEEN 1 AND 5),
+    q3 INTEGER NOT NULL CHECK (q3 BETWEEN 1 AND 5),
+    q4 INTEGER NOT NULL CHECK (q4 BETWEEN 1 AND 5),
+    q5 INTEGER NOT NULL CHECK (q5 BETWEEN 1 AND 5),
+    q6 INTEGER NOT NULL CHECK (q6 BETWEEN 1 AND 5),
+    q7 INTEGER NOT NULL CHECK (q7 BETWEEN 1 AND 5),
+    q8 INTEGER NOT NULL CHECK (q8 BETWEEN 1 AND 5),
+    q9 INTEGER NOT NULL CHECK (q9 BETWEEN 1 AND 5),
+    q10 INTEGER NOT NULL CHECK (q10 BETWEEN 1 AND 5),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- RLS
-ALTER TABLE main_question_sets ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public read access to question sets" ON main_question_sets;
-CREATE POLICY "Public read access to question sets" ON main_question_sets FOR SELECT USING (true);
+-- RLS: PSS-10
+ALTER TABLE questionnaire_pss10_responses ENABLE ROW LEVEL SECURITY;
 
--- ------------------------------------------------------------------------------
--- Table: questionnaire_sections
--- Purpose: Logical sections within a question set (Part A, Part B...).
--- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS questionnaire_sections (
-    id SERIAL PRIMARY KEY,
-    question_set_id INTEGER NOT NULL REFERENCES main_question_sets(id) ON DELETE CASCADE,
-    section_key TEXT NOT NULL, -- 'A', 'B', 'C'
-    title TEXT NOT NULL,
-    instructions TEXT NOT NULL,
-    scale_min INTEGER NOT NULL,
-    scale_max INTEGER NOT NULL,
-    scale_labels TEXT[] NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(question_set_id, section_key)
-);
-
--- RLS
-ALTER TABLE questionnaire_sections ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public read access to sections" ON questionnaire_sections;
-CREATE POLICY "Public read access to sections" ON questionnaire_sections FOR SELECT USING (true);
-
--- ------------------------------------------------------------------------------
--- Table: main_questions
--- Purpose: Individual questions linked to sections.
--- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS main_questions (
-    id SERIAL PRIMARY KEY,
-    question_set_id INTEGER NOT NULL REFERENCES main_question_sets(id) ON DELETE CASCADE,
-    section_key TEXT NOT NULL,
-    question_id TEXT NOT NULL, -- 'PSS_01'
-    question_text TEXT NOT NULL,
-    facet TEXT, -- e.g., 'Observing' for FFMQ
-    reverse_score BOOLEAN DEFAULT FALSE,
-    sort_order INTEGER NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (question_set_id, section_key) 
-        REFERENCES questionnaire_sections(question_set_id, section_key),
-    UNIQUE (question_set_id, question_id)
-);
-
--- RLS
-ALTER TABLE main_questions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public read access to questions" ON main_questions;
-CREATE POLICY "Public read access to questions" ON main_questions FOR SELECT USING (true);
-
--- ------------------------------------------------------------------------------
--- Table: main_questionnaire_sessions
--- Purpose: Tracks a user's attempt at filling out a questionnaire.
--- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS main_questionnaire_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    question_set_id INTEGER NOT NULL REFERENCES main_question_sets(id) ON DELETE CASCADE,
-    time_to_complete INTEGER, -- in seconds
-    started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- RLS
-ALTER TABLE main_questionnaire_sessions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can manage their own sessions" ON main_questionnaire_sessions;
-
-CREATE POLICY "Users can manage their own sessions"
-    ON main_questionnaire_sessions 
+DROP POLICY IF EXISTS "Users manage own PSS10 responses" ON questionnaire_pss10_responses;
+CREATE POLICY "Users manage own PSS10 responses"
+    ON questionnaire_pss10_responses
     FOR ALL USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can view sessions"
-    ON main_questionnaire_sessions 
+DROP POLICY IF EXISTS "Admins view all PSS10 responses" ON questionnaire_pss10_responses;
+CREATE POLICY "Admins view all PSS10 responses"
+    ON questionnaire_pss10_responses
     FOR SELECT
     USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
+-- Index
+CREATE INDEX IF NOT EXISTS idx_pss10_user_id ON questionnaire_pss10_responses(user_id);
+
+
 -- ------------------------------------------------------------------------------
--- Table: main_questionnaire_responses
--- Purpose: Stores the actual answers provided by users.
+-- Table: questionnaire_ffmq15_responses
+-- Purpose: Responses for Five Facet Mindfulness Questionnaire (FFMQ-15).
+-- Structure: 15 items (q1-q15), answering scale 1-5.
 -- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS main_questionnaire_responses (
+CREATE TABLE IF NOT EXISTS questionnaire_ffmq15_responses (
     id SERIAL PRIMARY KEY,
-    session_id UUID NOT NULL REFERENCES main_questionnaire_sessions(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    question_set_id INTEGER NOT NULL,
-    question_id TEXT NOT NULL,
-    response_value INTEGER NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (question_set_id, question_id) 
-        REFERENCES main_questions(question_set_id, question_id)
+    q1 INTEGER NOT NULL CHECK (q1 BETWEEN 1 AND 5),
+    q2 INTEGER NOT NULL CHECK (q2 BETWEEN 1 AND 5),
+    q3 INTEGER NOT NULL CHECK (q3 BETWEEN 1 AND 5),
+    q4 INTEGER NOT NULL CHECK (q4 BETWEEN 1 AND 5),
+    q5 INTEGER NOT NULL CHECK (q5 BETWEEN 1 AND 5),
+    q6 INTEGER NOT NULL CHECK (q6 BETWEEN 1 AND 5),
+    q7 INTEGER NOT NULL CHECK (q7 BETWEEN 1 AND 5),
+    q8 INTEGER NOT NULL CHECK (q8 BETWEEN 1 AND 5),
+    q9 INTEGER NOT NULL CHECK (q9 BETWEEN 1 AND 5),
+    q10 INTEGER NOT NULL CHECK (q10 BETWEEN 1 AND 5),
+    q11 INTEGER NOT NULL CHECK (q11 BETWEEN 1 AND 5),
+    q12 INTEGER NOT NULL CHECK (q12 BETWEEN 1 AND 5),
+    q13 INTEGER NOT NULL CHECK (q13 BETWEEN 1 AND 5),
+    q14 INTEGER NOT NULL CHECK (q14 BETWEEN 1 AND 5),
+    q15 INTEGER NOT NULL CHECK (q15 BETWEEN 1 AND 5),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- RLS
-ALTER TABLE main_questionnaire_responses ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can manage their own responses" ON main_questionnaire_responses;
+-- RLS: FFMQ-15
+ALTER TABLE questionnaire_ffmq15_responses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can manage their own responses"
-    ON main_questionnaire_responses 
+DROP POLICY IF EXISTS "Users manage own FFMQ15 responses" ON questionnaire_ffmq15_responses;
+CREATE POLICY "Users manage own FFMQ15 responses"
+    ON questionnaire_ffmq15_responses
     FOR ALL USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can view responses"
-    ON main_questionnaire_responses 
+DROP POLICY IF EXISTS "Admins view all FFMQ15 responses" ON questionnaire_ffmq15_responses;
+CREATE POLICY "Admins view all FFMQ15 responses"
+    ON questionnaire_ffmq15_responses
     FOR SELECT
     USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
--- Questionnaire Indexes
-CREATE INDEX IF NOT EXISTS idx_main_questions_set_id ON main_questions(question_set_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON main_questionnaire_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_responses_session_id ON main_questionnaire_responses(session_id);
+-- Index
+CREATE INDEX IF NOT EXISTS idx_ffmq15_user_id ON questionnaire_ffmq15_responses(user_id);
+
+
+-- ------------------------------------------------------------------------------
+-- Table: questionnaire_wemwbs14_responses
+-- Purpose: Responses for Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS-14).
+-- Structure: 14 items (q1-q14), answering scale 1-5.
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS questionnaire_wemwbs14_responses (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    q1 INTEGER NOT NULL CHECK (q1 BETWEEN 1 AND 5),
+    q2 INTEGER NOT NULL CHECK (q2 BETWEEN 1 AND 5),
+    q3 INTEGER NOT NULL CHECK (q3 BETWEEN 1 AND 5),
+    q4 INTEGER NOT NULL CHECK (q4 BETWEEN 1 AND 5),
+    q5 INTEGER NOT NULL CHECK (q5 BETWEEN 1 AND 5),
+    q6 INTEGER NOT NULL CHECK (q6 BETWEEN 1 AND 5),
+    q7 INTEGER NOT NULL CHECK (q7 BETWEEN 1 AND 5),
+    q8 INTEGER NOT NULL CHECK (q8 BETWEEN 1 AND 5),
+    q9 INTEGER NOT NULL CHECK (q9 BETWEEN 1 AND 5),
+    q10 INTEGER NOT NULL CHECK (q10 BETWEEN 1 AND 5),
+    q11 INTEGER NOT NULL CHECK (q11 BETWEEN 1 AND 5),
+    q12 INTEGER NOT NULL CHECK (q12 BETWEEN 1 AND 5),
+    q13 INTEGER NOT NULL CHECK (q13 BETWEEN 1 AND 5),
+    q14 INTEGER NOT NULL CHECK (q14 BETWEEN 1 AND 5),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- RLS: WEMWBS-14
+ALTER TABLE questionnaire_wemwbs14_responses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own WEMWBS14 responses" ON questionnaire_wemwbs14_responses;
+CREATE POLICY "Users manage own WEMWBS14 responses"
+    ON questionnaire_wemwbs14_responses
+    FOR ALL USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins view all WEMWBS14 responses" ON questionnaire_wemwbs14_responses;
+CREATE POLICY "Admins view all WEMWBS14 responses"
+    ON questionnaire_wemwbs14_responses
+    FOR SELECT
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
+
+-- Index
+CREATE INDEX IF NOT EXISTS idx_wemwbs14_user_id ON questionnaire_wemwbs14_responses(user_id);
+
 
 -- ==============================================================================
 -- 4. CALENDAR SYSTEM
@@ -463,7 +466,7 @@ CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date ON calendar_events(eve
 CREATE INDEX IF NOT EXISTS idx_calendar_events_user_id ON calendar_events(user_id);
 
 -- ==============================================================================
--- 5. PERMISSIONS & SEED DATA
+-- 5. PERMISSIONS
 -- ==============================================================================
 
 -- Grant Usage Permissions
@@ -472,64 +475,23 @@ GRANT ALL ON TABLE about_me_profiles TO authenticated;
 GRANT ALL ON TABLE daily_sliders TO authenticated;
 GRANT ALL ON TABLE voice_recordings TO authenticated;
 GRANT ALL ON TABLE weekly_recordings TO authenticated;
-GRANT ALL ON TABLE main_question_sets TO authenticated;
-GRANT ALL ON TABLE questionnaire_sections TO authenticated;
-GRANT ALL ON TABLE main_questions TO authenticated;
-GRANT ALL ON TABLE main_questionnaire_sessions TO authenticated;
-GRANT ALL ON TABLE main_questionnaire_responses TO authenticated;
+
+-- New Questionnaire Tables
+GRANT ALL ON TABLE questionnaire_pss10_responses TO authenticated;
+GRANT ALL ON TABLE questionnaire_ffmq15_responses TO authenticated;
+GRANT ALL ON TABLE questionnaire_wemwbs14_responses TO authenticated;
+
 GRANT ALL ON TABLE calendar_events TO authenticated;
 
 -- Grant Sequence Permissions
 GRANT USAGE, SELECT ON SEQUENCE daily_sliders_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE voice_recordings_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE weekly_recordings_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE main_question_sets_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE questionnaire_sections_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE main_questions_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE main_questionnaire_responses_id_seq TO authenticated;
+
+-- New Sequences
+GRANT USAGE, SELECT ON SEQUENCE questionnaire_pss10_responses_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE questionnaire_ffmq15_responses_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE questionnaire_wemwbs14_responses_id_seq TO authenticated;
+
 GRANT USAGE, SELECT ON SEQUENCE calendar_events_id_seq TO authenticated;
 GRANT SELECT ON TABLE admins TO authenticated;
-
--- ------------------------------------------------------------------------------
--- Seed: Questionnaire Data (Example)
--- ------------------------------------------------------------------------------
--- Note: We use DO blocks or conditional inserts to avoid duplicates if re-run
-
-INSERT INTO main_question_sets (title, description, version)
-VALUES (
-    'Perceived Stress & Mindfulness Assessment',
-    'Standardized questionnaire measuring perceived stress and mindfulness facets',
-    '2025-Q1'
-)
-ON CONFLICT (version) DO NOTHING;
-
--- Retrieve ID of inserted set
-WITH qs AS (SELECT id FROM main_question_sets WHERE version = '2025-Q1')
-INSERT INTO questionnaire_sections (question_set_id, section_key, title, instructions, scale_min, scale_max, scale_labels)
-SELECT 
-    id, 'A', 'Part A: Perceived Stress Scale (PSS-10)',
-    'In the last month, how often have you felt...',
-    1, 5, ARRAY['Never', 'Almost Never', 'Sometimes', 'Fairly Often', 'Very Often']
-FROM qs
-ON CONFLICT (question_set_id, section_key) DO NOTHING;
-
-WITH qs AS (SELECT id FROM main_question_sets WHERE version = '2025-Q1')
-INSERT INTO questionnaire_sections (question_set_id, section_key, title, instructions, scale_min, scale_max, scale_labels)
-SELECT 
-    id, 'B', 'Part B: Five Facet Mindfulness Questionnaire (FFMQ-15)',
-    'Please rate each of the following statements...',
-    1, 5, ARRAY['Never or very rarely true', 'Rarely true', 'Sometimes true', 'Often true', 'Very often or always true']
-FROM qs
-ON CONFLICT (question_set_id, section_key) DO NOTHING;
-
-WITH qs AS (SELECT id FROM main_question_sets WHERE version = '2025-Q1')
-INSERT INTO questionnaire_sections (question_set_id, section_key, title, instructions, scale_min, scale_max, scale_labels)
-SELECT 
-    id, 'C', 'Part C: Warwick-Edinburgh Mental Wellbeing Scale (WEMWBS)',
-    'Below are some statements about feelings and thoughts...',
-    1, 5, ARRAY['None of the time', 'Rarely', 'Some of the time', 'Often', 'All of the time']
-FROM qs
-ON CONFLICT (question_set_id, section_key) DO NOTHING;
-
--- (Sample Questions Insertions omitted for brevity, add back if essential for reset)
--- If full seed is needed, uncomment and ensure IDs match dynamically using CTEs as above.

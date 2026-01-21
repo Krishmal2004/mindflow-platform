@@ -1,4 +1,4 @@
-import { supabase } from '../app';
+import { supabase } from '../config/supabase';
 
 export class CalendarService {
     public async getCalendarEvents(userId: string, startDate: string, endDate: string) {

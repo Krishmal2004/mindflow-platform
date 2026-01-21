@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DashboardService = void 0;
-const app_1 = require("../app");
+const supabase_1 = require("../config/supabase");
 class DashboardService {
     /**
      * helper to get ISO week number
@@ -25,37 +25,37 @@ class DashboardService {
         // Parallel Queries
         const [{ data: streakData }, { count: totalCount }, { count: recentCount }, { data: voiceRecordings }, { count: monthlyMainCount }, { data: profile }] = await Promise.all([
             // 1. All Daily Sliders for Streak Calculation (Ordered)
-            app_1.supabase
+            supabase_1.supabase
                 .from("daily_sliders")
                 .select("created_at")
                 .eq("user_id", userId)
                 .order("created_at", { ascending: false }),
             // 2. Total Count (last 6 months)
-            app_1.supabase
+            supabase_1.supabase
                 .from("daily_sliders")
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", userId)
                 .gte("created_at", sixMonthsAgo.toISOString()),
             // 3. Recent Count (last 30 days) for Consistency
-            app_1.supabase
+            supabase_1.supabase
                 .from("daily_sliders")
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", userId)
                 .gte("created_at", thirtyDaysAgo.toISOString()),
             // 4. Voice Recordings for Weekly Progress
-            app_1.supabase
+            supabase_1.supabase
                 .from("voice_recordings")
                 .select("created_at")
                 .eq("user_id", userId)
                 .gte("created_at", sixMonthsAgo.toISOString()),
             // 5. Main Questionnaire for Monthly Progress
-            app_1.supabase
+            supabase_1.supabase
                 .from("main_questionnaire_responses")
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", userId)
                 .gte("submitted_at", startOfMonth.toISOString()),
             // 6. User Profile for Research ID
-            app_1.supabase
+            supabase_1.supabase
                 .from("profiles")
                 .select("researchID")
                 .eq("id", userId)
