@@ -1,15 +1,15 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, ReduceMotion } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
-import { MeditationIllustration } from '../components/MeditationIllustration';
 import { LeavesDecoration } from '../components/LeavesDecoration';
+import { MeditationIllustration } from '../components/MeditationIllustration';
 
 const { width, height } = Dimensions.get('window');
 
@@ -17,10 +17,13 @@ export default function OnboardingScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const fadeAnim = useSharedValue(0);
     const slideAnim = useSharedValue(50);
+    const imageScale = useSharedValue(0.8);
 
     useEffect(() => {
-        fadeAnim.value = withTiming(1, { duration: 1000, reduceMotion: ReduceMotion.System });
-        slideAnim.value = withDelay(300, withTiming(0, { duration: 800, reduceMotion: ReduceMotion.System }));
+        fadeAnim.value = withTiming(1, { duration: 1200, easing: Easing.bezier(0.25, 0.1, 0.25, 1) });
+        // Removed withDelay wrapper here as per previous fix
+        slideAnim.value = withTiming(0, { duration: 800 });
+        imageScale.value = withDelay(200, withTiming(1, { duration: 1000, easing: Easing.out(Easing.exp) }));
     }, []);
 
     const handleLogin = async () => {
@@ -35,12 +38,12 @@ export default function OnboardingScreen() {
 
     const headerStyle = useAnimatedStyle(() => ({
         opacity: fadeAnim.value,
-        transform: [{ translateY: withDelay(100, slideAnim.value) }],
+        transform: [{ translateY: slideAnim.value }],
     }));
 
     const illustrationStyle = useAnimatedStyle(() => ({
         opacity: fadeAnim.value,
-        transform: [{ scale: withDelay(200, withTiming(1, { duration: 1000 })) }],
+        transform: [{ scale: imageScale.value }],
     }));
 
     const animatedContentStyle = useAnimatedStyle(() => ({
@@ -64,13 +67,16 @@ export default function OnboardingScreen() {
 
             {/* Illustration */}
             <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                <MeditationIllustration width={width * 0.85} height={width * 0.85} />
+                <MeditationIllustration width={width * 0.9} height={width * 0.9} />
             </Animated.View>
 
             {/* Bottom Content Panel */}
             <Animated.View style={[styles.bottomPanel, animatedContentStyle]}>
                 <Text style={styles.welcomeTitle}>WELCOME</Text>
                 <Text style={styles.welcomeSubtitle}>START YOUR JOURNEY</Text>
+                <Text style={styles.description}>
+                    Discover mindfulness, reduce stress, and find your balance with daily guided sessions.
+                </Text>
 
                 <View style={styles.buttonGroup}>
                     <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} activeOpacity={0.8}>
@@ -101,11 +107,11 @@ const styles = StyleSheet.create({
     },
     header: {
         marginTop: 60,
-        marginBottom: 20,
+        marginBottom: 10,
         zIndex: 1,
     },
     headerText: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '600',
         color: Colors.textSecondary,
         letterSpacing: 3,
@@ -116,10 +122,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1,
-        marginTop: -30, // Pull up slightly
+        marginTop: -40,
+    },
+    imageWrapper: {
+        width: width * 0.9,
+        height: width * 0.9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        // Optional: Add soft glow/backdrop
+    },
+    image: {
+        width: '100%',
+        height: '100%',
     },
     bottomPanel: {
-        backgroundColor: '#E3F2FD', // Soft Blue background from reference
+        backgroundColor: '#E3F2FD', // Soft Blue background
         width: '100%',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
@@ -140,11 +157,19 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     welcomeSubtitle: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
         color: Colors.textPrimary,
-        letterSpacing: 2,
+        letterSpacing: 1.5,
+        marginBottom: 16,
+    },
+    description: {
+        fontSize: 14,
+        color: '#636E72',
+        textAlign: 'center',
         marginBottom: 30,
+        lineHeight: 22,
+        paddingHorizontal: 20,
     },
     buttonGroup: {
         width: '100%',
@@ -168,7 +193,7 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     secondaryButton: {
-        backgroundColor: '#95C27E', // Slightly lighter Green
+        backgroundColor: '#95C27E',
         borderRadius: 30,
         paddingVertical: 18,
         alignItems: 'center',

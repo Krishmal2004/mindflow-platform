@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Ellipse, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Ellipse, Rect, Filter, FeGaussianBlur, FeOffset, FeFlood, FeComposite, FeMerge, FeMergeNode } from 'react-native-svg';
 
 interface IllustrationProps {
     width?: number;

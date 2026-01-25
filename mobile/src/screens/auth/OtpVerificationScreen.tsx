@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, { useSharedValue, withTiming, useAnimatedStyle, ReduceMotion, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
@@ -35,8 +36,8 @@ export default function OtpVerificationScreen() {
     const scaleAnim = useSharedValue(0.9);
 
     useEffect(() => {
-        fadeAnim.value = withTiming(1, { duration: 800, reduceMotion: ReduceMotion.System });
-        scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp), reduceMotion: ReduceMotion.System });
+        fadeAnim.value = withTiming(1, { duration: 800 });
+        scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
     }, []);
 
     const showNotification = (type: NotificationType, message: string) => {

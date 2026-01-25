@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing, ReduceMotion } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
@@ -34,8 +34,8 @@ export default function SignupScreen() {
 
     useEffect(() => {
         // Simple Fade In
-        fadeAnim.value = withTiming(1, { duration: 800, reduceMotion: ReduceMotion.System });
-        scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp), reduceMotion: ReduceMotion.System });
+        fadeAnim.value = withTiming(1, { duration: 800 });
+        scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
     }, []);
 
     const showNotification = (type: NotificationType, message: string) => {
