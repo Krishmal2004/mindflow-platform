@@ -11,7 +11,13 @@ export const getDailyStatus = async (req: AuthenticatedRequest, res: Response): 
             return;
         }
         const status = await dailyService.getDailyStatus(req.user.id);
-        res.json(status);
+
+        if (status.completed) {
+            const history = await dailyService.getRecentHistory(req.user.id);
+            res.json({ ...status, history });
+        } else {
+            res.json(status);
+        }
     } catch (error: any) {
         console.error('Error in getDailyStatus:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
@@ -25,7 +31,8 @@ export const submitDailyEntry = async (req: AuthenticatedRequest, res: Response)
             return;
         }
         const result = await dailyService.submitDailyEntry(req.user.id, req.body);
-        res.json(result);
+        const history = await dailyService.getRecentHistory(req.user.id);
+        res.json({ ...result, history });
     } catch (error: any) {
         console.error('Error in submitDailyEntry:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });

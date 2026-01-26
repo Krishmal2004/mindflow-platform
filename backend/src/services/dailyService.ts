@@ -97,4 +97,19 @@ export class DailyService {
         }
         return { success: true };
     }
+
+    // Get recent history for graphs
+    public async getRecentHistory(userId: string, days: number = 7) {
+        const { data, error } = await supabase
+            .from('daily_sliders')
+            .select('created_at, stress_level, mood, sleep_quality, relaxation_level')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(days);
+
+        if (error) throw error;
+
+        // Return in chronological order for graphs
+        return data?.reverse() || [];
+    }
 }
