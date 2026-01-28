@@ -4,6 +4,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingVi
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../../types/navigation';
@@ -75,6 +76,15 @@ export default function OtpVerificationScreen() {
             console.log('OTP Verified:', result);
 
             showNotification('success', 'Email Verified Successfully!');
+
+            // Save session
+            if (result.session && result.session.access_token) {
+                await AsyncStorage.setItem('authToken', result.session.access_token);
+            }
+            await AsyncStorage.setItem('isLoggedIn', 'true');
+            if (result.user && result.user.user_metadata && result.user.user_metadata.full_name) {
+                await AsyncStorage.setItem('userName', result.user.user_metadata.full_name);
+            }
 
             // Navigate to Main App
             setTimeout(() => {

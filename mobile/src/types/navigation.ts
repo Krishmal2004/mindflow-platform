@@ -11,4 +11,12 @@ export type RootStackParamList = {
     ThriveTracker: undefined;
     StressSnapshot: undefined;
     MindfulMirror: undefined;
+    BreathingInhaler: undefined;
+    YogaRoute: undefined;
+    CompleteTask: {
+        title: string;
+        message: string;
+        buttonText?: string;
+        historyData?: any[];
+    };
 };

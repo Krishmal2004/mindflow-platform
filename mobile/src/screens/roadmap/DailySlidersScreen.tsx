@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -48,7 +50,7 @@ const WAKE_TIMES = [
 ];
 
 export default function DailySlidersScreen() {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     // Mindfulness practice state
     const [mindfulnessPractice, setMindfulnessPractice] = useState<'yes' | 'no' | null>(null);
@@ -89,8 +91,13 @@ export default function DailySlidersScreen() {
 
             if (response.ok) {
                 const data = await response.json();
-                if (data.submitted) {
-                    setAlreadySubmitted(true);
+                if (data.completed) {
+                    setAlreadySubmitted(true); // Keep local state just in case, but redirect
+                    navigation.replace('CompleteTask', {
+                        title: 'Great Job Today!',
+                        message: 'You have successfully done the Daily Task. See you tomorrow again!',
+                        historyData: data.history
+                    });
                 }
             }
         } catch (error) {
@@ -153,6 +160,19 @@ export default function DailySlidersScreen() {
 
         try {
             const token = await getAuthToken();
+
+            if (!token) {
+                Alert.alert('Session Expired', 'Please login again to continue.', [
+                    {
+                        text: 'OK', onPress: () => navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Login' }],
+                        })
+                    }
+                ]);
+                return;
+            }
+
             const response = await fetch(`${API_URL}/api/roadmap/daily`, {
                 method: 'POST',
                 headers: {
@@ -178,9 +198,13 @@ export default function DailySlidersScreen() {
                 throw new Error(error.error || 'Submission failed');
             }
 
-            Alert.alert('Success!', 'Your daily check-in has been saved.', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+            const data = await response.json();
+
+            navigation.replace('CompleteTask', {
+                title: 'Great Job Today!',
+                message: 'You have successfully done the Daily Task. See you tomorrow again!',
+                historyData: data.history
+            });
 
         } catch (error: any) {
             console.error('Submit error:', error);
@@ -214,7 +238,7 @@ export default function DailySlidersScreen() {
 
                 <View style={styles.successContainer}>
                     <View style={styles.successIcon}>
-                        <Ionicons name="checkmark-circle" size={80} color="#10B981" />
+                        <Ionicons name="checkmark-circle" size={80} color="#64C59A" />
                     </View>
                     <Text style={styles.successTitle}>Great Job Today!</Text>
                     <Text style={styles.successText}>You've completed your daily entry.</Text>
@@ -270,7 +294,7 @@ export default function DailySlidersScreen() {
                             <Ionicons
                                 name={mindfulnessPractice === 'yes' ? 'checkmark-circle' : 'checkmark-circle-outline'}
                                 size={24}
-                                color={mindfulnessPractice === 'yes' ? '#FFFFFF' : '#10B981'}
+                                color={mindfulnessPractice === 'yes' ? '#FFFFFF' : '#64C59A'}
                             />
                             <Text style={[
                                 styles.yesNoText,
@@ -367,7 +391,7 @@ export default function DailySlidersScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={[styles.sectionIconCircle, { backgroundColor: '#D1FAE5' }]}>
-                            <Ionicons name="happy-outline" size={24} color="#10B981" />
+                            <Ionicons name="happy-outline" size={24} color="#64C59A" />
                         </View>
                         <View>
                             <Text style={styles.sectionTitle}>Mood Level</Text>
@@ -682,8 +706,8 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     yesButtonSelected: {
-        backgroundColor: '#10B981',
-        borderColor: '#10B981',
+        backgroundColor: '#64C59A',
+        borderColor: '#64C59A',
     },
     noButtonSelected: {
         backgroundColor: '#EF4444',

@@ -26,8 +26,12 @@ export default function SplashScreen() {
         const checkFirstLaunch = async () => {
             try {
                 await new Promise(resolve => setTimeout(resolve, 3000));
-                const value = await AsyncStorage.getItem('alreadyLaunched');
-                if (value === null) {
+                const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
+                const alreadyLaunched = await AsyncStorage.getItem('alreadyLaunched');
+
+                if (isLoggedIn === 'true') {
+                    navigation.replace('MainTabs' as any);
+                } else if (alreadyLaunched === null) {
                     navigation.replace('Onboarding');
                 } else {
                     navigation.replace('Login');

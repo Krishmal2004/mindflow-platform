@@ -13,6 +13,9 @@ import WeeklyWhispersScreen from '../screens/roadmap/WeeklyWhispersScreen';
 import ThriveTrackerScreen from '../screens/roadmap/ThriveTrackerScreen';
 import StressSnapshotScreen from '../screens/roadmap/StressSnapshotScreen';
 import MindfulMirrorScreen from '../screens/roadmap/MindfulMirrorScreen';
+import BreathingInhalerScreen from '../screens/BreathingInhalerScreen';
+import YogaRouteScreen from '../screens/YogaRouteScreen';
+import CompleteTaskScreen from '../screens/CompleteTaskScreen';
 
 import { RootStackParamList } from '../types/navigation';
 
@@ -43,6 +46,11 @@ export default function AppNavigator() {
                 <Stack.Screen name="ThriveTracker" component={ThriveTrackerScreen} options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="StressSnapshot" component={StressSnapshotScreen} options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="MindfulMirror" component={MindfulMirrorScreen} options={{ animation: 'slide_from_right' }} />
+
+                {/* Coming Soon Placeholders */}
+                <Stack.Screen name="BreathingInhaler" component={BreathingInhalerScreen} options={{ animation: 'fade_from_bottom' }} />
+                <Stack.Screen name="YogaRoute" component={YogaRouteScreen} options={{ animation: 'fade_from_bottom' }} />
+                <Stack.Screen name="CompleteTask" component={CompleteTaskScreen} options={{ animation: 'fade' }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

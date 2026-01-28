@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -247,6 +247,22 @@ export default function WeeklyWhispersScreen() {
                 const data = await response.json();
                 if (data.submitted) {
                     setAlreadySubmitted(true);
+                    navigation.dispatch(
+                        CommonActions.reset({
+                            index: 1,
+                            routes: [
+                                { name: 'MainTabs' },
+                                {
+                                    name: 'CompleteTask',
+                                    params: {
+                                        title: 'Already Submitted!',
+                                        message: "You've completed this week's recording. Come back next week!",
+                                        buttonText: 'Back to Journey'
+                                    }
+                                }
+                            ],
+                        })
+                    );
                 }
             }
         } catch (error) {
@@ -392,7 +408,22 @@ export default function WeeklyWhispersScreen() {
             }
 
             showPopup('success', 'Success!', 'Your voice recording has been submitted successfully.', () => {
-                navigation.goBack();
+                navigation.dispatch(
+                    CommonActions.reset({
+                        index: 1,
+                        routes: [
+                            { name: 'MainTabs' },
+                            {
+                                name: 'CompleteTask',
+                                params: {
+                                    title: 'Great Job!',
+                                    message: 'Your voice recording has been submitted successfully. See you next week!',
+                                    buttonText: 'Back to Journey'
+                                }
+                            }
+                        ],
+                    })
+                );
             });
 
         } catch (error: any) {

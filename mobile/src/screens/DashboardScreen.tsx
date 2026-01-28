@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,17 +10,13 @@ import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } fr
 
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
+import { API_URL } from '../config/api';
 import { LeavesDecoration } from '../components/LeavesDecoration';
+import { JourneyIcons } from '../components/JourneyIcons';
 import {
     YogaSmall,
     QuoteIcon,
     BreathingCircles,
-    SunIcon,
-    CalendarIcon,
-    ChartIcon,
-    CameraIcon,
-    MirrorIcon,
-    MicIcon
 } from '../components/DashboardIllustrations';
 
 const { width } = Dimensions.get('window');
@@ -40,18 +36,53 @@ const MINDFULNESS_QUOTES = [
 
 // Roadmap steps configuration
 const JOURNEY_STEPS = [
-    { id: 1, title: 'Daily Sliders', subtitle: 'Track your mood', route: 'DailySliders', Icon: SunIcon, color: '#F59E0B', bgColor: '#FEF3C7' },
-    { id: 2, title: 'Weekly Whispers', subtitle: 'Reflect weekly', route: 'WeeklyWhispers', Icon: MicIcon, color: '#8B5CF6', bgColor: '#EDE9FE' },
-    { id: 3, title: 'Thrive Tracker', subtitle: 'Monitor growth', route: 'ThriveTracker', Icon: ChartIcon, color: '#10B981', bgColor: '#D1FAE5' },
-    { id: 4, title: 'Stress Snapshot', subtitle: 'Capture stress', route: 'StressSnapshot', Icon: CameraIcon, color: '#EF4444', bgColor: '#FEE2E2' },
-    { id: 5, title: 'Mindful Mirror', subtitle: 'Self-reflection', route: 'MindfulMirror', Icon: MirrorIcon, color: '#6366F1', bgColor: '#E0E7FF' },
+    { id: 1, title: 'Daily Sliders', subtitle: 'Track your mood', route: 'DailySliders', Icon: JourneyIcons.Sun, color: '#F59E0B', bgColor: '#FEF3C7' },
+    { id: 2, title: 'Weekly Whispers', subtitle: 'Reflect weekly', route: 'WeeklyWhispers', Icon: JourneyIcons.Microphone, color: '#8B5CF6', bgColor: '#EDE9FE' },
+    { id: 3, title: 'Thrive Tracker', subtitle: 'Monitor growth', route: 'ThriveTracker', Icon: JourneyIcons.Chart, color: '#10B981', bgColor: '#D1FAE5' },
+    { id: 4, title: 'Stress Snapshot', subtitle: 'Capture stress', route: 'StressSnapshot', Icon: JourneyIcons.StressCamera, color: '#EF4444', bgColor: '#FEE2E2' },
+    { id: 5, title: 'Mindful Mirror', subtitle: 'Self-reflection', route: 'MindfulMirror', Icon: JourneyIcons.Mirror, color: '#6366F1', bgColor: '#E0E7FF' },
 ];
 
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
     const [userName, setUserName] = useState('Anna');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
+    const [dailyCompleted, setDailyCompleted] = useState(false);
+    const [weeklyCompleted, setWeeklyCompleted] = useState(false);
     const fadeAnim = useRef(new Animated.Value(1)).current;
+
+    useFocusEffect(
+        useCallback(() => {
+            const checkStatuses = async () => {
+                try {
+                    const token = await AsyncStorage.getItem('authToken');
+                    if (!token) return;
+
+                    // Check Daily
+                    const dailyRes = await fetch(`${API_URL}/api/roadmap/daily/status`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (dailyRes.ok) {
+                        const data = await dailyRes.json();
+                        setDailyCompleted(data.completed || data.submitted);
+                    }
+
+                    // Check Weekly
+                    const weeklyRes = await fetch(`${API_URL}/api/roadmap/weekly/status`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (weeklyRes.ok) {
+                        const data = await weeklyRes.json();
+                        setWeeklyCompleted(data.completed || data.submitted);
+                    }
+
+                } catch (error) {
+                    console.log('Dashboard status check failed');
+                }
+            };
+            checkStatuses();
+        }, [])
+    );
 
     useEffect(() => {
         const loadUser = async () => {
@@ -147,7 +178,10 @@ export default function DashboardScreen() {
                 {/* Large Cards */}
                 <View style={styles.largeCardsContainer}>
                     {/* Meditation Card */}
-                    <TouchableOpacity style={[styles.largeCard, { backgroundColor: '#E3F2FD' }]}>
+                    <TouchableOpacity
+                        style={[styles.largeCard, { backgroundColor: '#E3F2FD' }]}
+                        onPress={() => navigation.navigate('BreathingInhaler' as any)}
+                    >
                         <View style={styles.cardTextContainer}>
                             <Text style={styles.cardTitle}>MEDITATION</Text>
                             <Text style={styles.cardSubtitle}>Breathing Exercises</Text>
@@ -162,7 +196,10 @@ export default function DashboardScreen() {
                     </TouchableOpacity>
 
                     {/* Yoga Card */}
-                    <TouchableOpacity style={[styles.largeCard, { backgroundColor: '#F3E5F5' }]}>
+                    <TouchableOpacity
+                        style={[styles.largeCard, { backgroundColor: '#F3E5F5' }]}
+                        onPress={() => navigation.navigate('YogaRoute' as any)}
+                    >
                         <View style={styles.cardImageContainer}>
                             <YogaSmall width={90} height={90} />
                         </View>
@@ -221,12 +258,32 @@ export default function DashboardScreen() {
                             style={[styles.mapNode, { top: 20, right: 20 }]}
                             onPress={() => navigation.navigate('DailySliders')}
                         >
-                            <View style={[styles.nodeCircle, { backgroundColor: JOURNEY_STEPS[0].bgColor, borderColor: JOURNEY_STEPS[0].color }]}>
-                                <SunIcon size={28} color={JOURNEY_STEPS[0].color} />
+                            <View style={[
+                                styles.nodeCircle,
+                                {
+                                    backgroundColor: dailyCompleted ? '#D1FAE5' : JOURNEY_STEPS[0].bgColor,
+                                    borderColor: dailyCompleted ? '#64C59A' : JOURNEY_STEPS[0].color
+                                }
+                            ]}>
+                                {dailyCompleted ? (
+                                    <Ionicons name="checkmark" size={28} color="#64C59A" />
+                                ) : (
+                                    <JourneyIcons.Sun width={28} height={28} color={JOURNEY_STEPS[0].color} />
+                                )}
                             </View>
                             <View style={styles.nodeLabel}>
-                                <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[0].color }]}>Daily Sliders</Text>
-                                <Text style={styles.nodeSubtext}>Track mood</Text>
+                                <Text style={[
+                                    styles.nodeLabelText,
+                                    { color: dailyCompleted ? '#64C59A' : JOURNEY_STEPS[0].color }
+                                ]}>
+                                    Daily Sliders
+                                </Text>
+                                <Text style={[
+                                    styles.nodeSubtext,
+                                    dailyCompleted && { color: '#64C59A', fontWeight: '600' }
+                                ]}>
+                                    {dailyCompleted ? 'Completed' : 'Track mood'}
+                                </Text>
                             </View>
                         </TouchableOpacity>
 
@@ -235,12 +292,32 @@ export default function DashboardScreen() {
                             style={[styles.mapNode, { top: 120, left: 20 }]}
                             onPress={() => navigation.navigate('WeeklyWhispers')}
                         >
-                            <View style={[styles.nodeCircle, { backgroundColor: JOURNEY_STEPS[1].bgColor, borderColor: JOURNEY_STEPS[1].color }]}>
-                                <CalendarIcon size={28} color={JOURNEY_STEPS[1].color} />
+                            <View style={[
+                                styles.nodeCircle,
+                                {
+                                    backgroundColor: weeklyCompleted ? '#D1FAE5' : JOURNEY_STEPS[1].bgColor,
+                                    borderColor: weeklyCompleted ? '#64C59A' : JOURNEY_STEPS[1].color
+                                }
+                            ]}>
+                                {weeklyCompleted ? (
+                                    <Ionicons name="checkmark" size={24} color="#64C59A" />
+                                ) : (
+                                    <JourneyIcons.Microphone width={24} height={24} color={JOURNEY_STEPS[1].color} />
+                                )}
                             </View>
                             <View style={styles.nodeLabel}>
-                                <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[1].color }]}>Weekly Whispers</Text>
-                                <Text style={styles.nodeSubtext}>Reflect weekly</Text>
+                                <Text style={[
+                                    styles.nodeLabelText,
+                                    { color: weeklyCompleted ? '#64C59A' : JOURNEY_STEPS[1].color }
+                                ]}>
+                                    Weekly Whispers
+                                </Text>
+                                <Text style={[
+                                    styles.nodeSubtext,
+                                    weeklyCompleted && { color: '#64C59A', fontWeight: '600' }
+                                ]}>
+                                    {weeklyCompleted ? 'Completed' : 'Reflect weekly'}
+                                </Text>
                             </View>
                         </TouchableOpacity>
 
@@ -250,7 +327,7 @@ export default function DashboardScreen() {
                             onPress={() => navigation.navigate('ThriveTracker')}
                         >
                             <View style={[styles.nodeCircle, { backgroundColor: JOURNEY_STEPS[2].bgColor, borderColor: JOURNEY_STEPS[2].color }]}>
-                                <ChartIcon size={28} color={JOURNEY_STEPS[2].color} />
+                                <JourneyIcons.Chart width={28} height={28} color={JOURNEY_STEPS[2].color} />
                             </View>
                             <View style={styles.nodeLabel}>
                                 <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[2].color }]}>Thrive Tracker</Text>
@@ -264,7 +341,7 @@ export default function DashboardScreen() {
                             onPress={() => navigation.navigate('StressSnapshot')}
                         >
                             <View style={[styles.nodeCircle, { backgroundColor: JOURNEY_STEPS[3].bgColor, borderColor: JOURNEY_STEPS[3].color }]}>
-                                <CameraIcon size={28} color={JOURNEY_STEPS[3].color} />
+                                <JourneyIcons.StressCamera width={28} height={28} color={JOURNEY_STEPS[3].color} />
                             </View>
                             <View style={styles.nodeLabel}>
                                 <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[3].color }]}>Stress Snapshot</Text>
@@ -278,7 +355,7 @@ export default function DashboardScreen() {
                             onPress={() => navigation.navigate('MindfulMirror')}
                         >
                             <View style={[styles.nodeCircle, styles.nodeCircleLarge, { backgroundColor: JOURNEY_STEPS[4].bgColor, borderColor: JOURNEY_STEPS[4].color }]}>
-                                <MirrorIcon size={32} color={JOURNEY_STEPS[4].color} />
+                                <JourneyIcons.Mirror width={32} height={32} color={JOURNEY_STEPS[4].color} />
                             </View>
                             <View style={styles.nodeLabel}>
                                 <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[4].color }]}>Mindful Mirror</Text>

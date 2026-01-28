@@ -1,8 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Platform } from 'react-native';
-
+import { StyleSheet, Platform } from 'react-native'; 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NavigationIcons } from '../components/NavigationIcons';
 import DashboardScreen from '../screens/DashboardScreen';
 import RoadmapScreen from '../screens/RoadmapScreen';
 import CalendarScreen from '../screens/CalendarScreen';
@@ -11,50 +11,45 @@ import { Colors } from '../constants/colors';
 
 const Tab = createBottomTabNavigator();
 
-interface TabIconProps {
-    focused: boolean;
-    iconName: string;
-    color: string;
-}
-
-const TabIcon = ({ focused, iconName, color }: TabIconProps) => (
-    <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
-        <Ionicons name={iconName as any} size={24} color={color} />
-        {focused && <View style={styles.activeIndicator} />}
-    </View>
-);
 
 export default function TabNavigator() {
+    const insets = useSafeAreaInsets();
+
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 headerShown: false,
-                tabBarStyle: styles.tabBar,
-                tabBarActiveTintColor: Colors.primary,
+                tabBarStyle: [
+                    styles.tabBar,
+                    {
+                        height: 70 + insets.bottom,
+                        paddingBottom: insets.bottom > 0 ? insets.bottom : 15,
+                    }
+                ],
+                tabBarActiveTintColor: '#64C59A',
                 tabBarInactiveTintColor: '#94A3B8',
                 tabBarLabelStyle: styles.tabLabel,
                 tabBarItemStyle: styles.tabItem,
                 tabBarIcon: ({ focused, color }) => {
-                    let iconName: string;
+                    const iconProps = {
+                        width: 28,  // Increased size
+                        height: 28, // Increased size
+                        color: color,
+                        strokeWidth: focused ? 2.5 : 2
+                    };
 
                     switch (route.name) {
                         case 'Home':
-                            iconName = focused ? 'home' : 'home-outline';
-                            break;
+                            return <NavigationIcons.Home {...iconProps} />;
                         case 'Journey':
-                            iconName = focused ? 'compass' : 'compass-outline';
-                            break;
+                            return <NavigationIcons.History {...iconProps} />;
                         case 'Calendar':
-                            iconName = focused ? 'calendar' : 'calendar-outline';
-                            break;
+                            return <NavigationIcons.Calendar {...iconProps} />;
                         case 'You':
-                            iconName = focused ? 'person-circle' : 'person-circle-outline';
-                            break;
+                            return <NavigationIcons.User {...iconProps} />;
                         default:
-                            iconName = 'ellipse';
+                            return <NavigationIcons.Home {...iconProps} />;
                     }
-
-                    return <TabIcon focused={focused} iconName={iconName} color={color} />;
                 },
             })}
         >
@@ -85,39 +80,32 @@ export default function TabNavigator() {
 const styles = StyleSheet.create({
     tabBar: {
         backgroundColor: '#FFFFFF',
-        height: Platform.OS === 'ios' ? 85 : 70,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-        paddingTop: 8,
-        paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-        elevation: 0,
-        shadowOpacity: 0,
+        // Height and paddingBottom are now dynamic based on safe area insets
+        borderTopWidth: 0, // Removed border
+        elevation: 10, // Added shadow for Android
+        shadowColor: '#000', // Shadow for iOS
+        shadowOffset: {
+            width: 0,
+            height: -4,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        position: 'absolute', // Floating effect to allow shadow to show
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingTop: 10, // Move content down slightly inside the larger bar
+        borderTopLeftRadius: 20, // Rounded top corners
+        borderTopRightRadius: 20,
     },
     tabItem: {
-        paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 6 : 10,
+        // paddingVertical: 5, // Simplified padding
     },
     tabLabel: {
-        fontSize: 11,
+        fontSize: 12, // Slightly larger font
         fontWeight: '600',
         letterSpacing: 0.3,
         marginTop: 4,
-    },
-    iconContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 44,
-        height: 32,
-    },
-    iconContainerActive: {
-        // Optional: Add a subtle background for active state
-    },
-    activeIndicator: {
-        position: 'absolute',
-        bottom: -8,
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: Colors.primary,
+        marginBottom: Platform.OS === 'ios' ? 0 : 4,
     },
 });

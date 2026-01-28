@@ -77,6 +77,16 @@ export default function LoginScreen() {
             } else {
                 await AsyncStorage.setItem('userName', email.split('@')[0]);
             }
+            // Set persistence flag
+            await AsyncStorage.setItem('isLoggedIn', 'true');
+
+            // Save authentication token
+            if (result.session && result.session.access_token) {
+                await AsyncStorage.setItem('authToken', result.session.access_token);
+            } else if (result.token) {
+                // Fallback if backend structure differs, though controller shows session.access_token
+                await AsyncStorage.setItem('authToken', result.token);
+            }
 
             setLoading(false);
             showNotification('success', 'Welcome back!');
