@@ -18,6 +18,8 @@ import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { WebView } from 'react-native-webview';
+
 import { Colors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
 import { StressIcons, MoodIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
@@ -34,19 +36,57 @@ const PRACTICE_TYPES = [
     'Other'
 ];
 
-const STRESS_FACTORS = [
-    'Health', 'Sleep', 'Exercise', 'Food', 'Work',
-    'Family', 'Friends', 'Money', 'Weather', 'Travel'
+// Big 7 Domains
+const INFLUENCING_FACTORS = [
+    {
+        label: "Academics",
+        covers: "Exams, deadlines, lectures, grades, studying.",
+        theory: "Performance-related affect."
+    },
+    {
+        label: "Social Interactions",
+        covers: "Friends, romantic partners, family, loneliness, arguments.",
+        theory: "Interpersonal belonging/conflict."
+    },
+    {
+        label: "Physical Health & Sleep",
+        covers: "Tiredness, insomnia, illness, pain, hunger, exercise.",
+        theory: "Biological substrates."
+    },
+    {
+        label: "Financial & Living Situation",
+        covers: "Money problems, commute, roommate issues, housing environment.",
+        theory: "Environmental stressors."
+    },
+    {
+        label: "Self-Image & Thoughts",
+        covers: "Self-esteem, body image, intrusive thoughts, \"feeling worthless\" or \"feeling proud.\"",
+        theory: "Intrapersonal cognition."
+    },
+    {
+        label: "Future & Uncertainty",
+        covers: "Career anxiety, job hunting, general worry about the future.",
+        theory: "Anticipatory anxiety."
+    },
+    {
+        label: "Nothing Specific",
+        covers: "\"I just woke up like this,\" hormonal shifts, unexplained mood.",
+        theory: "Endogenous mood."
+    }
 ];
 
 const SLEEP_TIMES = [
-    '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM',
-    '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM'
+    '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM',
+    '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM',
+    '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM',
+    '3:00 AM', '3:30 AM', '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM'
 ];
 
 const WAKE_TIMES = [
-    '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM',
-    '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM'
+    '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM',
+    '3:00 AM', '3:30 AM', '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM',
+    '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM',
+    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM'
 ];
 
 export default function DailySlidersScreen() {
@@ -57,12 +97,15 @@ export default function DailySlidersScreen() {
     const [practiceDuration, setPracticeDuration] = useState('');
     const [selectedPractices, setSelectedPractices] = useState<string[]>([]);
 
+    // Video state
+    const [weeklyVideoId, setWeeklyVideoId] = useState<string | null>(null);
+
     // Form state
     const [stressLevel, setStressLevel] = useState<number | null>(null);
     const [moodLevel, setMoodLevel] = useState<number | null>(null);
     const [sleepQuality, setSleepQuality] = useState<number | null>(null);
     const [relaxationLevel, setRelaxationLevel] = useState<number | null>(null);
-    const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
+    const [selectedFactor, setSelectedFactor] = useState<string | null>(null);
     const [sleepStart, setSleepStart] = useState<string | null>(null);
     const [wakeUp, setWakeUp] = useState<string | null>(null);
 
@@ -73,10 +116,30 @@ export default function DailySlidersScreen() {
 
     useEffect(() => {
         checkDailyStatus();
+        fetchWeeklyVideo();
     }, []);
 
     const getAuthToken = async () => {
         return await AsyncStorage.getItem('authToken');
+    };
+
+    const fetchWeeklyVideo = async () => {
+        try {
+            const token = await getAuthToken();
+            const response = await fetch(`${API_URL}/api/roadmap/weekly/video`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.youtube_id) {
+                    setWeeklyVideoId(data.youtube_id);
+                }
+            }
+        } catch (error) {
+            console.log('Failed to fetch weekly video', error);
+        }
     };
 
     const checkDailyStatus = async () => {
@@ -108,11 +171,7 @@ export default function DailySlidersScreen() {
     };
 
     const toggleFactor = (factor: string) => {
-        setSelectedFactors(prev =>
-            prev.includes(factor)
-                ? prev.filter(f => f !== factor)
-                : [...prev, factor]
-        );
+        setSelectedFactor(prev => prev === factor ? null : factor);
     };
 
     const togglePractice = (practice: string) => {
@@ -136,7 +195,7 @@ export default function DailySlidersScreen() {
         }
         if (stressLevel !== null) completed++;
         if (moodLevel !== null) completed++;
-        if (selectedFactors.length > 0) completed++;
+        if (selectedFactor) completed++;
         if (sleepStart && wakeUp) completed++;
         if (sleepQuality !== null) completed++;
         if (relaxationLevel !== null) completed++;
@@ -146,7 +205,7 @@ export default function DailySlidersScreen() {
 
     const handleSubmit = async () => {
         if (mindfulnessPractice === null || stressLevel === null || moodLevel === null ||
-            sleepQuality === null || selectedFactors.length === 0 || !sleepStart || !wakeUp) {
+            sleepQuality === null || !selectedFactor || !sleepStart || !wakeUp) {
             Alert.alert('Incomplete', 'Please fill in all required fields');
             return;
         }
@@ -187,7 +246,7 @@ export default function DailySlidersScreen() {
                     mood: moodLevel,
                     sleep_quality: sleepQuality,
                     relaxation_level: relaxationLevel,
-                    feelings: selectedFactors.join(','),
+                    feelings: selectedFactor, // Now sending a single string
                     sleep_start_time: sleepStart,
                     wake_up_time: wakeUp
                 })
@@ -272,7 +331,72 @@ export default function DailySlidersScreen() {
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                {/* 1. Mindfulness Practice */}
+                {/* 1. This Week's Recording (Moved to Top) */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={[styles.sectionIconCircle, { backgroundColor: '#FCE7F3' }]}>
+                            <Ionicons name="headset-outline" size={24} color="#EC4899" />
+                        </View>
+                        <View>
+                            <Text style={styles.sectionTitle}>This Week's Recording</Text>
+                            <Text style={styles.sectionSubtitle}>Listen to today's guided session</Text>
+                        </View>
+                    </View>
+
+                    {weeklyVideoId ? (
+                        <View style={{ height: 220, borderRadius: 12, overflow: 'hidden', backgroundColor: '#000' }}>
+                            <WebView
+                                style={{ flex: 1 }}
+                                javaScriptEnabled={true}
+                                domStorageEnabled={true}
+                                source={{ uri: `https://www.youtube.com/embed/${weeklyVideoId}` }}
+                            />
+                        </View>
+                    ) : (
+                        <View style={styles.recordingCard}>
+                            <View style={styles.recordingIcon}>
+                                <Ionicons name="headset" size={48} color="#CBD5E1" />
+                            </View>
+                            <View style={styles.recordingInfo}>
+                                <Text style={styles.recordingTitle}>No recording available</Text>
+                                <Text style={styles.recordingDuration}>Check back next week</Text>
+                            </View>
+                        </View>
+                    )}
+                </View>
+
+                {/* 2. Relaxation Level (Moved Here) */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <View style={[styles.sectionIconCircle, { backgroundColor: '#ECFDF5' }]}>
+                            <Ionicons name="leaf-outline" size={24} color="#059669" />
+                        </View>
+                        <View>
+                            <Text style={styles.sectionTitle}>Relaxation Level</Text>
+                            <Text style={styles.sectionSubtitle}>How relaxed do you feel? (1-5)</Text>
+                        </View>
+                    </View>
+                    <View style={styles.emojiRow}>
+                        {RelaxationIcons.map((IconComponent, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={[
+                                    styles.emojiButton,
+                                    relaxationLevel === index + 1 && styles.emojiButtonSelected
+                                ]}
+                                onPress={() => setRelaxationLevel(index + 1)}
+                            >
+                                <IconComponent size={36} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                    <View style={styles.scaleLabels}>
+                        <Text style={styles.scaleText}>Tense</Text>
+                        <Text style={styles.scaleText}>Calm</Text>
+                    </View>
+                </View>
+
+                {/* 3. Mindfulness Practice */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={styles.sectionIconCircle}>
@@ -356,7 +480,7 @@ export default function DailySlidersScreen() {
                     )}
                 </View>
 
-                {/* 2. Stress Level */}
+                {/* 3. Stress Level */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={[styles.sectionIconCircle, { backgroundColor: '#FEE2E2' }]}>
@@ -387,7 +511,7 @@ export default function DailySlidersScreen() {
                     </View>
                 </View>
 
-                {/* 3. Mood Level */}
+                {/* 4. Mood Level */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={[styles.sectionIconCircle, { backgroundColor: '#D1FAE5' }]}>
@@ -418,7 +542,7 @@ export default function DailySlidersScreen() {
                     </View>
                 </View>
 
-                {/* 4. Influencing Factors */}
+                {/* 5. Influencing Factors */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <View style={[styles.sectionIconCircle, { backgroundColor: '#FEF3C7' }]}>
@@ -426,24 +550,44 @@ export default function DailySlidersScreen() {
                         </View>
                         <View>
                             <Text style={styles.sectionTitle}>Influencing Factors</Text>
-                            <Text style={styles.sectionSubtitle}>What affected your mood today?</Text>
+                            <Text style={styles.sectionSubtitle}>What affected your mood today? (Select one)</Text>
                         </View>
                     </View>
-                    <View style={styles.factorsGrid}>
-                        {STRESS_FACTORS.map((factor) => (
+                    <View style={{ gap: 12 }}>
+                        {INFLUENCING_FACTORS.map((item) => (
                             <TouchableOpacity
-                                key={factor}
+                                key={item.label}
                                 style={[
                                     styles.factorChip,
-                                    selectedFactors.includes(factor) && styles.factorChipSelected
+                                    { width: '100%', alignItems: 'flex-start', padding: 12 },
+                                    selectedFactor === item.label && styles.factorChipSelected
                                 ]}
-                                onPress={() => toggleFactor(factor)}
+                                onPress={() => toggleFactor(item.label)}
                             >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                                    <Text style={[
+                                        styles.factorText,
+                                        { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+                                        selectedFactor === item.label && styles.factorTextSelected
+                                    ]}>
+                                        {item.label}
+                                    </Text>
+                                    {selectedFactor === item.label && (
+                                        <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                                    )}
+                                </View>
+
                                 <Text style={[
-                                    styles.factorText,
-                                    selectedFactors.includes(factor) && styles.factorTextSelected
+                                    { fontSize: 13, color: '#64748B', marginTop: 2 },
+                                    selectedFactor === item.label && { color: '#E0E7FF' }
                                 ]}>
-                                    {factor}
+                                    <Text style={{ fontWeight: '600' }}>Covers: </Text>{item.covers}
+                                </Text>
+                                <Text style={[
+                                    { fontSize: 12, color: '#94A3B8', marginTop: 4, fontStyle: 'italic' },
+                                    selectedFactor === item.label && { color: '#CBD5E1' }
+                                ]}>
+                                    Theory: {item.theory}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -536,59 +680,9 @@ export default function DailySlidersScreen() {
                     </View>
                 </View>
 
-                {/* 7. This Week's Recording */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#FCE7F3' }]}>
-                            <Ionicons name="headset-outline" size={24} color="#EC4899" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>This Week's Recording</Text>
-                            <Text style={styles.sectionSubtitle}>Listen to today's guided session</Text>
-                        </View>
-                    </View>
-                    <TouchableOpacity style={styles.recordingCard}>
-                        <View style={styles.recordingIcon}>
-                            <Ionicons name="play-circle" size={48} color={Colors.primary} />
-                        </View>
-                        <View style={styles.recordingInfo}>
-                            <Text style={styles.recordingTitle}>Guided Breathing</Text>
-                            <Text style={styles.recordingDuration}>10 min session</Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={24} color="#94A3B8" />
-                    </TouchableOpacity>
-                </View>
 
-                {/* 8. Relaxation Level */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#ECFDF5' }]}>
-                            <Ionicons name="leaf-outline" size={24} color="#059669" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Relaxation Level</Text>
-                            <Text style={styles.sectionSubtitle}>How relaxed do you feel? (1-5)</Text>
-                        </View>
-                    </View>
-                    <View style={styles.emojiRow}>
-                        {RelaxationIcons.map((IconComponent, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.emojiButton,
-                                    relaxationLevel === index + 1 && styles.emojiButtonSelected
-                                ]}
-                                onPress={() => setRelaxationLevel(index + 1)}
-                            >
-                                <IconComponent size={36} />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.scaleLabels}>
-                        <Text style={styles.scaleText}>Tense</Text>
-                        <Text style={styles.scaleText}>Calm</Text>
-                    </View>
-                </View>
+
+
 
                 {/* Submit Button */}
                 <TouchableOpacity

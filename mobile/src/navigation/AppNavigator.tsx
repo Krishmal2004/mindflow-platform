@@ -16,6 +16,7 @@ import MindfulMirrorScreen from '../screens/roadmap/MindfulMirrorScreen';
 import BreathingInhalerScreen from '../screens/BreathingInhalerScreen';
 import YogaRouteScreen from '../screens/YogaRouteScreen';
 import CompleteTaskScreen from '../screens/CompleteTaskScreen';
+import AboutMeScreen from '../screens/AboutMeScreen';
 
 import { RootStackParamList } from '../types/navigation';
 
@@ -51,6 +52,7 @@ export default function AppNavigator() {
                 <Stack.Screen name="BreathingInhaler" component={BreathingInhalerScreen} options={{ animation: 'fade_from_bottom' }} />
                 <Stack.Screen name="YogaRoute" component={YogaRouteScreen} options={{ animation: 'fade_from_bottom' }} />
                 <Stack.Screen name="CompleteTask" component={CompleteTaskScreen} options={{ animation: 'fade' }} />
+                <Stack.Screen name="AboutMe" component={AboutMeScreen} options={{ animation: 'slide_from_right' }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

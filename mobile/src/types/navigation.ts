@@ -19,4 +19,5 @@ export type RootStackParamList = {
         buttonText?: string;
         historyData?: any[];
     };
+    AboutMe: undefined;
 };

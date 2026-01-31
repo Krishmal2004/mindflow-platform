@@ -38,6 +38,7 @@ $$ language 'plpgsql';
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     username TEXT UNIQUE,
+    research_id TEXT UNIQUE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT username_length CHECK (char_length(username) >= 3)
 );
