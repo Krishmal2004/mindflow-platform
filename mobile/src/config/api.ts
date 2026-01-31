@@ -10,7 +10,8 @@ const LOCALHOST = Platform.select({
 
 // For testing on a real device, change this to your computer's local IP
 // Example: export const API_URL = 'http://192.168.1.2:3000';
-export const API_URL = `http://${LOCALHOST}:3000`;
+// export const API_URL = `http://${LOCALHOST}:3000`;
+export const API_URL = 'http://192.168.1.4:3000';
 
 export const AUTH_ENDPOINTS = {
     SIGNUP: `${API_URL}/api/auth/signup`,

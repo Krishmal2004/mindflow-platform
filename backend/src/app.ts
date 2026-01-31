@@ -18,6 +18,8 @@ app.use(express.json());
 import dashboardRoutes from './routes/dashboardRoutes';
 import roadmapRoutes from './routes/roadmapRoutes';
 import authRoutes from './routes/authRoutes';
+import profileRoutes from './routes/profileRoutes';
+import calendarRoutes from './routes/calendarRoutes';
 
 
 
@@ -25,6 +27,8 @@ import authRoutes from './routes/authRoutes';
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/roadmap', roadmapRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/calendar', calendarRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
