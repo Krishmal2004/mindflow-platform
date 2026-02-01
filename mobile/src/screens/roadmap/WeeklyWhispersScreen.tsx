@@ -178,6 +178,7 @@ export default function WeeklyWhispersScreen() {
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+    const [nextReset, setNextReset] = useState<Date | null>(null);
     const [permissionGranted, setPermissionGranted] = useState(false);
 
     // Popup Modal state
@@ -245,24 +246,9 @@ export default function WeeklyWhispersScreen() {
 
             if (response.ok) {
                 const data = await response.json();
-                if (data.submitted) {
+                if (data.completed || data.submitted) {
                     setAlreadySubmitted(true);
-                    navigation.dispatch(
-                        CommonActions.reset({
-                            index: 1,
-                            routes: [
-                                { name: 'MainTabs' },
-                                {
-                                    name: 'CompleteTask',
-                                    params: {
-                                        title: 'Already Submitted!',
-                                        message: "You've completed this week's recording. Come back next week!",
-                                        buttonText: 'Back to Journey'
-                                    }
-                                }
-                            ],
-                        })
-                    );
+                    if (data.nextReset) setNextReset(new Date(data.nextReset));
                 }
             }
         } catch (error) {
@@ -299,8 +285,8 @@ export default function WeeklyWhispersScreen() {
             intervalRef.current = setInterval(() => {
                 setRecordingDuration(prev => {
                     const newDuration = prev + 1;
-                    // Auto-stop at 30 seconds (max duration)
-                    if (newDuration >= 30) {
+                    // Auto-stop at 45 seconds (max duration)
+                    if (newDuration >= 45) {
                         stopRecordingAutoMax();
                     }
                     return newDuration;
@@ -313,7 +299,7 @@ export default function WeeklyWhispersScreen() {
         }
     };
 
-    // Auto-stop at max duration (30 seconds) - always goes to review
+    // Auto-stop at max duration (45 seconds) - always goes to review
     const stopRecordingAutoMax = async () => {
         if (!recordingRef.current) return;
 
@@ -327,9 +313,9 @@ export default function WeeklyWhispersScreen() {
             const uri = recordingRef.current.getURI();
 
             if (uri) {
-                // At 30 seconds, it's always valid - go directly to review
+                // At 45 seconds, it's always valid - go directly to review
                 setRecordingUri(uri);
-                setRecordingDuration(30);
+                setRecordingDuration(45);
             }
 
             setIsRecording(false);
@@ -391,8 +377,40 @@ export default function WeeklyWhispersScreen() {
         setUploading(true);
         try {
             const token = await AsyncStorage.getItem('authToken');
+            if (!token) throw new Error('Not authenticated');
 
-            const response = await fetch(`${API_URL}/api/roadmap/weekly`, {
+            // 1. Create FormData for file upload
+            const formData = new FormData();
+            const filename = recordingUri.split('/').pop() || 'recording.m4a';
+            const fileType = filename.endsWith('.wav') ? 'audio/wav' : 'audio/m4a';
+
+            formData.append('file', {
+                uri: recordingUri,
+                name: filename,
+                type: fileType,
+            } as any);
+
+            // 2. Upload Audio File
+            const uploadResponse = await fetch(`${API_URL}/api/roadmap/weekly/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+                body: formData,
+            });
+
+            if (!uploadResponse.ok) {
+                const errorData = await uploadResponse.json();
+                console.error('Upload failed:', errorData);
+                throw new Error(errorData.error || 'Audio upload failed');
+            }
+
+            const uploadResult = await uploadResponse.json();
+            const { fileKey, fileUrl } = uploadResult;
+
+            // 3. Submit Metadata
+            const submitResponse = await fetch(`${API_URL}/api/roadmap/weekly`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -400,11 +418,14 @@ export default function WeeklyWhispersScreen() {
                 },
                 body: JSON.stringify({
                     duration: recordingDuration,
+                    file_key: fileKey,
+                    file_url: fileUrl
                 })
             });
 
-            if (!response.ok) {
-                throw new Error('Submission failed');
+            if (!submitResponse.ok) {
+                const errorData = await submitResponse.json();
+                throw new Error(errorData.error || 'Submission failed');
             }
 
             showPopup('success', 'Success!', 'Your voice recording has been submitted successfully.', () => {
@@ -427,6 +448,7 @@ export default function WeeklyWhispersScreen() {
             });
 
         } catch (error: any) {
+            console.error('Submission processing error:', error);
             showPopup('error', 'Submission Failed', error.message || 'Failed to submit. Please try again.');
         } finally {
             setUploading(false);
@@ -467,7 +489,11 @@ export default function WeeklyWhispersScreen() {
                     </View>
                     <Text style={styles.successTitle}>Already Submitted!</Text>
                     <Text style={styles.successText}>You've completed this week's recording.</Text>
-                    <Text style={styles.successText}>Come back next week!</Text>
+                    {nextReset && (
+                        <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: '#8B5CF6' }]}>
+                            Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </Text>
+                    )}
 
                     <TouchableOpacity
                         style={styles.homeButton}
@@ -526,7 +552,7 @@ export default function WeeklyWhispersScreen() {
                         <View style={styles.infoBadges}>
                             <View style={styles.badge}>
                                 <Ionicons name="time-outline" size={16} color="#8B5CF6" />
-                                <Text style={styles.badgeText}>15-30 sec</Text>
+                                <Text style={styles.badgeText}>15-45 sec</Text>
                             </View>
                             <View style={styles.badge}>
                                 <Ionicons name="book-outline" size={16} color="#8B5CF6" />
@@ -573,36 +599,43 @@ export default function WeeklyWhispersScreen() {
                 <View style={styles.recordingScreenContainer}>
                     {/* Fixed Top Section: SVG + Recording Controls */}
                     <View style={styles.fixedTopSection}>
-                        {/* Large SVG Illustration */}
-                        <VoiceRecordingIllustration width={width * 0.5} height={width * 0.5} />
-
-                        {/* Timer */}
-                        <Text style={[styles.timerText, isRecording && styles.timerRecording]}>
-                            {formatTime(recordingDuration)}
-                        </Text>
-
-                        {/* Record Button */}
-                        <TouchableOpacity
-                            onPress={handleToggleRecording}
-                            activeOpacity={0.8}
-                            style={styles.recordButtonContainer}
-                        >
-                            <View style={[styles.recordButton, isRecording && styles.recordButtonActive]}>
-                                <Ionicons
-                                    name={isRecording ? "stop" : "mic"}
-                                    size={32}
-                                    color="#FFFFFF"
-                                />
+                        <View style={styles.recordingRow}>
+                            {/* Left Side: SVG Illustration */}
+                            <View style={styles.leftSideContainer}>
+                                <VoiceRecordingIllustration width={width * 0.4} height={width * 0.4} />
                             </View>
-                        </TouchableOpacity>
 
-                        <Text style={[styles.statusText, isRecording && styles.statusRecording]}>
-                            {isRecording ? 'Tap to Stop' : 'Tap to Start'}
-                        </Text>
+                            {/* Right Side: Controls */}
+                            <View style={styles.rightSideContainer}>
+                                {/* Timer */}
+                                <Text style={[styles.timerText, isRecording && styles.timerRecording]}>
+                                    {formatTime(recordingDuration)}
+                                </Text>
 
-                        {!isRecording && (
-                            <Text style={styles.hintText}>15-30 seconds</Text>
-                        )}
+                                {/* Record Button */}
+                                <TouchableOpacity
+                                    onPress={handleToggleRecording}
+                                    activeOpacity={0.8}
+                                    style={styles.recordButtonContainer}
+                                >
+                                    <View style={[styles.recordButton, isRecording && styles.recordButtonActive]}>
+                                        <Ionicons
+                                            name={isRecording ? "stop" : "mic"}
+                                            size={32}
+                                            color="#FFFFFF"
+                                        />
+                                    </View>
+                                </TouchableOpacity>
+
+                                <Text style={[styles.statusText, isRecording && styles.statusRecording]}>
+                                    {isRecording ? 'Stop' : 'Start'}
+                                </Text>
+
+                                {!isRecording && (
+                                    <Text style={styles.hintText}>15-45s</Text>
+                                )}
+                            </View>
+                        </View>
 
                         {isRecording && (
                             <View style={styles.recordingIndicator}>
@@ -800,10 +833,25 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     fixedTopSection: {
-        alignItems: 'center',
         paddingTop: 16,
         paddingHorizontal: 20,
         backgroundColor: '#F8FAFC',
+    },
+    recordingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    leftSideContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rightSideContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     timerText: {
         fontSize: 36,

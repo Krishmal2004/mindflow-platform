@@ -1,10 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Platform } from 'react-native'; 
+import { StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationIcons } from '../components/NavigationIcons';
 import DashboardScreen from '../screens/DashboardScreen';
-import RoadmapScreen from '../screens/RoadmapScreen';
+import JourneyScreen from '../screens/JourneyScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { Colors } from '../constants/colors';
@@ -60,7 +60,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Journey"
-                component={RoadmapScreen}
+                component={JourneyScreen}
                 options={{ tabBarLabel: 'Journey' }}
             />
             <Tab.Screen

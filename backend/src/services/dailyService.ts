@@ -15,7 +15,11 @@ export class DailyService {
             .limit(1);
 
         if (error) throw error;
-        return { completed: data && data.length > 0 };
+
+        const nextReset = new Date(today);
+        nextReset.setDate(today.getDate() + 1);
+
+        return { completed: data && data.length > 0, nextReset };
     }
 
     // Submit a new daily entry

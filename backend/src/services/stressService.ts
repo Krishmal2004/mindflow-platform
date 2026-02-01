@@ -1,20 +1,35 @@
 import { supabase } from '../config/supabase';
 
 export class StressService {
-    // Check if user has submitted today
+    // Check if user has submitted in the last 30 days
     public async getStressStatus(userId: string) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
 
         const { data, error } = await supabase
             .from('questionnaire_pss10_responses')
-            .select('id')
+            .select('created_at')
             .eq('user_id', userId)
-            .gte('created_at', today.toISOString())
+            .gte('created_at', thirtyDaysAgo.toISOString())
+            .order('created_at', { ascending: false })
             .limit(1);
 
         if (error) throw error;
-        return { completed: data && data.length > 0 };
+
+        const lastSubmission = data && data[0];
+        let nextReset: Date | null = null;
+
+        if (lastSubmission) {
+            const lastDate = new Date(lastSubmission.created_at);
+            nextReset = new Date(lastDate);
+            nextReset.setDate(lastDate.getDate() + 30);
+        }
+
+        return {
+            completed: !!lastSubmission,
+            nextReset
+        };
     }
 
     // Submit a new stress entry (PSS-10)

@@ -1,20 +1,35 @@
 import { supabase } from '../config/supabase';
 
 export class ThriveService {
-    // Check if user has submitted today
+    // Check if user has submitted in the last 14 days
     public async getThriveStatus(userId: string) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const fourteenDaysAgo = new Date(today);
+        fourteenDaysAgo.setDate(today.getDate() - 14);
 
         const { data, error } = await supabase
             .from('questionnaire_wemwbs14_responses')
-            .select('id')
+            .select('created_at')
             .eq('user_id', userId)
-            .gte('created_at', today.toISOString())
+            .gte('created_at', fourteenDaysAgo.toISOString())
+            .order('created_at', { ascending: false })
             .limit(1);
 
         if (error) throw error;
-        return { completed: data && data.length > 0 };
+
+        const lastSubmission = data && data[0];
+        let nextReset: Date | null = null;
+
+        if (lastSubmission) {
+            const lastDate = new Date(lastSubmission.created_at);
+            nextReset = new Date(lastDate);
+            nextReset.setDate(lastDate.getDate() + 14);
+        }
+
+        return {
+            completed: !!lastSubmission,
+            nextReset
+        };
     }
 
     // Submit a new thrive entry (WEMWBS)
