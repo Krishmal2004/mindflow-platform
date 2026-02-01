@@ -59,6 +59,7 @@ export default function ThriveTrackerScreen() {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+    const [nextReset, setNextReset] = useState<Date | null>(null);
 
     useEffect(() => {
         checkStatus();
@@ -74,18 +75,18 @@ export default function ThriveTrackerScreen() {
             const response = await fetch(`${API_URL}/api/roadmap/thrive/status`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+                },
             });
 
             if (response.ok) {
                 const data = await response.json();
                 if (data.completed) {
                     setAlreadySubmitted(true);
+                    if (data.nextReset) setNextReset(new Date(data.nextReset));
                 }
             }
         } catch (error) {
-            console.log('Status check failed', error);
+            console.error('Error checking status:', error);
         } finally {
             setLoading(false);
         }
@@ -178,6 +179,11 @@ export default function ThriveTrackerScreen() {
                     </View>
                     <Text style={styles.successTitle}>Response Saved!</Text>
                     <Text style={styles.successText}>Thank you for tracking your wellbeing today.</Text>
+                    {nextReset && (
+                        <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: '#10B981' }]}>
+                            Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </Text>
+                    )}
 
                     <TouchableOpacity
                         style={styles.homeButton}

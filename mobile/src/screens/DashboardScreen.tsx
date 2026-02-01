@@ -47,9 +47,19 @@ export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
     const [userName, setUserName] = useState('Anna');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
-    const [dailyCompleted, setDailyCompleted] = useState(false);
-    const [weeklyCompleted, setWeeklyCompleted] = useState(false);
+    const [statuses, setStatuses] = useState<any>({});
     const fadeAnim = useRef(new Animated.Value(1)).current;
+
+    const getStatus = (key: string) => {
+        const s = statuses[key];
+        if (!s) return { completed: false, locked: false, nextReset: null };
+
+        const now = new Date();
+        const nextReset = s.nextReset ? new Date(s.nextReset) : null;
+        const locked = s.completed && nextReset && nextReset > now;
+
+        return { completed: s.completed, locked, nextReset };
+    };
 
     useFocusEffect(
         useCallback(() => {
@@ -58,24 +68,14 @@ export default function DashboardScreen() {
                     const token = await AsyncStorage.getItem('authToken');
                     if (!token) return;
 
-                    // Check Daily
-                    const dailyRes = await fetch(`${API_URL}/api/roadmap/daily/status`, {
+                    const response = await fetch(`${API_URL}/api/journey/status`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-                    if (dailyRes.ok) {
-                        const data = await dailyRes.json();
-                        setDailyCompleted(data.completed || data.submitted);
-                    }
 
-                    // Check Weekly
-                    const weeklyRes = await fetch(`${API_URL}/api/roadmap/weekly/status`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (weeklyRes.ok) {
-                        const data = await weeklyRes.json();
-                        setWeeklyCompleted(data.completed || data.submitted);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setStatuses(data);
                     }
-
                 } catch (error) {
                     console.log('Dashboard status check failed');
                 }
@@ -254,114 +254,211 @@ export default function DashboardScreen() {
                         </Svg>
 
                         {/* Node 1: Daily Sliders (Top Right) */}
-                        <TouchableOpacity
-                            style={[styles.mapNode, { top: 20, right: 20 }]}
-                            onPress={() => navigation.navigate('DailySliders')}
-                        >
-                            <View style={[
-                                styles.nodeCircle,
-                                {
-                                    backgroundColor: dailyCompleted ? '#D1FAE5' : JOURNEY_STEPS[0].bgColor,
-                                    borderColor: dailyCompleted ? '#64C59A' : JOURNEY_STEPS[0].color
-                                }
-                            ]}>
-                                {dailyCompleted ? (
-                                    <Ionicons name="checkmark" size={28} color="#64C59A" />
-                                ) : (
-                                    <JourneyIcons.Sun width={28} height={28} color={JOURNEY_STEPS[0].color} />
-                                )}
-                            </View>
-                            <View style={styles.nodeLabel}>
-                                <Text style={[
-                                    styles.nodeLabelText,
-                                    { color: dailyCompleted ? '#64C59A' : JOURNEY_STEPS[0].color }
-                                ]}>
-                                    Daily Sliders
-                                </Text>
-                                <Text style={[
-                                    styles.nodeSubtext,
-                                    dailyCompleted && { color: '#64C59A', fontWeight: '600' }
-                                ]}>
-                                    {dailyCompleted ? 'Completed' : 'Track mood'}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
+                        {/* Node 1: Daily Sliders (Top Right) */}
+                        {(() => {
+                            const status = getStatus('daily');
+                            const resetText = status.nextReset ? `Next: ${status.nextReset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Completed';
+
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.mapNode, { top: 20, right: 20 }]}
+                                    onPress={() => navigation.navigate('DailySliders')}
+                                >
+                                    <View style={[
+                                        styles.nodeCircle,
+                                        {
+                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[0].bgColor,
+                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[0].color
+                                        }
+                                    ]}>
+                                        {status.completed ? (
+                                            <Ionicons name="checkmark" size={28} color="#64C59A" />
+                                        ) : (
+                                            <JourneyIcons.Sun width={28} height={28} color={JOURNEY_STEPS[0].color} />
+                                        )}
+                                    </View>
+                                    <View style={styles.nodeLabel}>
+                                        <Text style={[
+                                            styles.nodeLabelText,
+                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[0].color }
+                                        ]}>
+                                            Daily Sliders
+                                        </Text>
+                                        <Text style={[
+                                            styles.nodeSubtext,
+                                            status.completed && { color: '#64C59A', fontWeight: '600' }
+                                        ]}>
+                                            {status.completed ? resetText : 'Track mood'}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })()}
 
                         {/* Node 2: Weekly Whispers (Left) */}
-                        <TouchableOpacity
-                            style={[styles.mapNode, { top: 120, left: 20 }]}
-                            onPress={() => navigation.navigate('WeeklyWhispers')}
-                        >
-                            <View style={[
-                                styles.nodeCircle,
-                                {
-                                    backgroundColor: weeklyCompleted ? '#D1FAE5' : JOURNEY_STEPS[1].bgColor,
-                                    borderColor: weeklyCompleted ? '#64C59A' : JOURNEY_STEPS[1].color
-                                }
-                            ]}>
-                                {weeklyCompleted ? (
-                                    <Ionicons name="checkmark" size={24} color="#64C59A" />
-                                ) : (
-                                    <JourneyIcons.Microphone width={24} height={24} color={JOURNEY_STEPS[1].color} />
-                                )}
-                            </View>
-                            <View style={styles.nodeLabel}>
-                                <Text style={[
-                                    styles.nodeLabelText,
-                                    { color: weeklyCompleted ? '#64C59A' : JOURNEY_STEPS[1].color }
-                                ]}>
-                                    Weekly Whispers
-                                </Text>
-                                <Text style={[
-                                    styles.nodeSubtext,
-                                    weeklyCompleted && { color: '#64C59A', fontWeight: '600' }
-                                ]}>
-                                    {weeklyCompleted ? 'Completed' : 'Reflect weekly'}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
+                        {(() => {
+                            const status = getStatus('weekly');
+                            const resetText = status.nextReset ? `Next: ${status.nextReset.toLocaleDateString(undefined, { weekday: 'short' })}` : 'Completed';
+
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.mapNode, { top: 120, left: 20 }]}
+                                    onPress={() => navigation.navigate('WeeklyWhispers')}
+                                >
+                                    <View style={[
+                                        styles.nodeCircle,
+                                        {
+                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[1].bgColor,
+                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[1].color
+                                        }
+                                    ]}>
+                                        {status.completed ? (
+                                            <Ionicons name="checkmark" size={24} color="#64C59A" />
+                                        ) : (
+                                            <JourneyIcons.Microphone width={24} height={24} color={JOURNEY_STEPS[1].color} />
+                                        )}
+                                    </View>
+                                    <View style={styles.nodeLabel}>
+                                        <Text style={[
+                                            styles.nodeLabelText,
+                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[1].color }
+                                        ]}>
+                                            Weekly Whispers
+                                        </Text>
+                                        <Text style={[
+                                            styles.nodeSubtext,
+                                            status.completed && { color: '#64C59A', fontWeight: '600' }
+                                        ]}>
+                                            {status.completed ? resetText : 'Reflect weekly'}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })()}
 
                         {/* Node 3: Thrive Tracker (Right) */}
-                        <TouchableOpacity
-                            style={[styles.mapNode, { top: 220, right: 20 }]}
-                            onPress={() => navigation.navigate('ThriveTracker')}
-                        >
-                            <View style={[styles.nodeCircle, { backgroundColor: JOURNEY_STEPS[2].bgColor, borderColor: JOURNEY_STEPS[2].color }]}>
-                                <JourneyIcons.Chart width={28} height={28} color={JOURNEY_STEPS[2].color} />
-                            </View>
-                            <View style={styles.nodeLabel}>
-                                <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[2].color }]}>Thrive Tracker</Text>
-                                <Text style={styles.nodeSubtext}>Monitor growth</Text>
-                            </View>
-                        </TouchableOpacity>
+                        {(() => {
+                            const status = getStatus('thrive');
+                            const resetText = status.nextReset ? `Next: ${status.nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Completed';
+
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.mapNode, { top: 220, right: 20 }]}
+                                    onPress={() => navigation.navigate('ThriveTracker')}
+                                >
+                                    <View style={[
+                                        styles.nodeCircle,
+                                        {
+                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[2].bgColor,
+                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[2].color
+                                        }
+                                    ]}>
+                                        {status.completed ? (
+                                            <Ionicons name="checkmark" size={26} color="#64C59A" />
+                                        ) : (
+                                            <JourneyIcons.Chart width={28} height={28} color={JOURNEY_STEPS[2].color} />
+                                        )}
+                                    </View>
+                                    <View style={styles.nodeLabel}>
+                                        <Text style={[
+                                            styles.nodeLabelText,
+                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[2].color }
+                                        ]}>
+                                            Thrive Tracker
+                                        </Text>
+                                        <Text style={[
+                                            styles.nodeSubtext,
+                                            status.completed && { color: '#64C59A', fontWeight: '600' }
+                                        ]}>
+                                            {status.completed ? resetText : 'Monitor growth'}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })()}
 
                         {/* Node 4: Stress Snapshot (Left) */}
-                        <TouchableOpacity
-                            style={[styles.mapNode, { top: 320, left: 20 }]}
-                            onPress={() => navigation.navigate('StressSnapshot')}
-                        >
-                            <View style={[styles.nodeCircle, { backgroundColor: JOURNEY_STEPS[3].bgColor, borderColor: JOURNEY_STEPS[3].color }]}>
-                                <JourneyIcons.StressCamera width={28} height={28} color={JOURNEY_STEPS[3].color} />
-                            </View>
-                            <View style={styles.nodeLabel}>
-                                <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[3].color }]}>Stress Snapshot</Text>
-                                <Text style={styles.nodeSubtext}>Capture stress</Text>
-                            </View>
-                        </TouchableOpacity>
+                        {(() => {
+                            const status = getStatus('stress');
+                            const resetText = status.nextReset ? `Next: ${status.nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Completed';
+
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.mapNode, { top: 320, left: 20 }]}
+                                    onPress={() => navigation.navigate('StressSnapshot')}
+                                >
+                                    <View style={[
+                                        styles.nodeCircle,
+                                        {
+                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[3].bgColor,
+                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[3].color
+                                        }
+                                    ]}>
+                                        {status.completed ? (
+                                            <Ionicons name="checkmark" size={26} color="#64C59A" />
+                                        ) : (
+                                            <JourneyIcons.StressCamera width={28} height={28} color={JOURNEY_STEPS[3].color} />
+                                        )}
+                                    </View>
+                                    <View style={styles.nodeLabel}>
+                                        <Text style={[
+                                            styles.nodeLabelText,
+                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[3].color }
+                                        ]}>
+                                            Stress Snapshot
+                                        </Text>
+                                        <Text style={[
+                                            styles.nodeSubtext,
+                                            status.completed && { color: '#64C59A', fontWeight: '600' }
+                                        ]}>
+                                            {status.completed ? resetText : 'Capture stress'}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })()}
 
                         {/* Node 5: Mindful Mirror (Right - Final) */}
-                        <TouchableOpacity
-                            style={[styles.mapNode, { top: 420, right: 20 }]}
-                            onPress={() => navigation.navigate('MindfulMirror')}
-                        >
-                            <View style={[styles.nodeCircle, styles.nodeCircleLarge, { backgroundColor: JOURNEY_STEPS[4].bgColor, borderColor: JOURNEY_STEPS[4].color }]}>
-                                <JourneyIcons.Mirror width={32} height={32} color={JOURNEY_STEPS[4].color} />
-                            </View>
-                            <View style={styles.nodeLabel}>
-                                <Text style={[styles.nodeLabelText, { color: JOURNEY_STEPS[4].color }]}>Mindful Mirror</Text>
-                                <Text style={styles.nodeSubtext}>Self-reflection</Text>
-                            </View>
-                        </TouchableOpacity>
+                        {(() => {
+                            const status = getStatus('mindful');
+                            const resetText = status.nextReset ? `Next: ${status.nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Completed';
+
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.mapNode, { top: 420, right: 20 }]}
+                                    onPress={() => navigation.navigate('MindfulMirror')}
+                                >
+                                    <View style={[
+                                        styles.nodeCircle,
+                                        styles.nodeCircleLarge,
+                                        {
+                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[4].bgColor,
+                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[4].color
+                                        }
+                                    ]}>
+                                        {status.completed ? (
+                                            <Ionicons name="checkmark" size={30} color="#64C59A" />
+                                        ) : (
+                                            <JourneyIcons.Mirror width={32} height={32} color={JOURNEY_STEPS[4].color} />
+                                        )}
+                                    </View>
+                                    <View style={styles.nodeLabel}>
+                                        <Text style={[
+                                            styles.nodeLabelText,
+                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[4].color }
+                                        ]}>
+                                            Mindful Mirror
+                                        </Text>
+                                        <Text style={[
+                                            styles.nodeSubtext,
+                                            status.completed && { color: '#64C59A', fontWeight: '600' }
+                                        ]}>
+                                            {status.completed ? resetText : 'Self-reflection'}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })()}
                     </View>
                 </View>
 

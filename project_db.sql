@@ -221,6 +221,7 @@ CREATE TABLE IF NOT EXISTS voice_recordings (
     year INTEGER NOT NULL,
     file_key TEXT NOT NULL, -- Storage key
     file_url TEXT,          -- Public/Signed URL
+    duration INTEGER,       -- Duration in seconds
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -443,7 +444,6 @@ CREATE INDEX IF NOT EXISTS idx_wemwbs14_user_id ON questionnaire_wemwbs14_respon
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS calendar_events (
     id SERIAL PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
     event_date DATE NOT NULL,
@@ -462,20 +462,25 @@ CREATE TRIGGER update_calendar_events_updated_at
 -- RLS: calendar_events
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "All users can access calendar events" ON calendar_events;
-DROP POLICY IF EXISTS "Authenticated users can insert events" ON calendar_events;
-DROP POLICY IF EXISTS "Authenticated users can update their events" ON calendar_events;
-DROP POLICY IF EXISTS "Authenticated users can delete their events" ON calendar_events;
+-- DROP POLICY IF EXISTS "All users can access calendar events" ON calendar_events;
+-- DROP POLICY IF EXISTS "Authenticated users can insert events" ON calendar_events;
+-- DROP POLICY IF EXISTS "Authenticated users can update their events" ON calendar_events;
+-- DROP POLICY IF EXISTS "Authenticated users can delete their events" ON calendar_events;
 
--- Strict Policy: Users only see/manage THEIR OWN events.
-CREATE POLICY "Users manage own events" 
+-- Strict Policy: Public access (or restrict as needed later)
+-- CREATE POLICY "Users manage own events" 
+--     ON calendar_events 
+--     FOR ALL 
+--     USING (true);
+
+CREATE POLICY "Allow read access" 
     ON calendar_events 
-    FOR ALL 
-    USING (user_id = auth.uid());
-
+    FOR SELECT 
+    USING (true);
+    
 -- Index
 CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date ON calendar_events(event_date);
-CREATE INDEX IF NOT EXISTS idx_calendar_events_user_id ON calendar_events(user_id);
+
 
 -- ==============================================================================
 -- 5. PERMISSIONS

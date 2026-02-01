@@ -24,7 +24,14 @@ export class WeeklyService {
             .limit(1);
 
         if (error) throw error;
-        return { completed: data && data.length > 0, week, year };
+
+        // Calculate next reset (Next Monday)
+        const now = new Date();
+        const nextReset = new Date(now);
+        nextReset.setDate(now.getDate() + (8 - (now.getDay() || 7))); // Next Monday
+        nextReset.setHours(0, 0, 0, 0);
+
+        return { completed: data && data.length > 0, week, year, nextReset };
     }
 
     // Generate Presigned URL (Optional: Kept for reference or mobile use)
@@ -99,7 +106,7 @@ export class WeeklyService {
                 year: year,
                 file_url: recordingData.file_url,
                 file_key: recordingData.file_key,
-                // duration: recordingData.duration // if backend db supports it
+                duration: recordingData.duration
             })
             .select()
             .single();
