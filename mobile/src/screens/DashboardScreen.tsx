@@ -123,12 +123,17 @@ export default function DashboardScreen() {
     const mapHeight = 520;
 
     return (
-        <View style={styles.container}>
+        <LinearGradient
+            colors={['#F0FDF4', '#F8FAFC', '#FFFFFF']}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
             <StatusBar style="dark" />
 
             {/* Top Leaves Decoration */}
             <View style={styles.topDecoration}>
-                <LeavesDecoration width={200} height={200} />
+                <LeavesDecoration width={width} height={width} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -266,21 +271,21 @@ export default function DashboardScreen() {
                                 >
                                     <View style={[
                                         styles.nodeCircle,
-                                        {
-                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[0].bgColor,
-                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[0].color
+                                        status.completed ? styles.nodeCircleCompleted : {
+                                            backgroundColor: JOURNEY_STEPS[0].bgColor,
+                                            borderColor: JOURNEY_STEPS[0].color
                                         }
                                     ]}>
                                         {status.completed ? (
-                                            <Ionicons name="checkmark" size={28} color="#64C59A" />
+                                            <Ionicons name="checkmark" size={28} color="#FFFFFF" />
                                         ) : (
                                             <JourneyIcons.Sun width={28} height={28} color={JOURNEY_STEPS[0].color} />
                                         )}
                                     </View>
-                                    <View style={styles.nodeLabel}>
+                                    <View style={[styles.nodeLabel, status.completed && styles.nodeLabelCompleted]}>
                                         <Text style={[
                                             styles.nodeLabelText,
-                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[0].color }
+                                            { color: status.completed ? '#10B981' : JOURNEY_STEPS[0].color }
                                         ]}>
                                             Daily Sliders
                                         </Text>
@@ -307,21 +312,21 @@ export default function DashboardScreen() {
                                 >
                                     <View style={[
                                         styles.nodeCircle,
-                                        {
-                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[1].bgColor,
-                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[1].color
+                                        status.completed ? styles.nodeCircleCompleted : {
+                                            backgroundColor: JOURNEY_STEPS[1].bgColor,
+                                            borderColor: JOURNEY_STEPS[1].color
                                         }
                                     ]}>
                                         {status.completed ? (
-                                            <Ionicons name="checkmark" size={24} color="#64C59A" />
+                                            <Ionicons name="checkmark" size={24} color="#FFFFFF" />
                                         ) : (
                                             <JourneyIcons.Microphone width={24} height={24} color={JOURNEY_STEPS[1].color} />
                                         )}
                                     </View>
-                                    <View style={styles.nodeLabel}>
+                                    <View style={[styles.nodeLabel, status.completed && styles.nodeLabelCompleted]}>
                                         <Text style={[
                                             styles.nodeLabelText,
-                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[1].color }
+                                            { color: status.completed ? '#10B981' : JOURNEY_STEPS[1].color }
                                         ]}>
                                             Weekly Whispers
                                         </Text>
@@ -348,21 +353,21 @@ export default function DashboardScreen() {
                                 >
                                     <View style={[
                                         styles.nodeCircle,
-                                        {
-                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[2].bgColor,
-                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[2].color
+                                        status.completed ? styles.nodeCircleCompleted : {
+                                            backgroundColor: JOURNEY_STEPS[2].bgColor,
+                                            borderColor: JOURNEY_STEPS[2].color
                                         }
                                     ]}>
                                         {status.completed ? (
-                                            <Ionicons name="checkmark" size={26} color="#64C59A" />
+                                            <Ionicons name="checkmark" size={26} color="#FFFFFF" />
                                         ) : (
                                             <JourneyIcons.Chart width={28} height={28} color={JOURNEY_STEPS[2].color} />
                                         )}
                                     </View>
-                                    <View style={styles.nodeLabel}>
+                                    <View style={[styles.nodeLabel, status.completed && styles.nodeLabelCompleted]}>
                                         <Text style={[
                                             styles.nodeLabelText,
-                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[2].color }
+                                            { color: status.completed ? '#10B981' : JOURNEY_STEPS[2].color }
                                         ]}>
                                             Thrive Tracker
                                         </Text>
@@ -389,21 +394,21 @@ export default function DashboardScreen() {
                                 >
                                     <View style={[
                                         styles.nodeCircle,
-                                        {
-                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[3].bgColor,
-                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[3].color
+                                        status.completed ? styles.nodeCircleCompleted : {
+                                            backgroundColor: JOURNEY_STEPS[3].bgColor,
+                                            borderColor: JOURNEY_STEPS[3].color
                                         }
                                     ]}>
                                         {status.completed ? (
-                                            <Ionicons name="checkmark" size={26} color="#64C59A" />
+                                            <Ionicons name="checkmark" size={26} color="#FFFFFF" />
                                         ) : (
                                             <JourneyIcons.StressCamera width={28} height={28} color={JOURNEY_STEPS[3].color} />
                                         )}
                                     </View>
-                                    <View style={styles.nodeLabel}>
+                                    <View style={[styles.nodeLabel, status.completed && styles.nodeLabelCompleted]}>
                                         <Text style={[
                                             styles.nodeLabelText,
-                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[3].color }
+                                            { color: status.completed ? '#10B981' : JOURNEY_STEPS[3].color }
                                         ]}>
                                             Stress Snapshot
                                         </Text>
@@ -431,21 +436,21 @@ export default function DashboardScreen() {
                                     <View style={[
                                         styles.nodeCircle,
                                         styles.nodeCircleLarge,
-                                        {
-                                            backgroundColor: status.completed ? '#D1FAE5' : JOURNEY_STEPS[4].bgColor,
-                                            borderColor: status.completed ? '#64C59A' : JOURNEY_STEPS[4].color
+                                        status.completed ? styles.nodeCircleCompleted : {
+                                            backgroundColor: JOURNEY_STEPS[4].bgColor,
+                                            borderColor: JOURNEY_STEPS[4].color
                                         }
                                     ]}>
                                         {status.completed ? (
-                                            <Ionicons name="checkmark" size={30} color="#64C59A" />
+                                            <Ionicons name="checkmark" size={30} color="#FFFFFF" />
                                         ) : (
                                             <JourneyIcons.Mirror width={32} height={32} color={JOURNEY_STEPS[4].color} />
                                         )}
                                     </View>
-                                    <View style={styles.nodeLabel}>
+                                    <View style={[styles.nodeLabel, status.completed && styles.nodeLabelCompleted]}>
                                         <Text style={[
                                             styles.nodeLabelText,
-                                            { color: status.completed ? '#64C59A' : JOURNEY_STEPS[4].color }
+                                            { color: status.completed ? '#10B981' : JOURNEY_STEPS[4].color }
                                         ]}>
                                             Mindful Mirror
                                         </Text>
@@ -466,21 +471,20 @@ export default function DashboardScreen() {
                 <View style={{ height: 100 }} />
 
             </ScrollView>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        // Removed default background color as LinearGradient handles it
     },
     topDecoration: {
         position: 'absolute',
-        top: -50,
-        right: -50,
+        top: 0,
+        right: 0,
         zIndex: 0,
-        transform: [{ rotate: '90deg' }]
     },
     scrollContent: {
         paddingTop: 80,
@@ -644,9 +648,12 @@ const styles = StyleSheet.create({
     // Map Container
     mapContainer: {
         position: 'relative',
-        backgroundColor: '#FAFBFC',
+        // Removed background color for transparency
         borderRadius: 24,
-        overflow: 'hidden',
+        overflow: 'visible', // Changed to visible for glow effects potentially
+        backgroundColor: 'rgba(255,255,255,0.4)', // Very subtle glass effect
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.6)',
     },
     mapSvg: {
         position: 'absolute',
@@ -669,9 +676,18 @@ const styles = StyleSheet.create({
         borderWidth: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
+        backgroundColor: '#FFFFFF',
+    },
+    nodeCircleCompleted: {
+        backgroundColor: '#10B981', // Solid success green
+        borderColor: '#059669', // Darker green border
+        shadowColor: '#10B981',
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+        borderWidth: 0, // Solid look
     },
     nodeCircleLarge: {
         width: 64,
@@ -688,6 +704,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 2,
+    },
+    nodeLabelCompleted: {
+        borderWidth: 1,
+        borderColor: '#10B981',
+        backgroundColor: '#ECFDF5',
     },
     nodeLabelText: {
         fontSize: 13,

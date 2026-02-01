@@ -18,6 +18,7 @@ import Svg, { Circle, Path, G, Defs, LinearGradient, Stop, Ellipse, Rect } from 
 import { API_URL } from '../../config/api';
 import { Colors } from '../../constants/colors';
 import { StressIllustration } from '../../components/MeditationIllustration';
+import { PopupModal } from '../../components/PopupModal';
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +56,23 @@ export default function StressSnapshotScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alreadySubmitted, setAlreadySubmitted] = useState(false);
     const [nextReset, setNextReset] = useState<Date | null>(null);
+
+    // Popup Modal state
+    const [popup, setPopup] = useState<{
+        visible: boolean;
+        type: 'success' | 'error' | 'warning' | 'info';
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+    }>({ visible: false, type: 'info', title: '', message: '' });
+
+    const showPopup = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string, onConfirm?: () => void) => {
+        setPopup({ visible: true, type, title, message, onConfirm });
+    };
+
+    const hidePopup = () => {
+        setPopup(prev => ({ ...prev, visible: false }));
+    };
 
     useEffect(() => {
         checkStatus();
@@ -107,7 +125,7 @@ export default function StressSnapshotScreen() {
     const handleSubmit = async () => {
         // Validate all questions answered
         if (Object.keys(answers).length !== PSS_QUESTIONS.length) {
-            Alert.alert('Incomplete', 'Please answer all questions before submitting.');
+            showPopup('warning', 'Incomplete', 'Please answer all questions before submitting.');
             return;
         }
 
@@ -136,11 +154,13 @@ export default function StressSnapshotScreen() {
                 throw new Error(error.error || 'Submission failed');
             }
 
-            setAlreadySubmitted(true);
+            showPopup('success', 'Response Saved!', 'Thank you for tracking your stress levels today.', () => {
+                setAlreadySubmitted(true);
+            });
 
         } catch (error: any) {
             console.error('Submit error:', error);
-            Alert.alert('Error', error.message || 'Failed to submit. Please try again.');
+            showPopup('error', 'Error', error.message || 'Failed to submit. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -196,6 +216,14 @@ export default function StressSnapshotScreen() {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar style="dark" />
+                <PopupModal
+                    visible={popup.visible}
+                    type={popup.type}
+                    title={popup.title}
+                    message={popup.message}
+                    onClose={hidePopup}
+                    onConfirm={popup.onConfirm}
+                />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
@@ -243,6 +271,14 @@ export default function StressSnapshotScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar style="dark" />
+            <PopupModal
+                visible={popup.visible}
+                type={popup.type}
+                title={popup.title}
+                message={popup.message}
+                onClose={hidePopup}
+                onConfirm={popup.onConfirm}
+            />
 
             {/* Header */}
             <View style={styles.header}>

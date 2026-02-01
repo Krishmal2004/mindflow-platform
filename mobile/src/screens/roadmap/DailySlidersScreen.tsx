@@ -6,7 +6,6 @@ import {
     ScrollView,
     TouchableOpacity,
     TextInput,
-    Alert,
     ActivityIndicator,
     Dimensions
 } from 'react-native';
@@ -23,6 +22,7 @@ import { WebView } from 'react-native-webview';
 import { Colors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
 import { StressIcons, MoodIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
+import { PopupModal } from '../../components/PopupModal';
 
 const { width } = Dimensions.get('window');
 
@@ -113,6 +113,23 @@ export default function DailySlidersScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alreadySubmitted, setAlreadySubmitted] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    // Popup Modal state
+    const [popup, setPopup] = useState<{
+        visible: boolean;
+        type: 'success' | 'error' | 'warning' | 'info';
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+    }>({ visible: false, type: 'info', title: '', message: '' });
+
+    const showPopup = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string, onConfirm?: () => void) => {
+        setPopup({ visible: true, type, title, message, onConfirm });
+    };
+
+    const hidePopup = () => {
+        setPopup(prev => ({ ...prev, visible: false }));
+    };
 
     useEffect(() => {
         checkDailyStatus();
@@ -206,12 +223,12 @@ export default function DailySlidersScreen() {
     const handleSubmit = async () => {
         if (mindfulnessPractice === null || stressLevel === null || moodLevel === null ||
             sleepQuality === null || !selectedFactor || !sleepStart || !wakeUp) {
-            Alert.alert('Incomplete', 'Please fill in all required fields');
+            showPopup('warning', 'Incomplete', 'Please fill in all required fields');
             return;
         }
 
         if (mindfulnessPractice === 'yes' && (!practiceDuration || selectedPractices.length === 0)) {
-            Alert.alert('Incomplete', 'Please enter practice duration and what you practiced');
+            showPopup('warning', 'Incomplete', 'Please enter practice duration and what you practiced');
             return;
         }
 
@@ -221,14 +238,12 @@ export default function DailySlidersScreen() {
             const token = await getAuthToken();
 
             if (!token) {
-                Alert.alert('Session Expired', 'Please login again to continue.', [
-                    {
-                        text: 'OK', onPress: () => navigation.reset({
-                            index: 0,
-                            routes: [{ name: 'Login' }],
-                        })
-                    }
-                ]);
+                showPopup('error', 'Session Expired', 'Please login again to continue.', () => {
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Login' }],
+                    });
+                });
                 return;
             }
 
@@ -259,15 +274,17 @@ export default function DailySlidersScreen() {
 
             const data = await response.json();
 
-            navigation.replace('CompleteTask', {
-                title: 'Great Job Today!',
-                message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                historyData: data.history
+            showPopup('success', 'Great Job Today!', 'You have successfully done the Daily Task. See you tomorrow again!', () => {
+                navigation.replace('CompleteTask', {
+                    title: 'Great Job Today!',
+                    message: 'You have successfully done the Daily Task. See you tomorrow again!',
+                    historyData: data.history
+                });
             });
 
         } catch (error: any) {
             console.error('Submit error:', error);
-            Alert.alert('Error', error.message || 'Failed to submit. Please try again.');
+            showPopup('error', 'Error', error.message || 'Failed to submit. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -317,6 +334,14 @@ export default function DailySlidersScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar style="dark" />
+            <PopupModal
+                visible={popup.visible}
+                type={popup.type}
+                title={popup.title}
+                message={popup.message}
+                onClose={hidePopup}
+                onConfirm={popup.onConfirm}
+            />
 
             {/* Header */}
             <View style={styles.header}>

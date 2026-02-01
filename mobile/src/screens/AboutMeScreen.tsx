@@ -19,6 +19,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/api';
 import { Colors } from '../constants/colors';
+import { PopupModal } from '../components/PopupModal';
+import { JourneyIcons } from '../components/JourneyIcons';
+
+const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
 
 // Types
 interface AboutMeData {
@@ -219,21 +223,21 @@ export default function AboutMeScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-                style={styles.gradientHeader}
-            >
-                <SafeAreaView edges={['top', 'left', 'right']}>
-                    <View style={styles.header}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                            <Ionicons name="arrow-back" size={24} color="#1E293B" />
-                        </TouchableOpacity>
-                        <Text style={styles.headerTitle}>About Me</Text>
-                        <View style={{ width: 24 }} />
-                    </View>
-                </SafeAreaView>
-            </LinearGradient>
+        <LinearGradient
+            colors={DASHBOARD_GRADIENT}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
+            <SafeAreaView edges={['top', 'left', 'right']}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>About Me</Text>
+                    <View style={{ width: 24 }} />
+                </View>
+            </SafeAreaView>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
                 {/* Content - Conditionally Render Form or Read-Only View */}
@@ -245,43 +249,73 @@ export default function AboutMeScreen() {
                         </View>
 
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>University ID</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Academic width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>University ID</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.university_id}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Education Level</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Academic width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Education Level</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.education_level}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Major</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Book width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Major</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.major_field_of_study}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Age</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Person width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Age</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.age?.toString()}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Living Situation</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Home width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Living Situation</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.living_situation}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Cultural Background</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Globe width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Cultural Background</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.cultural_background}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Family Background</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Family width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Family Background</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.family_background}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Hobbies</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Star width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Hobbies</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.hobbies_interests}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Personal Goals</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.Target width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Personal Goals</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.personal_goals || 'Not specified'}</Text>
                         </View>
                         <View style={styles.readOnlySection}>
-                            <Text style={styles.readOnlyLabel}>Previous Experience</Text>
+                            <View style={[styles.labelRow, { marginBottom: 8 }]}>
+                                <JourneyIcons.History width={18} height={18} color={Colors.primary} />
+                                <Text style={[styles.readOnlyLabel, { marginBottom: 0 }]}>Previous Experience</Text>
+                            </View>
                             <Text style={styles.readOnlyValue}>{data.why_mindflow || 'Not specified'}</Text>
                         </View>
                     </View>
@@ -297,7 +331,10 @@ export default function AboutMeScreen() {
 
                         {/* University ID */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>University ID <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Academic width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>University ID <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <TextInput
                                 style={styles.input}
                                 value={data.university_id}
@@ -310,7 +347,10 @@ export default function AboutMeScreen() {
 
                         {/* Education Level */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Education Level <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Academic width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Education Level <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <View style={styles.pillContainer}>
                                 {educationLevels.map(level => (
                                     <TouchableOpacity
@@ -327,7 +367,10 @@ export default function AboutMeScreen() {
 
                         {/* Major */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Major / Field of Study <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Book width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Major / Field of Study <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <TextInput
                                 style={styles.input}
                                 value={data.major_field_of_study}
@@ -340,7 +383,10 @@ export default function AboutMeScreen() {
 
                         {/* Age */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Age <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Person width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Age <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <TextInput
                                 style={styles.input}
                                 value={data.age?.toString() || ''}
@@ -354,7 +400,10 @@ export default function AboutMeScreen() {
 
                         {/* Living Situation */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Living Situation <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Home width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Living Situation <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <View style={styles.pillContainer}>
                                 {livingSituations.map(sit => {
                                     const isCustom = !livingSituations.slice(0, -1).includes(data.living_situation) && data.living_situation !== '' && sit === 'Other';
@@ -385,7 +434,10 @@ export default function AboutMeScreen() {
 
                         {/* Family Background */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Family Background <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Family width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Family Background <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 value={data.family_background}
@@ -399,7 +451,10 @@ export default function AboutMeScreen() {
 
                         {/* Cultural Background */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Cultural Background <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Globe width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Cultural Background <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <View style={styles.pillContainer}>
                                 {culturalBackgrounds.map(bg => {
                                     const isCustom = !culturalBackgrounds.slice(0, -1).includes(data.cultural_background) && data.cultural_background !== '' && bg === 'Other';
@@ -430,7 +485,10 @@ export default function AboutMeScreen() {
 
                         {/* Hobbies */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Hobbies & Interests <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Star width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Hobbies & Interests <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <View style={styles.pillContainer}>
                                 {hobbiesOptions.map(hobby => (
                                     <TouchableOpacity
@@ -457,7 +515,10 @@ export default function AboutMeScreen() {
 
                         {/* Personal Goals */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Personal Goals</Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.Target width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Personal Goals</Text>
+                            </View>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 value={data.personal_goals}
@@ -471,7 +532,10 @@ export default function AboutMeScreen() {
 
                         {/* Why Mindflow */}
                         <View style={styles.section}>
-                            <Text style={styles.label}>Previous Experience <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.labelRow}>
+                                <JourneyIcons.History width={20} height={20} color={Colors.primary} />
+                                <Text style={styles.labelWithIcon}>Previous Experience <Text style={styles.required}>*</Text></Text>
+                            </View>
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 value={data.why_mindflow}
@@ -513,41 +577,30 @@ export default function AboutMeScreen() {
                 )}
 
                 {/* Success Modal */}
-                <Modal visible={showSuccessModal} transparent animationType="fade">
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.successModal}>
-                            <View style={styles.successIconCircle}>
-                                <Ionicons name="checkmark" size={40} color="#FFFFFF" />
-                            </View>
-                            <Text style={styles.successTitle}>Profile Completed!</Text>
-                            <Text style={styles.successMessage}>
-                                Thank you for sharing your information. Your profile is now set up.
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.successButton}
-                                onPress={() => {
-                                    setShowSuccessModal(false);
-                                    navigation.goBack();
-                                }}
-                            >
-                                <Text style={styles.successButtonText}>Continue</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
+                <PopupModal
+                    visible={showSuccessModal}
+                    type="success"
+                    title="Profile Completed!"
+                    message="Thank you for sharing your information. Your profile is now set up."
+                    buttonText="Continue"
+                    onClose={() => {
+                        setShowSuccessModal(false);
+                        navigation.goBack();
+                    }}
+                />
 
             </ScrollView>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        // Background handled by LinearGradient
     },
     gradientHeader: {
-        paddingBottom: 8,
+        // Removed
     },
     loadingContainer: {
         flex: 1,
@@ -611,6 +664,17 @@ const styles = StyleSheet.create({
         color: '#64748B',
         marginBottom: 8,
     },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 8,
+    },
+    labelWithIcon: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1E293B',
+    },
     required: {
         color: '#EF4444',
     },
@@ -641,8 +705,8 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     pillActive: {
-        backgroundColor: '#E0F2FE',
-        borderColor: '#0EA5E9',
+        backgroundColor: '#ECFDF5',
+        borderColor: '#10B981',
     },
     pillText: {
         fontSize: 14,
@@ -650,7 +714,7 @@ const styles = StyleSheet.create({
         color: '#64748B',
     },
     pillTextActive: {
-        color: '#0284C7',
+        color: '#059669',
         fontWeight: '700',
     },
     checkboxContainer: {
@@ -664,7 +728,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkboxChecked: {
-        borderColor: '#64C59A',
+        borderColor: '#10B981',
     },
     checkbox: {
         width: 24,
@@ -677,8 +741,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkboxActive: {
-        backgroundColor: '#64C59A',
-        borderColor: '#64C59A',
+        backgroundColor: '#10B981',
+        borderColor: '#10B981',
     },
     checkboxLabel: {
         flex: 1,
@@ -688,11 +752,11 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         marginTop: 24,
-        backgroundColor: '#64C59A',
+        backgroundColor: '#10B981',
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
-        shadowColor: '#64C59A',
+        shadowColor: '#10B981',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
