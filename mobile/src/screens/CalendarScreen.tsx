@@ -33,6 +33,9 @@ interface CalendarEvent {
     updated_at: string;
 }
 
+const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
+
+
 export default function CalendarScreen() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -255,18 +258,18 @@ export default function CalendarScreen() {
     }, [calendarEvents]);
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-                style={styles.gradientHeader}
-            >
-                <SafeAreaView edges={['top', 'left', 'right']}>
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Calendar</Text>
-                        <Text style={styles.subtitle}>Your mindfulness journey</Text>
-                    </View>
-                </SafeAreaView>
-            </LinearGradient>
+        <LinearGradient
+            colors={DASHBOARD_GRADIENT}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
+            <SafeAreaView edges={['top', 'left', 'right']}>
+                <View style={styles.headerContainer}>
+                    <Text style={styles.title}>Calendar</Text>
+                    <Text style={styles.subtitle}>Your Journey</Text>
+                </View>
+            </SafeAreaView>
 
             <ScrollView
                 ref={scrollViewRef}
@@ -370,29 +373,19 @@ export default function CalendarScreen() {
                     </View>
                 </Pressable>
             </Modal>
-        </View>
+        </LinearGradient >
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        // Background handled by LinearGradient
     },
-    gradientHeader: {
-        paddingBottom: 16,
-        paddingHorizontal: 24,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 5,
-        zIndex: 10,
-    },
-    header: {
+    headerContainer: {
         paddingVertical: 12,
+        paddingHorizontal: 24,
+        marginBottom: 8,
     },
     title: {
         fontSize: 28,
@@ -466,7 +459,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     todayCell: {
-        backgroundColor: '#64C59A',
+        backgroundColor: '#10B981', // Dashboard Success Green
         borderRadius: 20,
     },
     todayText: {
@@ -523,7 +516,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#9333EA',
     },
     todayLegend: {
-        backgroundColor: '#64C59A',
+        backgroundColor: '#10B981',
     },
     eventLegend: {
         backgroundColor: '#0EA5E9',

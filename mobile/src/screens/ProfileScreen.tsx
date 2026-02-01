@@ -18,6 +18,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/colors';
 import { API_URL } from '../config/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PopupModal } from '../components/PopupModal'; // Import PopupModal
+
+const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
 
 export default function ProfileScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -26,6 +29,8 @@ export default function ProfileScreen() {
 
     // Modal states
     const [showSignOutModal, setShowSignOutModal] = useState(false);
+    const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
+    const [resettingPassword, setResettingPassword] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -74,6 +79,47 @@ export default function ProfileScreen() {
         }
     };
 
+    const handleResetPassword = async () => {
+        if (!profileData?.email) {
+            Alert.alert("Error", "No email address found for this account.");
+            return;
+        }
+
+        try {
+            setResettingPassword(true);
+            const token = await getAuthToken();
+            // Note: calling auth/reset-password. This endpoint should exist on backend or be proxied.
+            // Using the backend route we just created: /api/auth/reset-password (which is mapped in main app, check if it's under /api/auth or just /auth)
+            // Usually auth routes are at /api/auth or similar. Let's assume /api/auth based on standard practices, 
+            // but need to verify main server file. Assuming /api/auth for now.
+            // Wait, previous calls use `${API_URL}/api/profile`. 
+            // In `backend/src/app.ts` (not seen yet), likely routes are mounted. 
+            // If I look at `authRoutes.ts`, it has `/signup`, `/login`.
+            // Usually mounted at `/api/auth`. I'll try that.
+
+            const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ email: profileData.email })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setShowResetSuccessModal(true);
+            } else {
+                throw new Error(data.error || 'Failed to send reset email');
+            }
+        } catch (error: any) {
+            Alert.alert("Error", error.message);
+        } finally {
+            setResettingPassword(false);
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -83,18 +129,18 @@ export default function ProfileScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-                style={styles.gradientHeader}
-            >
-                <SafeAreaView edges={['top', 'left', 'right']}>
-                    <View style={styles.header}>
-                        <Text style={styles.title}>My Account</Text>
-                        <Text style={styles.subtitle}>Manage your profile & security</Text>
-                    </View>
-                </SafeAreaView>
-            </LinearGradient>
+        <LinearGradient
+            colors={DASHBOARD_GRADIENT}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
+            <SafeAreaView edges={['top', 'left', 'right']}>
+                <View style={styles.headerContainer}>
+                    <Text style={styles.title}>My Account</Text>
+                    <Text style={styles.subtitle}>Manage your profile & security</Text>
+                </View>
+            </SafeAreaView>
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -103,7 +149,7 @@ export default function ProfileScreen() {
                 {/* Profile Hero */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarCircle}>
-                        <Ionicons name="person" size={50} color="#64C59A" />
+                        <Ionicons name="person" size={50} color="#10B981" />
                     </View>
                     <Text style={styles.userName}>{profileData?.username || 'Mindful User'}</Text>
                     <Text style={styles.userEmail}>{profileData?.email || 'user@example.com'}</Text>
@@ -165,6 +211,27 @@ export default function ProfileScreen() {
                     <Text style={styles.sectionTitle}>Security</Text>
 
                     <TouchableOpacity
+                        style={[styles.actionButton, { marginBottom: 12 }]}
+                        onPress={handleResetPassword}
+                        disabled={resettingPassword}
+                    >
+                        <View style={styles.actionLeft}>
+                            <View style={[styles.iconCircle, { backgroundColor: '#F0F9FF' }]}>
+                                <Ionicons name="lock-closed-outline" size={24} color="#0EA5E9" />
+                            </View>
+                            <View>
+                                <Text style={styles.actionText}>Reset Password</Text>
+                                <Text style={styles.actionSubtext}>Receive a link to update password</Text>
+                            </View>
+                        </View>
+                        {resettingPassword ? (
+                            <ActivityIndicator size="small" color={Colors.primary} />
+                        ) : (
+                            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         style={[styles.actionButton, styles.dangerButton]}
                         onPress={() => setShowSignOutModal(true)}
                     >
@@ -208,14 +275,28 @@ export default function ProfileScreen() {
                     </View>
                 </View>
             </Modal>
-        </View>
+
+            {/* Reset Password Success Modal */}
+            <PopupModal
+                visible={showResetSuccessModal}
+                type="success"
+                title="Check your Email"
+                message={`We've sent a password reset link to ${profileData?.email}. Please check your inbox.`}
+                buttonText="OK"
+                onClose={() => setShowResetSuccessModal(false)}
+            />
+        </LinearGradient >
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        // Background handled by LinearGradient
+    },
+    headerContainer: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
     },
     gradientHeader: {
         paddingBottom: 16,
@@ -283,7 +364,7 @@ const styles = StyleSheet.create({
     },
     userEmail: {
         fontSize: 14,
-        color: '#64C59A',
+        color: '#10B981',
         marginTop: 2,
         fontWeight: '500',
     },

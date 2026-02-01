@@ -8,6 +8,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, withDel
 
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
+import { API_URL } from '../config/api';
 
 const MeditationSplash = require('../../assets/app-icon.png');
 const { width } = Dimensions.get('window');
@@ -18,31 +19,65 @@ export default function SplashScreen() {
     const scale = useSharedValue(0.8);
     const textOpacity = useSharedValue(0);
 
+
     useEffect(() => {
         opacity.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.exp) });
         scale.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.exp) });
         textOpacity.value = withDelay(400, withTiming(1, { duration: 800 }));
 
-        const checkFirstLaunch = async () => {
+        const validateSession = async () => {
             try {
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // Minimum splash time
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
                 const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
+                const token = await AsyncStorage.getItem('authToken');
                 const alreadyLaunched = await AsyncStorage.getItem('alreadyLaunched');
 
-                if (isLoggedIn === 'true') {
-                    navigation.replace('MainTabs' as any);
+                if (isLoggedIn === 'true' && token) {
+                    // VERIFY TOKEN WITH BACKEND
+                    try {
+                        const response = await fetch(`${API_URL}/api/profile`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (response.ok) {
+                            // Token is valid, proceed
+                            navigation.replace('MainTabs' as any);
+                        } else {
+                            // Token expired or invalid
+                            console.log("Session expired, directing to login");
+                            await AsyncStorage.multiRemove(['isLoggedIn', 'authToken', 'user']);
+                            navigation.replace('Login');
+                        }
+                    } catch (netError) {
+                        // If network error, we might want to let them in (offline mode) or block.
+                        // For now, assuming standard online-first app, we'll let them in if we think we have a token,
+                        // OR safer: redirect to login if we can't verify.
+                        // Given the user issue "not connected to DB", it's better to force verification or handle offline gracefully.
+                        // Let's assume strict verification for fixing the "issue".
+                        console.log("Network error verifying session", netError);
+                        // Optional: Navigate to MainTabs but show offline banner?
+                        // For this specific fix request "keeping the session... not connected", forcing re-login on fail is safer.
+                        navigation.replace('Login');
+                    }
                 } else if (alreadyLaunched === null) {
                     navigation.replace('Onboarding');
                 } else {
                     navigation.replace('Login');
                 }
             } catch (error) {
+                console.error("Splash Error", error);
                 navigation.replace('Login');
             }
         };
 
-        checkFirstLaunch();
+        validateSession();
     }, []);
+
 
     const imageStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,

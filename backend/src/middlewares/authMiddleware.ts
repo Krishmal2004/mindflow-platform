@@ -11,8 +11,8 @@ export interface AuthenticatedRequest extends Request {
 export const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
-        res.status(401).json({ error: 'Missing authorization header' });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: 'Missing or malformed authorization header' });
         return;
     }
 

@@ -21,6 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LineChart } from 'react-native-chart-kit';
 
+const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
+
 const { width } = Dimensions.get('window');
 
 // --- Interfaces ---
@@ -78,7 +80,7 @@ export default function JourneyScreen() {
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'research'>('daily');
+    const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'questionnaire'>('daily');
     const [selectedMetric, setSelectedMetric] = useState<'stress' | 'sleep' | 'relax' | null>(null);
 
     const scrollViewRef = useRef<ScrollView>(null);
@@ -195,18 +197,18 @@ export default function JourneyScreen() {
 
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#E0F2FE', '#F0F9FF', '#FFFFFF']}
-                style={styles.gradientHeader}
-            >
-                <SafeAreaView edges={['top', 'left', 'right']}>
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Your Journey</Text>
-                        <Text style={styles.subtitle}>Track your comprehensive progress</Text>
-                    </View>
-                </SafeAreaView>
-            </LinearGradient>
+        <LinearGradient
+            colors={DASHBOARD_GRADIENT}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
+            <SafeAreaView edges={['top', 'left', 'right']}>
+                <View style={styles.headerContainer}>
+                    <Text style={styles.title}>Your Journey</Text>
+                    <Text style={styles.subtitle}>Track your comprehensive progress</Text>
+                </View>
+            </SafeAreaView>
 
             <ScrollView
                 ref={scrollViewRef}
@@ -227,13 +229,13 @@ export default function JourneyScreen() {
                     </View>
                     <View style={styles.statCard}>
                         <Text style={styles.statValue}>{researchCompletion}%</Text>
-                        <Text style={styles.statLabel}>Research</Text>
+                        <Text style={styles.statLabel}>Questionnaire</Text>
                     </View>
                 </View>
 
                 {/* Tabs */}
                 <View style={styles.tabContainer}>
-                    {['daily', 'weekly', 'research'].map((tab) => (
+                    {['daily', 'weekly', 'questionnaire'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
                             style={[styles.tab, activeTab === tab && styles.activeTab]}
@@ -292,8 +294,8 @@ export default function JourneyScreen() {
                         </View>
                     )}
 
-                    {/* Research Tab */}
-                    {activeTab === 'research' && (
+                    {/* Questionnaire Tab */}
+                    {activeTab === 'questionnaire' && (
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Questionnaire History</Text>
 
@@ -340,29 +342,18 @@ export default function JourneyScreen() {
                     )}
                 </Animated.View>
             </ScrollView>
-        </View>
+        </LinearGradient >
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        // Background handled by LinearGradient
     },
-    gradientHeader: {
-        paddingBottom: 16,
-        paddingHorizontal: 24,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 5,
-        zIndex: 10,
-    },
-    header: {
+    headerContainer: {
         paddingVertical: 12,
+        paddingHorizontal: 24,
     },
     title: {
         fontSize: 28,
@@ -399,7 +390,7 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#64C59A',
+        color: '#10B981',
     },
     statLabel: {
         fontSize: 12,
@@ -417,7 +408,7 @@ const styles = StyleSheet.create({
     },
     activeTab: {
         borderBottomWidth: 2,
-        borderBottomColor: '#64C59A',
+        borderBottomColor: '#10B981',
     },
     tabText: {
         fontSize: 16,

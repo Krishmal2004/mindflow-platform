@@ -108,6 +108,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
     }
 };
 
+
 export const resendOtp = async (req: Request, res: Response) => {
     const { email, type } = req.body;
 
@@ -127,5 +128,26 @@ export const resendOtp = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Resend OTP Error:', error.message);
         return res.status(400).json({ error: error.message || 'Failed to resend OTP' });
+    }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: 'https://mindflow.app/reset-password', // Update with your actual deep link or web URL
+        });
+
+        if (error) throw error;
+
+        return res.status(200).json({ message: 'Password reset link sent to your email.' });
+    } catch (error: any) {
+        console.error('Reset Password Error:', error.message);
+        return res.status(400).json({ error: error.message || 'Failed to send reset email' });
     }
 };
