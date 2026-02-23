@@ -2,7 +2,7 @@
 
 **MindFlow** is a comprehensive mobile application designed for mindfulness research. This repository contains the source code for the mobile client and the backend server.
 
-## ⚠️ Important: Project Structure Update
+##  Important: Project Structure Update
 
 This project has been restructured to separate concerns and address security improvements. Please defer to the following directories:
 
