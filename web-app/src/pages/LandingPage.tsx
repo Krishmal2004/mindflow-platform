@@ -6,67 +6,57 @@ export default function LandingPage() {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden">
-
-            {/* Left Side - Image */}
-            <div className="hidden md:block w-1/2 relative bg-neutral-900">
-                <img
-                    src="/hero.png"
-                    alt="Mindfulness"
-                    className="absolute inset-0 w-full h-full object-cover opacity-70 grayscale"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
-                <div className="absolute bottom-12 left-12 text-white p-6 max-w-lg">
-                    <h2 className="text-3xl font-bold mb-4">"The present moment is filled with joy and happiness. If you are attentive, you will see it."</h2>
-                    <p className="text-neutral-400">— Thich Nhat Hanh</p>
+        <div className="min-h-screen bg-white flex flex-col" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
+            {/* Header */}
+            <header className="w-full py-4 px-5 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <img src={AuthLogo} alt="MindFlow Logo" className="h-7 w-7" />
+                    <span className="text-lg font-bold text-neutral-900 tracking-tight">MindFlow</span>
                 </div>
-            </div>
+                <Button variant="outline" size="sm" onClick={() => navigate('/login')} className="border-neutral-300 text-neutral-700 text-xs h-8 px-3">
+                    Sign In
+                </Button>
+            </header>
 
-            {/* Right Side - Content */}
-            <div className="w-full md:w-1/2 flex flex-col">
-                <header className="w-full py-6 px-8 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <img src={AuthLogo} alt="MindFlow Logo" className="h-8 w-8" />
-                        <span className="text-xl font-bold text-neutral-900 tracking-tight">MindFlow</span>
-                    </div>
-                    <Button variant="outline" onClick={() => navigate('/login')} className="border-neutral-300 text-neutral-700 hover:bg-neutral-50">
-                        Sign In
-                    </Button>
-                </header>
+            {/* Hero */}
+            <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                <div className="inline-block px-3 py-1 mb-5 text-xs font-medium text-neutral-500 bg-neutral-100 rounded-full">
+                    Research Initiative 2026
+                </div>
 
-                <main className="flex-1 flex flex-col items-center justify-center p-8 text-center md:text-left md:items-start max-w-xl mx-auto md:mx-0 md:ml-20">
-                    <div className="inline-block px-3 py-1 mb-6 text-sm font-medium text-neutral-600 bg-neutral-100 rounded-full">
-                        Research Initiative 2026
-                    </div>
-                    <h1 className="text-5xl md:text-6xl font-extrabold text-neutral-900 tracking-tighter mb-6 leading-[1.1]">
-                        Your Mindful <br />
-                        <span className="text-neutral-500">Journey.</span>
-                    </h1>
-                    <p className="text-lg text-neutral-500 mb-8 leading-relaxed text-balance">
-                        Track your daily well-being, complete guided exercises, and contribute to groundbreaking mindfulness research.
-                    </p>
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-neutral-900 tracking-tighter mb-4 leading-[1.1]">
+                    Your Mindful <br />
+                    <span className="text-neutral-400">Journey.</span>
+                </h1>
 
-                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                        <Button size="lg" className="bg-neutral-900 hover:bg-neutral-800 text-white min-w-[200px]" onClick={() => navigate('/login')}>
-                            Get Started
-                        </Button>
-                        <Button size="lg" variant="ghost" className="text-neutral-500 hover:text-neutral-700">
-                            Learn More
-                        </Button>
-                    </div>
+                <p className="text-base text-neutral-500 mb-8 leading-relaxed max-w-sm">
+                    Track your daily well-being, complete guided exercises, and contribute to mindfulness research.
+                </p>
 
-                    <div className="mt-16 grid grid-cols-2 gap-8 text-left">
-                        <div>
-                            <h3 className="font-bold text-2xl text-neutral-900">Daily</h3>
-                            <p className="text-sm text-neutral-400 mt-1">Mood & Sleep Tracking</p>
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-2xl text-neutral-900">Weekly</h3>
-                            <p className="text-sm text-neutral-400 mt-1">Voice Reflections</p>
-                        </div>
+                <Button
+                    size="lg"
+                    className="bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-white w-full max-w-xs h-12 text-base font-semibold rounded-xl shadow-lg"
+                    onClick={() => navigate('/login')}
+                >
+                    Get Started
+                </Button>
+
+                <div className="mt-14 grid grid-cols-2 gap-8 text-center">
+                    <div>
+                        <h3 className="font-bold text-xl text-neutral-900">Daily</h3>
+                        <p className="text-xs text-neutral-400 mt-1">Mood & Sleep Tracking</p>
                     </div>
-                </main>
-            </div>
+                    <div>
+                        <h3 className="font-bold text-xl text-neutral-900">Weekly</h3>
+                        <p className="text-xs text-neutral-400 mt-1">Voice Reflections</p>
+                    </div>
+                </div>
+            </main>
+
+            {/* Footer */}
+            <footer className="py-6 text-center text-xs text-neutral-300">
+                &copy; {new Date().getFullYear()} MindFlow Research
+            </footer>
         </div>
     )
 }

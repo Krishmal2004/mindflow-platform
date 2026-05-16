@@ -97,20 +97,13 @@ export default function DailySliders() {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) { navigate('/'); return; }
 
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('research_id')
-                    .eq('id', user.id)
-                    .single();
+                // Use the dashboard API for group detection (consistent with backend)
+                const summaryData = await api.getDashboardSummary();
+                const group = summaryData?.group || '';
+                if (group === 'ex') setUserExtension('ex');
+                else if (group === 'cg') setUserExtension('cg');
 
-                let ext = '';
-                if (profile?.research_id) {
-                    if (profile.research_id.endsWith('.ex')) ext = 'ex';
-                    else if (profile.research_id.endsWith('.cg')) ext = 'cg';
-                    setUserExtension(ext as any);
-                }
-
-                if (ext === 'ex') {
+                if (group === 'ex') {
                     const vid = await api.getWeeklyVideo();
                     setWeeklyVideo(vid);
                 }
@@ -259,36 +252,40 @@ export default function DailySliders() {
         }
     };
 
-    if (pageLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin h-8 w-8 text-neutral-400" /></div>;
+    if (pageLoading) return <div className="flex items-center justify-center min-h-screen bg-white"><Loader2 className="animate-spin h-8 w-8 text-neutral-400" /></div>;
 
     if (alreadySubmitted) {
         return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 pt-20">
-                <Card className="w-full max-w-md text-center p-8 space-y-6 animate-in fade-in duration-500">
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
+                <Card className="w-full max-w-sm text-center p-8 space-y-6 animate-in fade-in duration-500 border border-neutral-200 rounded-2xl">
                     <div className="flex justify-center">
                         <CheckCircle className="h-16 w-16 text-green-500" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900">Great Job Today!</h2>
-                    <p className="text-slate-600">You've completed your daily entry.</p>
-                    <Button onClick={() => navigate('/dashboard')} className="w-full">Back to Dashboard</Button>
+                    <h2 className="text-2xl font-bold text-neutral-900">Great Job Today!</h2>
+                    <p className="text-neutral-500">You've completed your daily entry.</p>
+                    <Button onClick={() => navigate('/dashboard')} className="w-full h-12 bg-neutral-900 hover:bg-neutral-800 rounded-xl">Back to Dashboard</Button>
                 </Card>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 pb-20">
-            <div className="w-full max-w-3xl space-y-6">
+        <div className="min-h-screen bg-white flex flex-col items-center" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
+            <div className="w-full max-w-lg space-y-5 px-4 pb-20">
                 {/* Header */}
-                <div className="flex items-center justify-between sticky top-0 bg-slate-50/80 backdrop-blur-sm z-10 py-4">
-                    <div className="flex items-center space-x-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-                            <ArrowLeft className="h-6 w-6" />
-                        </Button>
+                <div className="flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-sm z-10 py-3" style={{ paddingTop: 'calc(var(--sat, 0px) + 0.75rem)' }}>
+                    <div className="flex items-center space-x-3">
+                        <button onClick={() => navigate('/dashboard')} className="p-2 text-neutral-400 active:text-neutral-700 transition-colors">
+                            <ArrowLeft className="h-5 w-5" />
+                        </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-900">Daily Check-in</h1>
-                            <p className="text-xs text-slate-500 font-medium">{getProgress()}% Completed</p>
+                            <h1 className="text-xl font-bold text-neutral-900">Daily Check-in</h1>
+                            <p className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider">{getProgress()}% Complete</p>
                         </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="w-16 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-neutral-900 rounded-full transition-all duration-500" style={{ width: `${getProgress()}%` }}></div>
                     </div>
                 </div>
 

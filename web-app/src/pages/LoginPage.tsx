@@ -4,8 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2 } from "lucide-react"
-import authImage from '../assets/Auth.png';
+import { Loader2, ArrowLeft } from "lucide-react"
 import appLogo from '../assets/app-icon.png';
 
 export default function LoginPage() {
@@ -27,10 +26,7 @@ export default function LoginPage() {
             });
 
             if (authError || !user) throw authError;
-
-            // User login — go straight to dashboard
             navigate('/dashboard');
-
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'Failed to sign in. Please check your credentials.');
@@ -39,46 +35,51 @@ export default function LoginPage() {
         }
     };
 
+    const handleForgotPassword = async () => {
+        if (!email) {
+            setError('Please enter your email first.');
+            return;
+        }
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) throw error;
+            setError(null);
+            alert('Password reset link sent to your email.');
+        } catch (err: any) {
+            setError(err.message || 'Failed to send reset email.');
+        }
+    };
+
     return (
-        <div className="w-full h-screen lg:grid lg:grid-cols-2 overflow-hidden bg-white">
-            {/* Left Side - Hero Image */}
-            <div className="hidden lg:block relative h-full bg-neutral-900">
-                <div className="absolute inset-0 bg-black/30 z-10" />
-                <img
-                    src={authImage}
-                    alt="Authentication Background"
-                    className="h-full w-full object-cover opacity-80 grayscale transition-transform duration-1000 hover:scale-105"
-                />
-                <div className="absolute bottom-10 left-10 z-20 text-white max-w-md">
-                    <h2 className="text-4xl font-bold mb-4 drop-shadow-lg">Welcome Back</h2>
-                    <p className="text-lg text-neutral-300 drop-shadow-md">
-                        Continue your mindfulness journey.
-                    </p>
-                </div>
+        <div className="min-h-screen bg-white flex flex-col" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
+            {/* Back button */}
+            <div className="px-4 pt-3">
+                <button onClick={() => navigate('/')} className="p-2 text-neutral-400 active:text-neutral-700 transition-colors">
+                    <ArrowLeft className="h-5 w-5" />
+                </button>
             </div>
 
-            {/* Right Side - Login Form */}
-            <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white h-full">
-                <div className="mx-auto grid w-full max-w-[400px] gap-8">
-                    <div className="flex flex-col items-center space-y-4 text-center">
-                        <div className="relative w-24 h-24 mb-2">
-                            <img
-                                src={appLogo}
-                                alt="MindFlow Logo"
-                                className="w-full h-full object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
-                            />
-                        </div>
-                        <h1 className="text-3xl font-bold tracking-tight text-neutral-900">
+            {/* Login form */}
+            <div className="flex-1 flex items-center justify-center px-6">
+                <div className="w-full max-w-sm space-y-8">
+                    {/* Logo & heading */}
+                    <div className="flex flex-col items-center space-y-3 text-center">
+                        <img
+                            src={appLogo}
+                            alt="MindFlow Logo"
+                            className="w-20 h-20 object-contain"
+                        />
+                        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
                             Welcome Back
                         </h1>
-                        <p className="text-neutral-500">
+                        <p className="text-sm text-neutral-500">
                             Sign in to continue your journey
                         </p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="grid gap-6">
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <div className="space-y-2">
+                            <Label htmlFor="email" className="text-sm font-medium text-neutral-700">Email</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -86,23 +87,20 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="h-11 px-4 bg-white border-neutral-200 focus:border-neutral-400 focus:ring-neutral-400 transition-all"
+                                className="h-12 px-4 bg-neutral-50 border-neutral-200 rounded-xl text-base focus:border-neutral-400 focus:ring-neutral-400"
                             />
                         </div>
 
-                        <div className="grid gap-2">
+                        <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Password</Label>
-                                <a
-                                    href="#"
-                                    className="ml-auto inline-block text-sm text-neutral-500 hover:text-neutral-900 hover:underline transition-colors"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        alert("Password reset functionality would go here.");
-                                    }}
+                                <Label htmlFor="password" className="text-sm font-medium text-neutral-700">Password</Label>
+                                <button
+                                    type="button"
+                                    className="text-xs text-neutral-400 active:text-neutral-700 transition-colors"
+                                    onClick={handleForgotPassword}
                                 >
-                                    Forgot your password?
-                                </a>
+                                    Forgot password?
+                                </button>
                             </div>
                             <Input
                                 id="password"
@@ -111,19 +109,19 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="h-11 px-4 bg-white border-neutral-200 focus:border-neutral-400 focus:ring-neutral-400 transition-all"
+                                className="h-12 px-4 bg-neutral-50 border-neutral-200 rounded-xl text-base focus:border-neutral-400 focus:ring-neutral-400"
                             />
                         </div>
 
                         {error && (
-                            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-100 flex items-center animate-in fade-in slide-in-from-top-1">
+                            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 flex items-center">
                                 <span className="mr-2">⚠️</span> {error}
                             </div>
                         )}
 
                         <Button
                             type="submit"
-                            className="w-full h-11 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+                            className="w-full h-12 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-white font-semibold rounded-xl text-base shadow-lg"
                             disabled={loading}
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -131,8 +129,8 @@ export default function LoginPage() {
                         </Button>
                     </form>
 
-                    <div className="text-center text-sm text-neutral-400 mt-4">
-                        <p>&copy; {new Date().getFullYear()} MindFlow Research.</p>
+                    <div className="text-center text-xs text-neutral-300 pt-4">
+                        &copy; {new Date().getFullYear()} MindFlow Research
                     </div>
                 </div>
             </div>
