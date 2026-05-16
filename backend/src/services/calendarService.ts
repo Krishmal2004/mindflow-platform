@@ -5,6 +5,7 @@ export class CalendarService {
         const { data, error } = await supabase
             .from('calendar_events')
             .select('*')
+            .eq('user_id', userId)
             .gte('event_date', startDate)
             .lte('event_date', endDate)
             .order('event_date', { ascending: true });

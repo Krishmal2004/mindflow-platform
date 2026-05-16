@@ -45,7 +45,7 @@ const JOURNEY_STEPS = [
 
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
-    const [userName, setUserName] = useState('Anna');
+    const [userName, setUserName] = useState('User');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
     const [statuses, setStatuses] = useState<any>({});
     const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -77,7 +77,7 @@ export default function DashboardScreen() {
                         setStatuses(data);
                     }
                 } catch (error) {
-                    console.log('Dashboard status check failed');
+                    console.log('Dashboard status check failed:', error);
                 }
             };
             checkStatuses();

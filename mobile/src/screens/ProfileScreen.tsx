@@ -152,7 +152,7 @@ export default function ProfileScreen() {
                         <Ionicons name="person" size={50} color="#10B981" />
                     </View>
                     <Text style={styles.userName}>{profileData?.username || 'Mindful User'}</Text>
-                    <Text style={styles.userEmail}>{profileData?.email || 'user@example.com'}</Text>
+                    <Text style={styles.userEmail}>{profileData?.email || 'No email on file'}</Text>
                 </View>
 
                 {/* Profile Information */}

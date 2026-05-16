@@ -42,11 +42,16 @@ export class ThriveService {
             }
         }
 
-        const payload = {
+        const payload: Record<string, any> = {
             user_id: userId,
-            ...entryData,
             created_at: new Date().toISOString()
         };
+        for (const q of questions) {
+            payload[q] = entryData[q];
+        }
+        if (typeof entryData.duration === 'number') {
+            payload.duration = entryData.duration;
+        }
 
         const { data, error } = await supabase
             .from('questionnaire_wemwbs14_responses')

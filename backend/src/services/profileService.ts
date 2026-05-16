@@ -49,8 +49,17 @@ export class ProfileService {
     }
 
     public async updateAboutMe(userId: string, data: any) {
-        // Remove fields that shouldn't be updated directly or are managed
-        const { id, created_at, updated_at, ...updateData } = data;
+        // Only allow known fields to be updated
+        const allowedFields = [
+            'full_name', 'date_of_birth', 'gender', 'phone',
+            'occupation', 'education_level', 'bio', 'avatar_url'
+        ];
+        const updateData: Record<string, any> = {};
+        for (const field of allowedFields) {
+            if (data[field] !== undefined) {
+                updateData[field] = data[field];
+            }
+        }
 
         const { data: result, error } = await supabase
             .from('about_me_profiles')

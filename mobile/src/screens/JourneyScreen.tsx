@@ -110,7 +110,6 @@ export default function JourneyScreen() {
 
         } catch (error) {
             console.error('Error fetching journey data:', error);
-            Alert.alert('Error', 'Failed to load progress data');
         } finally {
             setLoading(false);
         }
@@ -248,7 +247,7 @@ export default function JourneyScreen() {
                     ))}
                 </View>
 
-                <Animated.View entering={FadeInDown.duration(400)}>
+                <View>
                     {/* Daily Tab */}
                     {activeTab === 'daily' && (
                         <View style={styles.section}>
@@ -340,7 +339,7 @@ export default function JourneyScreen() {
 
                         </View>
                     )}
-                </Animated.View>
+                </View>
             </ScrollView>
         </LinearGradient >
     );

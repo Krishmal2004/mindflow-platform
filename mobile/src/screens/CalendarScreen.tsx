@@ -340,7 +340,7 @@ export default function CalendarScreen() {
                     style={styles.modalOverlay}
                     onPress={() => setSelectedDateEvents(null)}
                 >
-                    <View style={styles.modalContent}>
+                    <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>
                                 {selectedDateEvents?.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -370,7 +370,7 @@ export default function CalendarScreen() {
                                 </View>
                             )}
                         </ScrollView>
-                    </View>
+                    </Pressable>
                 </Pressable>
             </Modal>
         </LinearGradient >

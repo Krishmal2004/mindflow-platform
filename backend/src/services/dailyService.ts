@@ -39,8 +39,16 @@ export class DailyService {
 
         const payload = {
             user_id: userId,
-            ...entryData,
-            // updated_at column does not exist in daily_sliders table
+            stress_level: entryData.stress_level,
+            mood: entryData.mood,
+            sleep_quality: entryData.sleep_quality,
+            relaxation_level: entryData.relaxation_level,
+            sleep_start_time: entryData.sleep_start_time || null,
+            wake_up_time: entryData.wake_up_time || null,
+            feelings: entryData.feelings || null,
+            mindfulness_practice: entryData.mindfulness_practice || null,
+            practice_duration: entryData.practice_duration || null,
+            practice_log: entryData.practice_log || null,
         };
 
         let result;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
@@ -11,9 +12,11 @@ export default function BreathingInhalerScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
+            <SafeAreaView edges={['top']} style={styles.safeArea}>
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={24} color="#333" />
+                </TouchableOpacity>
+            </SafeAreaView>
 
             <View style={styles.content}>
                 <Ionicons name="medical-outline" size={80} color={Colors.primary} style={styles.icon} />
@@ -23,7 +26,7 @@ export default function BreathingInhalerScreen() {
                     <Text style={styles.badgeText}>COMING SOON</Text>
                 </View>
                 <Text style={styles.description}>
-                    We are crafting a unique breathing experience just for you. creating a immersive experience. Stay tuned!
+                    We are crafting a unique breathing experience just for you, creating an immersive experience. Stay tuned!
                 </Text>
             </View>
         </View>
@@ -37,12 +40,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    backButton: {
+    safeArea: {
         position: 'absolute',
-        top: 50,
-        left: 20,
-        padding: 10,
+        top: 0,
+        left: 0,
+        right: 0,
         zIndex: 10,
+    },
+    backButton: {
+        padding: 12,
+        marginLeft: 8,
+        alignSelf: 'flex-start',
     },
     content: {
         alignItems: 'center',

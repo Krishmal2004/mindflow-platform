@@ -32,7 +32,9 @@ export class DashboardService {
             { count: totalCount },
             { count: recentCount },
             { data: voiceRecordings },
-            { count: monthlyMainCount },
+            { count: pss10Count },
+            { count: ffmq15Count },
+            { count: wemwbs14Count },
             { data: profile }
         ] = await Promise.all([
             // 1. All Daily Sliders for Streak Calculation (Ordered)
@@ -63,17 +65,31 @@ export class DashboardService {
                 .eq("user_id", userId)
                 .gte("created_at", sixMonthsAgo.toISOString()),
 
-            // 5. Main Questionnaire for Monthly Progress
+            // 5. Questionnaire submissions this month (PSS-10)
             supabase
-                .from("main_questionnaire_responses")
+                .from("questionnaire_pss10_responses")
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", userId)
-                .gte("submitted_at", startOfMonth.toISOString()),
+                .gte("created_at", startOfMonth.toISOString()),
 
-            // 6. User Profile for Research ID
+            // 6. Questionnaire submissions this month (FFMQ-15)
+            supabase
+                .from("questionnaire_ffmq15_responses")
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", userId)
+                .gte("created_at", startOfMonth.toISOString()),
+
+            // 7. Questionnaire submissions this month (WEMWBS-14)
+            supabase
+                .from("questionnaire_wemwbs14_responses")
+                .select("*", { count: "exact", head: true })
+                .eq("user_id", userId)
+                .gte("created_at", startOfMonth.toISOString()),
+
+            // 8. User Profile for Research ID
             supabase
                 .from("profiles")
-                .select("researchID")
+                .select("research_id")
                 .eq("id", userId)
                 .single()
         ]);
@@ -138,12 +154,12 @@ export class DashboardService {
         }
 
         // 4. Monthly Progress
-        const isMonthlyDone = (monthlyMainCount || 0) > 0;
+        const isMonthlyDone = ((pss10Count || 0) + (ffmq15Count || 0) + (wemwbs14Count || 0)) > 0;
 
         // 5. Research Group
         let group = "";
-        if (profile?.researchID?.endsWith(".ex")) group = "ex";
-        else if (profile?.researchID?.endsWith(".cg")) group = "cg";
+        if (profile?.research_id?.endsWith(".ex")) group = "ex";
+        else if (profile?.research_id?.endsWith(".cg")) group = "cg";
 
         return {
             streak: currentStreak,

@@ -89,10 +89,9 @@ export class MindfulService {
             getScore('q10', false) +
             getScore('q15', false);
 
-        // 3. Prepare Payload
-        const payload = {
+        // 3. Prepare Payload (explicit fields only)
+        const payload: Record<string, any> = {
             user_id: userId,
-            ...entryData,
             observing_score: observingScore,
             describing_score: describingScore,
             awareness_score: awarenessScore,
@@ -100,6 +99,12 @@ export class MindfulService {
             non_reactivity_score: nonReactivityScore,
             created_at: new Date().toISOString()
         };
+        for (const q of questions) {
+            payload[q] = entryData[q];
+        }
+        if (typeof entryData.duration === 'number') {
+            payload.duration = entryData.duration;
+        }
 
         const { data, error } = await supabase
             .from('questionnaire_ffmq15_responses')
