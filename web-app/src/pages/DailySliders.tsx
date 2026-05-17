@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import { EmotionIcons } from '@/components/Icons';
 
 // --- Constants (Matched with Mobile) ---
 
@@ -46,14 +47,6 @@ for (let hour = 0; hour < 24; hour++) {
         WAKE_UP_OPTIONS.push(`${displayHour}:${minute.toString().padStart(2, '0')} ${period}`);
     }
 }
-
-// Emoji Mapping 1-5
-const EMOJIS = {
-    mood: ['😫', '😕', '😐', '🙂', '😄'], // 1 (Bad) -> 5 (Good)
-    stress: ['😌', '🙂', '😐', '😓', '🤯'], // 1 (Low/Good) -> 5 (High/Bad)
-    sleep: ['🧟', '😴', '😐', '🙂', '💪'], // 1 (Bad) -> 5 (Good)
-    relaxation: ['😖', '😬', '😐', '😌', '🧘'], // 1 (Low) -> 5 (High)
-};
 
 declare global {
     interface Window {
@@ -270,10 +263,10 @@ export default function DailySliders() {
     }
 
     return (
-        <div className="min-h-screen bg-white flex flex-col items-center" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
-            <div className="w-full max-w-lg space-y-5 px-4 pb-20">
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center pb-24" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'calc(var(--sab, 0px) + 6rem)' }}>
+            <div className="w-full max-w-lg space-y-5 px-4">
                 {/* Header */}
-                <div className="flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-sm z-10 py-3" style={{ paddingTop: 'calc(var(--sat, 0px) + 0.75rem)' }}>
+                <div className="flex items-center justify-between sticky top-0 bg-slate-50/90 backdrop-blur-md z-10 py-4" style={{ paddingTop: 'calc(var(--sat, 0px) + 1rem)' }}>
                     <div className="flex items-center space-x-3">
                         <button onClick={() => navigate('/dashboard')} className="p-2 text-neutral-400 active:text-neutral-700 transition-colors">
                             <ArrowLeft className="h-5 w-5" />
@@ -347,21 +340,21 @@ export default function DailySliders() {
                             <div className="p-2 bg-neutral-100 rounded-full"><Smile className="h-5 w-5 text-neutral-600" /></div>
                             <h3 className="font-semibold text-lg">Mood</h3>
                         </div>
-                        <div className="flex justify-between items-center bg-slate-50 p-3 rounded-full">
-                            {EMOJIS.mood.map((emoji, i) => (
+                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                            {[1, 2, 3, 4, 5].map((level) => (
                                 <button
-                                    key={i}
-                                    onClick={() => setMoodLevel(i + 1)}
+                                    key={level}
+                                    onClick={() => setMoodLevel(level)}
                                     className={cn(
-                                        "h-10 w-10 text-2xl flex items-center justify-center rounded-full transition-all",
-                                        moodLevel === i + 1 ? "bg-white shadow-md scale-110" : "opacity-50 hover:opacity-100"
+                                        "h-12 w-12 flex items-center justify-center rounded-xl transition-all",
+                                        moodLevel === level ? "bg-white shadow-sm ring-1 ring-slate-200 scale-110" : "opacity-60 hover:opacity-100 hover:bg-slate-100"
                                     )}
                                 >
-                                    {emoji}
+                                    {EmotionIcons.mood(level, 36)}
                                 </button>
                             ))}
                         </div>
-                        <div className="flex justify-between text-xs text-slate-400 font-medium px-2">
+                        <div className="flex justify-between text-xs text-slate-400 font-medium px-3">
                             <span>Bad</span><span>Good</span>
                         </div>
                     </Card>
@@ -371,21 +364,21 @@ export default function DailySliders() {
                             <div className="p-2 bg-neutral-100 rounded-full"><Activity className="h-5 w-5 text-neutral-600" /></div>
                             <h3 className="font-semibold text-lg">Stress</h3>
                         </div>
-                        <div className="flex justify-between items-center bg-slate-50 p-3 rounded-full">
-                            {EMOJIS.stress.map((emoji, i) => (
+                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                            {[1, 2, 3, 4, 5].map((level) => (
                                 <button
-                                    key={i}
-                                    onClick={() => setStressLevel(i + 1)}
+                                    key={level}
+                                    onClick={() => setStressLevel(level)}
                                     className={cn(
-                                        "h-10 w-10 text-2xl flex items-center justify-center rounded-full transition-all",
-                                        stressLevel === i + 1 ? "bg-white shadow-md scale-110" : "opacity-50 hover:opacity-100"
+                                        "h-12 w-12 flex items-center justify-center rounded-xl transition-all",
+                                        stressLevel === level ? "bg-white shadow-sm ring-1 ring-slate-200 scale-110" : "opacity-60 hover:opacity-100 hover:bg-slate-100"
                                     )}
                                 >
-                                    {emoji}
+                                    {EmotionIcons.stress(level, 36)}
                                 </button>
                             ))}
                         </div>
-                        <div className="flex justify-between text-xs text-slate-400 font-medium px-2">
+                        <div className="flex justify-between text-xs text-slate-400 font-medium px-3">
                             <span>Low</span><span>High</span>
                         </div>
                     </Card>
@@ -481,21 +474,21 @@ export default function DailySliders() {
                             <div className="p-2 bg-neutral-100 rounded-full"><Moon className="h-5 w-5 text-neutral-600" /></div>
                             <h3 className="font-semibold text-lg">Sleep Quality</h3>
                         </div>
-                        <div className="flex justify-between items-center bg-slate-50 p-3 rounded-full">
-                            {EMOJIS.sleep.map((emoji, i) => (
+                        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                            {[1, 2, 3, 4, 5].map((level) => (
                                 <button
-                                    key={i}
-                                    onClick={() => setSleepQuality(i + 1)}
+                                    key={level}
+                                    onClick={() => setSleepQuality(level)}
                                     className={cn(
-                                        "h-10 w-10 text-2xl flex items-center justify-center rounded-full transition-all",
-                                        sleepQuality === i + 1 ? "bg-white shadow-md scale-110" : "opacity-50 hover:opacity-100"
+                                        "h-12 w-12 flex items-center justify-center rounded-xl transition-all",
+                                        sleepQuality === level ? "bg-white shadow-sm ring-1 ring-slate-200 scale-110" : "opacity-60 hover:opacity-100 hover:bg-slate-100"
                                     )}
                                 >
-                                    {emoji}
+                                    {EmotionIcons.sleep(level, 36)}
                                 </button>
                             ))}
                         </div>
-                        <div className="flex justify-between text-xs text-slate-400 font-medium px-2">
+                        <div className="flex justify-between text-xs text-slate-400 font-medium px-3">
                             <span>Bad</span><span>Good</span>
                         </div>
                     </Card>
@@ -546,31 +539,33 @@ export default function DailySliders() {
                         <div className="p-2 bg-neutral-100 rounded-full"><Coffee className="h-5 w-5 text-neutral-600" /></div>
                         <h3 className="font-semibold text-lg">Relaxation Level</h3>
                     </div>
-                    <div className="flex justify-between items-center bg-slate-50 p-3 rounded-full">
-                        {EMOJIS.relaxation.map((emoji, i) => (
+                    <div className="flex justify-between items-center bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                        {[1, 2, 3, 4, 5].map((level) => (
                             <button
-                                key={i}
-                                onClick={() => setRelaxationLevel(i + 1)}
+                                key={level}
+                                onClick={() => setRelaxationLevel(level)}
                                 className={cn(
-                                    "h-10 w-10 text-2xl flex items-center justify-center rounded-full transition-all",
-                                    relaxationLevel === i + 1 ? "bg-white shadow-md scale-110" : "opacity-50 hover:opacity-100"
+                                    "h-12 w-12 flex items-center justify-center rounded-xl transition-all",
+                                    relaxationLevel === level ? "bg-white shadow-sm ring-1 ring-slate-200 scale-110" : "opacity-60 hover:opacity-100 hover:bg-slate-100"
                                 )}
                             >
-                                {emoji}
+                                {EmotionIcons.relaxation(level, 36)}
                             </button>
                         ))}
                     </div>
-                    <div className="flex justify-between text-xs text-slate-400 font-medium px-2">
+                    <div className="flex justify-between text-xs text-slate-400 font-medium px-3">
                         <span>Low</span><span>High</span>
                     </div>
                 </Card>
-
-                {/* Submit */}
-                <div className="pt-4 pb-8">
+            </div>
+            
+            {/* Submit Sticky Footer */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-50 pb-[calc(1rem+var(--sab,0px))]">
+                <div className="max-w-lg mx-auto">
                     <Button
                         onClick={handleSubmit}
                         disabled={submitting}
-                        className="w-full h-14 text-lg bg-neutral-900 hover:bg-neutral-800 shadow-lg"
+                        className="w-full h-14 text-lg bg-neutral-900 hover:bg-neutral-800 shadow-lg shadow-neutral-200 rounded-2xl"
                     >
                         {submitting ? <Loader2 className="animate-spin mr-2" /> : 'Complete Check-in'}
                     </Button>

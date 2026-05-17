@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, List, Calendar as CalendarIcon, History } from 'lucide-react';
+import { ArrowLeft, Loader2, List, Calendar as CalendarIcon, History, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -90,12 +90,29 @@ export default function ProgressPage() {
     }, [dailyData]);
 
     const chartData = useMemo(() => {
-        return dailyData.slice(-14).map(d => ({
+        return dailyData.slice(-7).map(d => ({
             date: format(new Date(d.created_at), 'MMM dd'),
             stress: d.stress_level,
             sleep: d.sleep_quality,
             relax: d.relaxation_level
         }));
+    }, [dailyData]);
+
+    const last7DaysList = useMemo(() => {
+        const list = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = format(date, 'yyyy-MM-dd');
+            const entry = dailyData.find(d => format(new Date(d.created_at), 'yyyy-MM-dd') === dateStr);
+            list.push({
+                date,
+                isToday: i === 0,
+                entry
+            });
+        }
+        return list;
     }, [dailyData]);
 
     if (loading) return <div className="flex justify-center p-8 h-screen items-center bg-white"><Loader2 className="animate-spin h-8 w-8 text-neutral-400" /></div>;
@@ -150,9 +167,45 @@ export default function ProgressPage() {
                     </TabsList>
 
                     <TabsContent value="daily" className="space-y-6 animate-in fade-in-50">
+                        {/* 7-Day Journey List */}
                         <Card className="border border-neutral-200">
                             <CardHeader>
-                                <CardTitle>Well-being Trends (Last 14 Days)</CardTitle>
+                                <CardTitle>Your 7-Day Journey</CardTitle>
+                                <CardDescription>Your check-ins over the last 7 days.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {last7DaysList.map((day, i) => (
+                                        <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${day.isToday ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-100 bg-white'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${day.entry ? 'bg-green-100 text-green-600' : 'bg-neutral-100 text-neutral-400'}`}>
+                                                    {day.entry ? <CheckCircle className="h-5 w-5" /> : <div className="h-2 w-2 rounded-full bg-neutral-300" />}
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-neutral-900">
+                                                        {day.isToday ? 'Today' : format(day.date, 'EEEE')}
+                                                    </div>
+                                                    <div className="text-xs text-neutral-500">{format(day.date, 'MMM dd, yyyy')}</div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {day.entry ? (
+                                                    <span className="px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full">Completed</span>
+                                                ) : day.isToday ? (
+                                                    <Button size="sm" onClick={() => navigate('/dashboard/daily')} className="h-8 rounded-full bg-neutral-900 text-xs">Start</Button>
+                                                ) : (
+                                                    <span className="text-xs text-neutral-400 font-medium">Missed</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border border-neutral-200">
+                            <CardHeader>
+                                <CardTitle>Well-being Trends (Last 7 Days)</CardTitle>
                                 <CardDescription>Tracking your Stress, Sleep, and Relaxation levels.</CardDescription>
                             </CardHeader>
                             <CardContent>

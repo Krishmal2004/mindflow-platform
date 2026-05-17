@@ -194,17 +194,17 @@ export default function WeeklyWhispers() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-            <div className="w-full max-w-md space-y-6">
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
+            <div className="w-full max-w-lg space-y-6 px-4">
                 {/* Header */}
-                <div className="flex items-center space-x-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-                        <ArrowLeft className="h-6 w-6" />
-                    </Button>
-                    <h1 className="text-2xl font-bold text-slate-900">Weekly Whispers</h1>
+                <div className="flex items-center space-x-4 sticky top-0 bg-slate-50/90 backdrop-blur-md z-10 py-4" style={{ paddingTop: 'calc(var(--sat, 0px) + 1rem)' }}>
+                    <button onClick={() => navigate('/dashboard')} className="p-2 text-slate-500 active:text-slate-900 transition-colors bg-white rounded-full shadow-sm border border-slate-100">
+                        <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    <h1 className="text-xl font-bold text-slate-900">Weekly Whispers</h1>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 shadow-sm space-y-6">
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
                     {!audioBlob ? (
                         <>
                             <div className="space-y-4">
@@ -250,13 +250,13 @@ export default function WeeklyWhispers() {
                                 <audio src={audioUrl} controls className="w-full" />
                             )}
 
-                            <div className="flex gap-4 justify-center">
-                                <Button variant="outline" onClick={handleReset} disabled={uploading}>
-                                    <RotateCcw className="mr-2 h-4 w-4" />
+                            <div className="flex gap-3 pt-4">
+                                <Button variant="outline" onClick={handleReset} disabled={uploading} className="h-14 flex-1 rounded-2xl border-slate-200">
+                                    <RotateCcw className="mr-2 h-5 w-5" />
                                     Retake
                                 </Button>
-                                <Button onClick={handleUpload} disabled={uploading} className="bg-neutral-900 hover:bg-neutral-800">
-                                    {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                <Button onClick={handleUpload} disabled={uploading} className="h-14 flex-1 rounded-2xl bg-neutral-900 hover:bg-neutral-800 shadow-lg shadow-neutral-200 text-base">
+                                    {uploading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Upload className="mr-2 h-5 w-5" />}
                                     Submit
                                 </Button>
                             </div>
