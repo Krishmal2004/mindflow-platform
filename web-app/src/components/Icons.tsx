@@ -1,3 +1,5 @@
+import type { ReactElement } from 'react';
+
 // Journey SVG Icons — Web version matching mobile/src/components/JourneyIcons.tsx
 
 interface IconProps {
@@ -42,7 +44,7 @@ export const JourneyIcons = {
     </svg>
   ),
 
-  Chart: ({ size = 24, color = '#10B981', className }: IconProps) => (
+  Chart: ({ size = 24, className }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <defs>
         <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
@@ -112,9 +114,9 @@ export const JourneyIcons = {
 // Emotion SVG Icons — Replacing Unicode Emojis
 // Each returns a set of 5 icons for scale 1-5
 
-const makeFace = (expression: string, bgColor: string, size: number) => {
+const makeFace = (expression: string, size: number) => {
   // Simple SVG face generator
-  const faces: Record<string, JSX.Element> = {
+  const faces: Record<string, ReactElement> = {
     // Mood faces (1=Bad, 5=Good)
     'mood-1': (
       <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
@@ -291,8 +293,8 @@ const makeFace = (expression: string, bgColor: string, size: number) => {
 };
 
 export const EmotionIcons = {
-  mood: (level: number, size = 36) => makeFace(`mood-${level}`, '', size),
-  stress: (level: number, size = 36) => makeFace(`stress-${level}`, '', size),
-  sleep: (level: number, size = 36) => makeFace(`sleep-${level}`, '', size),
-  relaxation: (level: number, size = 36) => makeFace(`relax-${level}`, '', size),
+  mood: (level: number, size = 36) => makeFace(`mood-${level}`, size),
+  stress: (level: number, size = 36) => makeFace(`stress-${level}`, size),
+  sleep: (level: number, size = 36) => makeFace(`sleep-${level}`, size),
+  relaxation: (level: number, size = 36) => makeFace(`relax-${level}`, size),
 };

@@ -18,13 +18,6 @@ const MINDFULNESS_QUOTES = [
     { text: "In today's rush, we all think too much, seek too much, want too much, and forget about the joy of just being.", author: "Eckhart Tolle" },
 ]
 
-const CONTROL_FACTS = [
-    "Honey never spoils. Archaeologists have found edible honey in ancient Egyptian tombs.",
-    "The Eiffel Tower can be 15 cm taller during the summer due to thermal expansion.",
-    "Octopuses have three hearts.",
-    "A day on Venus is longer than a year on Venus.",
-    "Bananas are curved because they grow towards the sun.",
-]
 
 const JOURNEY_STEPS = [
     { id: 'daily', title: 'Daily Sliders', subtitle: 'Track your mood', Icon: JourneyIcons.Sun, color: '#F59E0B', bgColor: '#FEF3C7', route: '/dashboard/daily' },
@@ -38,7 +31,6 @@ export default function UserDashboard() {
     const navigate = useNavigate()
     const [summary, setSummary] = useState<any>(null)
     const [userProfile, setUserProfile] = useState<any>(null)
-    const [dailyContent, setDailyContent] = useState<string>("")
     const [loading, setLoading] = useState(true)
     const [quoteIndex, setQuoteIndex] = useState(0)
     const [quoteFade, setQuoteFade] = useState(true)
@@ -50,12 +42,6 @@ export default function UserDashboard() {
                 const summaryData = await api.getDashboardSummary()
                 setSummary(summaryData)
 
-                const group = summaryData?.group
-                if (group === 'cg') {
-                    setDailyContent(CONTROL_FACTS[Math.floor(Math.random() * CONTROL_FACTS.length)])
-                } else {
-                    setDailyContent(MINDFULNESS_QUOTES[Math.floor(Math.random() * MINDFULNESS_QUOTES.length)].text)
-                }
 
                 const { data: { user } } = await supabase.auth.getUser()
                 if (user) {
