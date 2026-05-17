@@ -170,7 +170,7 @@ export default function MainQuestionnaire() {
                         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Core Insights</h1>
                     </div>
 
-                    <Card className="overflow-hidden border-0 shadow-lg">
+                    <Card className="overflow-hidden border border-slate-100 shadow-sm rounded-3xl">
                         <div className="bg-neutral-900 p-8 text-white">
                             <h2 className="text-2xl font-bold mb-2">{questionnaire.title}</h2>
                             <p className="opacity-90 leading-relaxed">{questionnaire.description}</p>
@@ -198,7 +198,7 @@ export default function MainQuestionnaire() {
                                 ))}
                             </div>
 
-                            <Button size="lg" className="w-full bg-neutral-900 hover:bg-neutral-800 h-14 text-lg shadow-neutral-200 shadow-lg" onClick={handleStart}>
+                            <Button size="lg" className="w-full bg-neutral-900 hover:bg-neutral-800 h-14 rounded-2xl text-base shadow-lg shadow-neutral-200" onClick={handleStart}>
                                 Start Questionnaire
                             </Button>
                         </div>
@@ -310,20 +310,20 @@ export default function MainQuestionnaire() {
             </div>
 
             {/* Bottom Nav */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10">
-                <div className="max-w-2xl mx-auto flex justify-between gap-4">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-10 pb-[calc(1rem+var(--sab,0px))]">
+                <div className="max-w-2xl mx-auto flex justify-between gap-3">
                     <Button
                         variant="outline"
                         onClick={handlePrev}
                         disabled={submitting}
-                        className="h-12 w-28"
+                        className="h-14 w-28 rounded-2xl border-slate-200"
                     >
-                        <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                        <ChevronLeft className="mr-2 h-5 w-5" /> Back
                     </Button>
                     <Button
                         onClick={handleNext}
                         disabled={submitting}
-                        className="h-12 flex-1 bg-neutral-900 hover:bg-neutral-800 text-lg shadow-lg shadow-neutral-100"
+                        className="h-14 flex-1 bg-neutral-900 hover:bg-neutral-800 text-base shadow-lg shadow-neutral-200 rounded-2xl"
                     >
                         {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {currentSectionIndex === questionnaire.sections.length - 1 ? 'Submit Answers' : 'Next Section'}
