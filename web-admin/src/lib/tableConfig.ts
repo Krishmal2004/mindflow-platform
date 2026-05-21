@@ -19,6 +19,8 @@ export interface TableConfig {
     hasCreatedAt: boolean;  // whether this table supports time-frame export
     searchable: boolean;    // whether username search is applicable
     searchColumn: string;   // Column to search by default
+    /** Admin identity table — view only; auth is via Supabase */
+    readOnly?: boolean;
     fields: FieldConfig[];
     /** Columns to show in the table view (subset of fields) */
     tableColumns: string[];
@@ -81,13 +83,14 @@ export const TABLES_CONFIG: TableConfig[] = [
         hasUserId: false,
         hasCreatedAt: false,
         searchable: false,
+        readOnly: true,
         searchColumn: 'username',
-        tableColumns: ['id', 'username', 'email'],
+        tableColumns: ['id', 'username', 'email', 'created_at'],
         fields: [
             { name: 'id', label: 'Admin ID', type: 'text', required: true, readOnly: true },
-            { name: 'username', label: 'Username', type: 'text', required: true },
-            { name: 'email', label: 'Email', type: 'text', required: true },
-            { name: 'password', label: 'Password', type: 'text', required: true },
+            { name: 'username', label: 'Username', type: 'text', readOnly: true },
+            { name: 'email', label: 'Email', type: 'text', readOnly: true },
+            { name: 'created_at', label: 'Created', type: 'date', readOnly: true },
         ],
     },
     {

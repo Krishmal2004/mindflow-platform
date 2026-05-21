@@ -21,7 +21,7 @@ router.get('/weekly/video', requireAuth, weeklyController.getWeeklyVideo);
 router.post('/weekly/upload', requireAuth, upload.single('file'), weeklyController.uploadAudio);
 router.post('/weekly', requireAuth, weeklyController.submitWeeklyEntry);
 
-// Calendar (web-admin and web-app use /api/roadmap/calendar/events)
+// Calendar (canonical path for web clients)
 router.get('/calendar/events', requireAuth, calendarController.getCalendarEvents);
 
 // Thrive Tracker (WEMWBS-14)

@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../config/api';
+import { apiFetch, clearApiCache } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
@@ -79,29 +79,21 @@ export default function JourneyScreen() {
 
     const scrollViewRef = useRef<ScrollView>(null);
 
-    const fetchData = async () => {
+    const fetchData = async (force = false) => {
         try {
-            const token = await AsyncStorage.getItem('authToken');
-            if (!token) return;
+            const { ok, data } = await apiFetch<{
+                daily?: DailySliderData[];
+                weekly?: VoiceRecordingData[];
+                research?: { pss10?: QuestionnaireResponse[]; ffmq15?: QuestionnaireResponse[]; wemwbs14?: QuestionnaireResponse[] };
+            }>('/api/journey?limit=90', { force });
 
-            const response = await fetch(`${API_URL}/api/journey`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch journey data');
-            }
-
-            const data = await response.json();
+            if (!ok || !data) throw new Error('Failed to fetch journey data');
 
             setDailyData(data.daily || []);
             setWeeklyData(data.weekly || []);
             setPss10Data(data.research?.pss10 || []);
             setFfmq15Data(data.research?.ffmq15 || []);
             setWemwbs14Data(data.research?.wemwbs14 || []);
-
         } catch (error) {
             console.error('Error fetching journey data:', error);
         } finally {
@@ -117,7 +109,8 @@ export default function JourneyScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchData();
+        clearApiCache('/api/journey');
+        await fetchData(true);
         setRefreshing(false);
     };
 

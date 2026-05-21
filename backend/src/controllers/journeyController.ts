@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { JOURNEY_DEFAULT_LIMIT, JOURNEY_MAX_LIMIT } from '../constants/limits';
 import { DailyService } from '../services/dailyService';
 import { WeeklyService } from '../services/weeklyService';
 import { ThriveService } from '../services/thriveService';
@@ -45,13 +46,17 @@ export const getJourneyData = async (req: AuthenticatedRequest, res: Response): 
         }
 
         const userId = req.user.id;
+        const requested = parseInt(String(req.query.limit ?? JOURNEY_DEFAULT_LIMIT), 10);
+        const limit = Number.isFinite(requested)
+            ? Math.min(Math.max(requested, 1), JOURNEY_MAX_LIMIT)
+            : JOURNEY_DEFAULT_LIMIT;
 
         const [dailyRes, weeklyRes, pss10Res, ffmq15Res, wemwbs14Res] = await Promise.all([
-            supabase.from('daily_sliders').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-            supabase.from('voice_recordings').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-            supabase.from('questionnaire_pss10_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-            supabase.from('questionnaire_ffmq15_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-            supabase.from('questionnaire_wemwbs14_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabase.from('daily_sliders').select('id, user_id, mood, stress_level, sleep_quality, relaxation_level, mindfulness_practice, feelings, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+            supabase.from('voice_recordings').select('id, user_id, week_number, year, file_url, duration, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+            supabase.from('questionnaire_pss10_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+            supabase.from('questionnaire_ffmq15_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+            supabase.from('questionnaire_wemwbs14_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
         ]);
 
         if (dailyRes.error) throw dailyRes.error;

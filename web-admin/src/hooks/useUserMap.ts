@@ -8,20 +8,21 @@ export function useUserMap() {
     const [userMap, setUserMap] = useState<UserMap>(new Map());
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchUsers() {
-            try {
-                const { data } = await supabase.from('profiles').select('id, username');
-                const map = new Map<string, string>();
-                (data || []).forEach((p) => map.set(p.id, p.username || p.id.slice(0, 8)));
-                setUserMap(map);
-            } catch (err) {
-                console.error('Failed to load user map:', err);
-            } finally {
-                setLoading(false);
-            }
+    const loadUsers = async () => {
+        try {
+            const { data } = await supabase.from('profiles').select('id, username');
+            const map = new Map<string, string>();
+            (data || []).forEach((p) => map.set(p.id, p.username || p.id.slice(0, 8)));
+            setUserMap(map);
+        } catch (err) {
+            console.error('Failed to load user map:', err);
+        } finally {
+            setLoading(false);
         }
-        fetchUsers();
+    };
+
+    useEffect(() => {
+        loadUsers();
     }, []);
 
     /** Resolve a userId to its display username. Falls back to truncated UUID. */
@@ -41,5 +42,5 @@ export function useUserMap() {
         return matches;
     };
 
-    return { userMap, resolveUser, findUserIdsByName, loading };
+    return { userMap, resolveUser, findUserIdsByName, loading, refreshUserMap: loadUsers };
 }

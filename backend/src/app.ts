@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -22,11 +22,20 @@ app.use(express.json({ limit: '1mb' }));
 // Request logging
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-// Rate limiting for auth endpoints
+// Rate limiter: auth endpoints (strict)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 20, // 20 attempts per window
     message: { error: 'Too many attempts. Please try again after 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Rate limiter: general data API (relaxed but bounded)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    message: { error: 'Too many requests. Please slow down.' },
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -40,15 +49,32 @@ import journeyRoutes from './routes/journeyRoutes';
 
 // Routes
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/roadmap', roadmapRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/journey', journeyRoutes);
+app.use('/api/dashboard', apiLimiter, dashboardRoutes);
+app.use('/api/roadmap', apiLimiter, roadmapRoutes);
+app.use('/api/profile', apiLimiter, profileRoutes);
+app.use('/api/calendar', apiLimiter, calendarRoutes);
+app.use('/api/journey', apiLimiter, journeyRoutes);
 
-// Health Check
+// Health Check (no rate limit — used by load balancers)
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 404 handler
+app.use((_req: Request, res: Response) => {
+    res.status(404).json({ error: 'Route not found' });
+});
+
+// Global error handler — prevents raw stack traces leaking to clients
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('[Unhandled Error]', err.stack ?? err.message);
+    const isMulter = err.message?.includes('audio files');
+    const status = isMulter ? 400 : 500;
+    const message = isMulter
+        ? err.message
+        : 'An unexpected error occurred. Please try again later.';
+    res.status(status).json({ error: message });
 });
 
 export default app;
