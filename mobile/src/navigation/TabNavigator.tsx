@@ -26,7 +26,7 @@ export default function TabNavigator() {
                         paddingBottom: insets.bottom > 0 ? insets.bottom : 15,
                     }
                 ],
-                tabBarActiveTintColor: '#64C59A',
+                tabBarActiveTintColor: Colors.primary,
                 tabBarInactiveTintColor: '#94A3B8',
                 tabBarLabelStyle: styles.tabLabel,
                 tabBarItemStyle: styles.tabItem,

@@ -4,64 +4,94 @@ import Svg, { Path, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 interface Props {
     width?: number;
     height?: number;
+    color?: string;
 }
 
-export const LeavesDecoration = ({ width = 400, height = 400 }: Props) => {
+interface LeafProps {
+    x: number;
+    y: number;
+    scale: number;
+    rotate: number;
+    opacity: number;
+    color: string;
+}
+
+const DetailedLeaf = ({ x, y, scale, rotate, opacity, color }: LeafProps) => {
+    const colorId = color.replace('#', '');
+    return (
+        <G transform={`translate(${x}, ${y}) rotate(${rotate}) scale(${scale})`} opacity={opacity}>
+            {/* Left half blade */}
+            <Path
+                d="M0,100 C30,70 60,40 100,0 C100,0 80,60 50,110 C35,135 15,145 0,150 Z"
+                fill={`url(#leafGrad1_${colorId})`}
+            />
+            {/* Right half blade */}
+            <Path
+                d="M0,100 C-30,70 -60,40 -100,0 C-100,0 -80,60 -50,110 C-35,135 -15,145 0,150 Z"
+                fill={`url(#leafGrad2_${colorId})`}
+            />
+            {/* Main vein stem */}
+            <Path
+                d="M0,150 C0,110 0,60 0,0"
+                stroke={color}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                opacity="0.6"
+                fill="none"
+            />
+            {/* Side veins - right side */}
+            <Path d="M0,120 Q15,105 25,95" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            <Path d="M0,90 Q25,75 40,60" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            <Path d="M0,60 Q30,45 50,30" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            <Path d="M0,30 Q20,20 35,10" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            
+            {/* Side veins - left side */}
+            <Path d="M0,120 Q-15,105 -25,95" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            <Path d="M0,90 Q-25,75 -40,60" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            <Path d="M0,60 Q-30,45 -50,30" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+            <Path d="M0,30 Q-20,20 -35,10" stroke={color} strokeWidth="0.8" opacity="0.4" fill="none" />
+        </G>
+    );
+};
+
+export const LeavesDecoration = ({ width = 400, height = 400, color = '#749F82' }: Props) => {
+    const colorId = color.replace('#', '');
     return (
         <Svg width={width} height={height} viewBox="0 0 400 400" fill="none" style={{ position: 'absolute' }}>
             <Defs>
-                <LinearGradient id="leafGrad1" x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor="#A7F3D0" stopOpacity="0.8" />
-                    <Stop offset="1" stopColor="#34D399" stopOpacity="0.2" />
+                <LinearGradient id={`leafGrad1_${colorId}`} x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor={color} stopOpacity="0.65" />
+                    <Stop offset="1" stopColor={color} stopOpacity="0.15" />
                 </LinearGradient>
-                <LinearGradient id="leafGrad2" x1="0" y1="1" x2="1" y2="0">
-                    <Stop offset="0" stopColor="#6EE7B7" stopOpacity="0.6" />
-                    <Stop offset="1" stopColor="#059669" stopOpacity="0.1" />
+                <LinearGradient id={`leafGrad2_${colorId}`} x1="0" y1="1" x2="1" y2="0">
+                    <Stop offset="0" stopColor={color} stopOpacity="0.55" />
+                    <Stop offset="1" stopColor={color} stopOpacity="0.1" />
                 </LinearGradient>
             </Defs>
 
-            {/* Main Decorative Group - Top Right */}
-            <G transform="translate(100, -20) rotate(15)">
-                {/* Large Background Leaf */}
-                <Path
-                    d="M200,50 Q280,10 320,80 T350,200 Q320,280 200,300 T80,200 Q50,100 200,50 Z"
-                    fill="url(#leafGrad1)"
-                    opacity="0.5"
-                    transform="scale(1.2)"
-                />
+            {/* Main stem of the branch */}
+            <Path
+                d="M400,0 C330,60 250,110 180,180 C110,250 80,320 60,400"
+                stroke={color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                opacity="0.25"
+                fill="none"
+            />
 
-                {/* Medium Detailed Leaf */}
-                <Path
-                    d="M220,80 Q290,120 280,180 T200,280 Q140,240 160,150 T220,80 Z"
-                    fill="url(#leafGrad2)"
-                    opacity="0.7"
-                />
+            {/* Detailed leaves along the stem */}
+            <DetailedLeaf x={330} y={60} rotate={-45} scale={0.7} opacity={0.6} color={color} />
+            <DetailedLeaf x={270} y={110} rotate={-75} scale={0.65} opacity={0.65} color={color} />
+            <DetailedLeaf x={290} y={140} rotate={-15} scale={0.6} opacity={0.55} color={color} />
+            <DetailedLeaf x={210} y={180} rotate={-80} scale={0.55} opacity={0.7} color={color} />
+            <DetailedLeaf x={230} y={210} rotate={-10} scale={0.5} opacity={0.6} color={color} />
+            <DetailedLeaf x={140} y={250} rotate={-85} scale={0.48} opacity={0.75} color={color} />
+            <DetailedLeaf x={160} y={280} rotate={-5} scale={0.42} opacity={0.65} color={color} />
+            <DetailedLeaf x={80} y={350} rotate={-90} scale={0.35} opacity={0.6} color={color} />
 
-                {/* Accent Leaf Curve */}
-                <Path
-                    d="M220,80 Q255,130 250,180"
-                    stroke="#10B981"
-                    strokeWidth="2"
-                    strokeOpacity="0.4"
-                    fill="none"
-                />
-            </G>
-
-            {/* Subtle Floating Leaves */}
-            <G transform="translate(50, 50)">
-                <Path
-                    d="M50,0 Q80,20 70,60 T30,80 Q0,60 10,20 T50,0 Z"
-                    fill="#34D399"
-                    opacity="0.3"
-                />
-            </G>
-            <G transform="translate(300, 250) rotate(-45)">
-                <Path
-                    d="M50,0 Q80,20 70,60 T30,80 Q0,60 10,20 T50,0 Z"
-                    fill="#6EE7B7"
-                    opacity="0.2"
-                />
-            </G>
+            {/* Subtle Floating Leaves in other areas */}
+            <DetailedLeaf x={50} y={80} rotate={35} scale={0.38} opacity={0.35} color={color} />
+            <DetailedLeaf x={320} y={300} rotate={-120} scale={0.45} opacity={0.3} color={color} />
         </Svg>
     );
 };

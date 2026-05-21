@@ -57,7 +57,7 @@ export default function OnboardingScreen() {
 
             {/* Background Decoration */}
             <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} />
+                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
             </View>
 
             {/* Header */}
@@ -67,7 +67,7 @@ export default function OnboardingScreen() {
 
             {/* Illustration */}
             <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                <MeditationIllustration width={width * 0.9} height={width * 0.9} />
+                <MeditationIllustration width={width * 0.9} height={width * 0.9} color={Colors.primary} />
             </Animated.View>
 
             {/* Bottom Content Panel */}

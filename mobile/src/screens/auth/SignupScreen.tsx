@@ -114,7 +114,7 @@ export default function SignupScreen() {
 
             {/* Background Decoration */}
             <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} />
+                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
             </View>
 
             <KeyboardAvoidingView
@@ -133,7 +133,7 @@ export default function SignupScreen() {
 
                     {/* Illustration - Centered (Smaller for Signup to fit inputs) */}
                     <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                        <MeditationIllustration width={width * 0.5} height={width * 0.5} />
+                        <MeditationIllustration width={width * 0.5} height={width * 0.5} color={Colors.primary} />
                     </Animated.View>
 
                     {/* Bottom Panel Form */}

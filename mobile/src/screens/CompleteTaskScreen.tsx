@@ -110,7 +110,7 @@ export default function CompleteTaskScreen() {
 
                 <View style={styles.header}>
                     <View style={styles.successIcon}>
-                        <Ionicons name="checkmark-circle" size={80} color="#64C59A" />
+                        <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
                     </View>
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.message}>{message}</Text>
@@ -124,8 +124,8 @@ export default function CompleteTaskScreen() {
                             activeOpacity={0.7}
                         >
                             <View style={styles.statsTitleContainer}>
-                                <View style={[styles.iconCircle, { backgroundColor: '#E0F2F1' }]}>
-                                    <Ionicons name="stats-chart" size={20} color="#64C59A" />
+                                <View style={[styles.iconCircle, { backgroundColor: '#E6F4EA' }]}>
+                                    <Ionicons name="stats-chart" size={20} color={Colors.primary} />
                                 </View>
                                 <Text style={styles.statsHeader}>Your Progress (7 Days)</Text>
                             </View>
@@ -139,9 +139,9 @@ export default function CompleteTaskScreen() {
                         {statsExpanded && (
                             <View style={styles.chartsContainer}>
                                 <SimpleLineChart data={stressData} color="#EF4444" label="Stress Level" />
-                                <SimpleLineChart data={moodData} color="#64C59A" label="Mood Level" />
+                                <SimpleLineChart data={moodData} color={Colors.primary} label="Mood Level" />
                                 <SimpleLineChart data={sleepData} color="#3B82F6" label="Sleep Quality" />
-                                <SimpleLineChart data={relaxationData} color="#64C59A" label="Relaxation Level" />
+                                <SimpleLineChart data={relaxationData} color={Colors.primary} label="Relaxation Level" />
                             </View>
                         )}
                     </View>
@@ -153,6 +153,7 @@ export default function CompleteTaskScreen() {
                         index: 0,
                         routes: [{ name: 'MainTabs' }],
                     })}
+                    activeOpacity={0.8}
                 >
                     <Text style={styles.homeButtonText}>{buttonText}</Text>
                 </TouchableOpacity>
@@ -166,7 +167,7 @@ export default function CompleteTaskScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F6F8F9',
     },
     decorationContainer: {
         position: 'absolute',
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.15,
         shadowRadius: 10,
         elevation: 8,
         backgroundColor: '#FFF',
@@ -197,13 +198,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#1E293B',
+        color: '#2D3436',
         marginBottom: 10,
         textAlign: 'center',
     },
     message: {
         fontSize: 16,
-        color: '#64748B',
+        color: '#636E72',
         textAlign: 'center',
         lineHeight: 24,
     },
@@ -214,10 +215,10 @@ const styles = StyleSheet.create({
         marginBottom: 30,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
+        shadowOpacity: 0.03,
+        shadowRadius: 12,
         elevation: 3,
-        overflow: 'hidden', // For neat corners when collapsed
+        overflow: 'hidden',
     },
     statsHeaderButton: {
         flexDirection: 'row',
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
     statsHeader: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#334155',
+        color: '#2D3436',
         letterSpacing: 0.3,
     },
     chartsContainer: {
@@ -260,13 +261,13 @@ const styles = StyleSheet.create({
         marginLeft: 10,
     },
     homeButton: {
-        backgroundColor: '#64C59A', // Updated Primary Color
+        backgroundColor: Colors.primary,
         paddingVertical: 18,
         paddingHorizontal: 40,
         borderRadius: 30,
-        shadowColor: '#64C59A',
+        shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 12,
         elevation: 6,
         width: '100%',

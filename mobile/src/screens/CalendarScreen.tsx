@@ -10,31 +10,32 @@ import {
     ActivityIndicator,
     Modal,
     Pressable,
+    Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Svg, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/api';
 import { Colors } from '../constants/colors';
+import { LeavesDecoration } from '../components/LeavesDecoration';
+import { StatusBar } from 'expo-status-bar';
+
+const { width } = Dimensions.get('window');
 
 // Interface
 interface CalendarEvent {
     id: number;
     title: string;
     description: string;
-    event_date: string; // YYYY-MM-DD format
-    event_time: string; // HH:MM:SS format
+    event_date: string;
+    event_time: string;
     is_completed: boolean;
     created_at: string;
     updated_at: string;
 }
-
-const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
-
 
 export default function CalendarScreen() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -46,11 +47,9 @@ export default function CalendarScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            // Scroll to top
             if (scrollViewRef.current) {
                 scrollViewRef.current.scrollTo({ y: 0, animated: false });
             }
-            // Refresh events
             fetchCalendarEvents();
         }, [currentDate])
     );
@@ -64,7 +63,6 @@ export default function CalendarScreen() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
-            // Calculate date range for the current view
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
 
@@ -84,10 +82,7 @@ export default function CalendarScreen() {
             if (response.ok) {
                 const data = await response.json();
                 setCalendarEvents(data);
-            } else {
-                console.log("Failed to fetch events");
             }
-
         } catch (error) {
             console.error('Error fetching calendar events:', error);
         } finally {
@@ -180,6 +175,7 @@ export default function CalendarScreen() {
                         hasEvents && !hasMindfulnessSession && styles.hasEventsCell,
                     ]}
                     onPress={() => handleDayPress(date)}
+                    activeOpacity={0.7}
                 >
                     <Text style={[
                         styles.dayText,
@@ -191,7 +187,7 @@ export default function CalendarScreen() {
 
                     {hasMindfulnessSession && (
                         <View style={styles.sessionIndicator}>
-                            <Svg width="12" height="12" viewBox="0 0 24 24" fill="#9C27B0">
+                            <Svg width="10" height="10" viewBox="0 0 24 24" fill="#9C27B0">
                                 <Circle cx="12" cy="12" r="10" />
                             </Svg>
                         </View>
@@ -209,20 +205,20 @@ export default function CalendarScreen() {
             <Animated.View entering={FadeInDown.duration(400)}>
                 <View style={styles.calendarCard}>
                     <View style={styles.calendarHeader}>
-                        <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
-                            <Ionicons name="chevron-back" size={20} color="#333" />
+                        <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton} activeOpacity={0.7}>
+                            <Ionicons name="chevron-back" size={20} color="#2D3436" />
                         </TouchableOpacity>
                         <Text style={styles.monthTitle}>
                             {monthNames[month]} {year}
                         </Text>
-                        <TouchableOpacity onPress={goToNextMonth} style={styles.navButton}>
-                            <Ionicons name="chevron-forward" size={20} color="#333" />
+                        <TouchableOpacity onPress={goToNextMonth} style={styles.navButton} activeOpacity={0.7}>
+                            <Ionicons name="chevron-forward" size={20} color="#2D3436" />
                         </TouchableOpacity>
                     </View>
 
                     {isLoadingEvents ? (
                         <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color="#64C59A" />
+                            <ActivityIndicator size="large" color={Colors.primary} />
                         </View>
                     ) : (
                         <View style={styles.grid}>{cells}</View>
@@ -258,23 +254,21 @@ export default function CalendarScreen() {
     }, [calendarEvents]);
 
     return (
-        <LinearGradient
-            colors={DASHBOARD_GRADIENT}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.container}>
+            <StatusBar style="dark" />
+            <LeavesDecoration width={width} height={width} />
+
             <SafeAreaView edges={['top', 'left', 'right']}>
                 <View style={styles.headerContainer}>
                     <Text style={styles.title}>Calendar</Text>
-                    <Text style={styles.subtitle}>Your Journey</Text>
+                    <Text style={styles.subtitle}>Track your sessions & schedules</Text>
                 </View>
             </SafeAreaView>
 
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.content}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 120 }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
@@ -317,9 +311,9 @@ export default function CalendarScreen() {
                                     </View>
                                     <View style={styles.eventStatus}>
                                         {isCompleted ? (
-                                            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                                            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
                                         ) : (
-                                            <Ionicons name="radio-button-off" size={20} color="#F59E0B" />
+                                            <Ionicons name="radio-button-off" size={24} color="#F59E0B" />
                                         )}
                                     </View>
                                 </View>
@@ -329,7 +323,7 @@ export default function CalendarScreen() {
                 </View>
             </ScrollView>
 
-            {/* Modal */}
+            {/* Event Detail Modal */}
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -345,18 +339,18 @@ export default function CalendarScreen() {
                             <Text style={styles.modalTitle}>
                                 {selectedDateEvents?.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                             </Text>
-                            <TouchableOpacity onPress={() => setSelectedDateEvents(null)}>
+                            <TouchableOpacity onPress={() => setSelectedDateEvents(null)} activeOpacity={0.7}>
                                 <Ionicons name="close-circle" size={24} color="#94A3B8" />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={{ maxHeight: 300 }}>
+                        <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
                             {selectedDateEvents?.events && selectedDateEvents.events.length > 0 ? (
                                 selectedDateEvents.events.map((event, index) => (
                                     <View key={index} style={styles.modalEventItem}>
                                         <View style={styles.modalEventRow}>
                                             <Text style={styles.modalEventTitle}>{event.title}</Text>
-                                            {event.is_completed && <Ionicons name="checkmark-circle-outline" size={16} color="#10B981" />}
+                                            {event.is_completed && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
                                         </View>
                                         <Text style={styles.modalEventTime}>
                                             {event.event_time ? event.event_time.slice(0, 5) : 'All Day'}
@@ -373,29 +367,28 @@ export default function CalendarScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
-        </LinearGradient >
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // Background handled by LinearGradient
+        backgroundColor: '#F6F8F9',
     },
     headerContainer: {
         paddingVertical: 12,
         paddingHorizontal: 24,
-        marginBottom: 8,
     },
     title: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#2D3436',
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: 16,
-        color: '#64748B',
+        fontSize: 15,
+        color: '#636E72',
     },
     content: {
         flex: 1,
@@ -404,12 +397,12 @@ const styles = StyleSheet.create({
     calendarCard: {
         marginHorizontal: 24,
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        borderRadius: 30,
         padding: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.03,
-        shadowRadius: 12,
+        shadowRadius: 16,
         elevation: 4,
         marginBottom: 24,
     },
@@ -420,17 +413,17 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     navButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#F1F5F9',
         justifyContent: 'center',
         alignItems: 'center',
     },
     monthTitle: {
         fontSize: 18,
-        fontWeight: '700',
-        color: '#1E293B',
+        fontWeight: '800',
+        color: '#2D3436',
     },
     grid: {
         flexDirection: 'row',
@@ -443,7 +436,7 @@ const styles = StyleSheet.create({
     },
     weekDayText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#94A3B8',
     },
     dayCell: {
@@ -451,15 +444,15 @@ const styles = StyleSheet.create({
         aspectRatio: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        marginVertical: 2,
+        marginVertical: 4,
     },
     dayText: {
         fontSize: 14,
-        color: '#334155',
-        fontWeight: '500',
+        color: '#2D3436',
+        fontWeight: '600',
     },
     todayCell: {
-        backgroundColor: '#10B981', // Dashboard Success Green
+        backgroundColor: Colors.primary,
         borderRadius: 20,
     },
     todayText: {
@@ -472,7 +465,7 @@ const styles = StyleSheet.create({
     },
     mindfulnessDayText: {
         color: '#9333EA',
-        fontWeight: '600',
+        fontWeight: '700',
     },
     hasEventsCell: {
         backgroundColor: '#E0F2FE',
@@ -516,33 +509,34 @@ const styles = StyleSheet.create({
         backgroundColor: '#9333EA',
     },
     todayLegend: {
-        backgroundColor: '#10B981',
+        backgroundColor: Colors.primary,
     },
     eventLegend: {
         backgroundColor: '#0EA5E9',
     },
     legendText: {
-        fontSize: 11,
-        color: '#64748B',
+        fontSize: 12,
+        color: '#636E72',
+        fontWeight: '600',
     },
     section: {
         paddingHorizontal: 24,
     },
     sectionTitle: {
-        fontSize: 13,
-        fontWeight: '700',
+        fontSize: 12,
+        fontWeight: '800',
         color: '#94A3B8',
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 1.5,
         marginBottom: 12,
         paddingLeft: 4,
     },
     noEventsContainer: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 24,
         padding: 32,
         alignItems: 'center',
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
         borderStyle: 'dashed',
     },
@@ -550,24 +544,25 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#94A3B8',
         marginTop: 12,
+        fontWeight: '600',
     },
     eventCard: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 24,
         padding: 16,
         marginBottom: 12,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.03,
-        shadowRadius: 8,
+        shadowRadius: 10,
         elevation: 2,
     },
     eventCardCompleted: {
-        backgroundColor: '#F0FDF4',
-        borderWidth: 1,
-        borderColor: '#BBF7D0',
+        backgroundColor: '#E6F4EA',
+        borderWidth: 1.5,
+        borderColor: '#C2E7CD',
     },
     eventIcon: {
         width: 44,
@@ -588,12 +583,12 @@ const styles = StyleSheet.create({
     },
     eventTitle: {
         fontSize: 15,
-        fontWeight: '600',
-        color: '#1E293B',
+        fontWeight: '700',
+        color: '#2D3436',
     },
     eventTime: {
         fontSize: 12,
-        color: '#64748B',
+        color: '#636E72',
         marginTop: 2,
         fontWeight: '500',
     },
@@ -612,21 +607,21 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 24,
     },
     modalContent: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
+        borderRadius: 30,
         padding: 24,
         width: '100%',
         maxWidth: 340,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
         elevation: 10,
     },
     modalHeader: {
@@ -639,17 +634,17 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F1F5F9',
     },
     modalTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1E293B',
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#2D3436',
     },
     modalEventItem: {
         marginBottom: 12,
-        backgroundColor: '#F8FAFC',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        backgroundColor: '#F6F8F9',
+        padding: 14,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
     },
     modalEventRow: {
         flexDirection: 'row',
@@ -659,18 +654,19 @@ const styles = StyleSheet.create({
     },
     modalEventTitle: {
         fontSize: 15,
-        fontWeight: '600',
-        color: '#334155',
+        fontWeight: '700',
+        color: '#2D3436',
     },
     modalEventTime: {
         fontSize: 12,
-        color: '#64748B',
+        color: '#636E72',
         fontWeight: '500',
     },
     modalEventDesc: {
         fontSize: 12,
         color: '#94A3B8',
         marginTop: 4,
+        lineHeight: 18,
     },
     modalNoEvents: {
         padding: 24,
@@ -679,5 +675,6 @@ const styles = StyleSheet.create({
     modalNoEventsText: {
         color: '#94A3B8',
         fontStyle: 'italic',
+        fontWeight: '500',
     },
 });
