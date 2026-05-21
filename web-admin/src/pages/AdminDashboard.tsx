@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +50,7 @@ import { useNavigate } from 'react-router-dom';
 
 // Structured imports
 import { TABLES_CONFIG } from '@/lib/tableConfig';
+import { fetchOverviewMetrics, fetchTablePage } from '@/lib/adminData';
 import { useUserMap } from '@/hooks/useUserMap';
 import { CrudModal } from '@/components/admin/CrudModal';
 
@@ -59,8 +60,9 @@ export default function AdminDashboard() {
     const [selectedTable, setSelectedTable] = useState(TABLES_CONFIG[0]);
     const [tableData, setTableData] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
-    const [loading, setLoading] = useState(false);
-
+    const [overviewLoading, setOverviewLoading] = useState(false);
+    const [tableLoading, setTableLoading] = useState(false);
+    const [totalTableCount, setTotalTableCount] = useState(0);
     // Analytics states
     const [analyticsTimeframe, setAnalyticsTimeframe] = useState<'today' | 'week' | 'month'>('week');
     const [analyticsData, setAnalyticsData] = useState<{
@@ -78,14 +80,22 @@ export default function AdminDashboard() {
         wemwbs14: [],
         ffmq15: [],
     });
+    const analyticsCache = useRef<Record<string, {
+        dailySliders: any[];
+        voiceRecordings: any[];
+        calendarEvents: any[];
+        pss10: any[];
+        wemwbs14: any[];
+        ffmq15: any[];
+    }>>({});
     const [analyticsLoading, setAnalyticsLoading] = useState(false);
     
     // User maps resolving hook
-    const { userMap, resolveUser, findUserIdsByName } = useUserMap();
+    const { userMap, resolveUser, findUserIdsByName, refreshUserMap } = useUserMap();
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 12;
+    const pageSize = 50;
 
     // Time frame state for Export
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -112,12 +122,20 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         if (activeTab === 'tables') {
-            loadTableData();
-            setCurrentPage(1); // Reset page on table change
+            setCurrentPage(1);
         } else if (activeTab === 'analytics') {
-            loadAnalyticsData(analyticsTimeframe);
+            const cacheKey = analyticsTimeframe;
+            if (analyticsCache.current[cacheKey]) {
+                setAnalyticsData(analyticsCache.current[cacheKey]);
+            } else {
+                loadAnalyticsData(analyticsTimeframe);
+            }
         }
     }, [selectedTable, activeTab, analyticsTimeframe]);
+
+    useEffect(() => {
+        if (activeTab === 'tables') loadTableData(currentPage);
+    }, [currentPage, selectedTable.name, activeTab]);
 
     const loadAnalyticsData = async (timeframe: 'today' | 'week' | 'month') => {
         setAnalyticsLoading(true);
@@ -142,14 +160,16 @@ export default function AdminDashboard() {
                 supabase.from('questionnaire_ffmq15_responses').select('*').gte('created_at', dateStr),
             ]);
 
-            setAnalyticsData({
+            const next = {
                 dailySliders: daily.data || [],
                 voiceRecordings: voice.data || [],
                 calendarEvents: calendar.data || [],
                 pss10: pss.data || [],
                 wemwbs14: wemwbs.data || [],
                 ffmq15: ffmq.data || [],
-            });
+            };
+            setAnalyticsData(next);
+            analyticsCache.current[timeframe] = next;
         } catch (err: any) {
             toast.error(`Error loading analytics: ${err.message}`);
         } finally {
@@ -168,73 +188,44 @@ export default function AdminDashboard() {
     };
 
     const loadOverviewData = async () => {
-        setLoading(true);
+        setOverviewLoading(true);
         try {
-            const [
-                { count: profs },
-                { count: daily },
-                { count: voice },
-                { count: calendar },
-                { data: recentSliders },
-            ] = await Promise.all([
-                supabase.from('profiles').select('*', { count: 'exact', head: true }),
-                supabase.from('daily_sliders').select('*', { count: 'exact', head: true }),
-                supabase.from('voice_recordings').select('*', { count: 'exact', head: true }),
-                supabase.from('calendar_events').select('*', { count: 'exact', head: true }),
-                supabase.from('daily_sliders').select('id, user_id, mood, stress_level, created_at').order('created_at', { ascending: false }).limit(5)
-            ]);
-
-            setProfilesCount(profs || 0);
-            setDailyCount(daily || 0);
-            setVoiceCount(voice || 0);
-            setCalendarCount(calendar || 0);
-            setRecentSubmissions(recentSliders || []);
-
-            // Last 7 days check-in timeline chart
-            const last7Days = [...Array(7)].map((_, i) => {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                return d.toISOString().split('T')[0];
-            }).reverse();
-
-            const { data: chartEntries } = await supabase
-                .from('daily_sliders')
-                .select('created_at')
-                .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-            const formattedChart = last7Days.map(date => {
-                const count = (chartEntries || []).filter(e => e.created_at.startsWith(date)).length;
-                return { date, checkins: count };
-            });
-
-            setChartData(formattedChart);
+            const metrics = await fetchOverviewMetrics();
+            setProfilesCount(metrics.profilesCount);
+            setDailyCount(metrics.dailyCount);
+            setVoiceCount(metrics.voiceCount);
+            setCalendarCount(metrics.calendarCount);
+            setRecentSubmissions(metrics.recentSubmissions);
+            setChartData(metrics.chartData);
         } catch (err: any) {
             toast.error(`Error loading dashboard: ${err.message}`);
         } finally {
-            setLoading(false);
+            setOverviewLoading(false);
         }
     };
 
-    const loadTableData = async () => {
-        setLoading(true);
+    const loadTableData = async (page = currentPage) => {
+        setTableLoading(true);
         try {
-            const { data, error } = await supabase
-                .from(selectedTable.name)
-                .select('*')
-                .order(selectedTable.primaryKey, { ascending: false });
-
-            if (error) throw error;
-            setTableData(data || []);
+            const { rows, total } = await fetchTablePage(
+                selectedTable.name,
+                selectedTable.primaryKey,
+                page,
+                pageSize
+            );
+            setTableData(rows);
+            setTotalTableCount(total);
         } catch (err: any) {
             toast.error(`Error fetching table data: ${err.message}`);
         } finally {
-            setLoading(false);
+            setTableLoading(false);
         }
     };
 
     const handleCreateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+        if (selectedTable.readOnly) return;
+
         const payload: Record<string, any> = {};
         selectedTable.fields.forEach(field => {
             const val = formValues[field.name];
@@ -255,8 +246,9 @@ export default function AdminDashboard() {
             toast.success("Record created successfully");
             setIsCreateOpen(false);
             setFormValues({});
-            loadTableData();
+            loadTableData(currentPage);
             loadOverviewData();
+            if (selectedTable.name === 'profiles') refreshUserMap();
         } catch (err: any) {
             toast.error(`Create failed: ${err.message}`);
         }
@@ -264,7 +256,7 @@ export default function AdminDashboard() {
 
     const handleUpdateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedRow) return;
+        if (!selectedRow || selectedTable.readOnly) return;
 
         const payload: Record<string, any> = {};
         selectedTable.fields.forEach(field => {
@@ -292,13 +284,15 @@ export default function AdminDashboard() {
             setIsEditOpen(false);
             setSelectedRow(null);
             setFormValues({});
-            loadTableData();
+            loadTableData(currentPage);
+            if (selectedTable.name === 'profiles') refreshUserMap();
         } catch (err: any) {
             toast.error(`Update failed: ${err.message}`);
         }
     };
 
     const handleDelete = async (id: any) => {
+        if (selectedTable.readOnly) return;
         if (!confirm("Are you sure you want to delete this record? This action is permanent.")) return;
 
         try {
@@ -309,8 +303,9 @@ export default function AdminDashboard() {
 
             if (error) throw error;
             toast.success("Record deleted successfully");
-            loadTableData();
+            loadTableData(currentPage);
             loadOverviewData();
+            if (selectedTable.name === 'profiles') refreshUserMap();
         } catch (err: any) {
             toast.error(`Delete failed: ${err.message}`);
         }
@@ -407,8 +402,13 @@ export default function AdminDashboard() {
     });
 
     // Pagination calculations
-    const totalPages = Math.ceil(filteredTableData.length / pageSize) || 1;
-    const paginatedData = filteredTableData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const totalPages = searchQuery
+        ? Math.ceil(filteredTableData.length / pageSize) || 1
+        : Math.ceil(totalTableCount / pageSize) || 1;
+    const paginatedData = searchQuery
+        ? filteredTableData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+        : filteredTableData;
+    const displayTotal = searchQuery ? filteredTableData.length : totalTableCount;
 
     // Dynamically inject profiles list into fields requiring a user_id
     const mappedConfigForModal = {
@@ -520,14 +520,11 @@ export default function AdminDashboard() {
                 {/* Main View */}
                 <main className="flex-1 overflow-y-auto p-8">
                     
-                    {loading && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-xs">
-                            <div className="flex flex-col items-center gap-2">
-                                <Loader2 className="h-8 w-8 animate-spin text-neutral-900" />
-                                <span className="text-xs font-medium text-neutral-600">Syncing database state…</span>
-                            </div>
+                    {(activeTab === 'overview' && overviewLoading) || (activeTab === 'tables' && tableLoading) ? (
+                        <div className="flex items-center justify-center py-16">
+                            <Loader2 className="h-8 w-8 animate-spin text-neutral-900" />
                         </div>
-                    )}
+                    ) : null}
 
                     {/* OVERVIEW TAB */}
                     {activeTab === 'overview' && (
@@ -948,6 +945,7 @@ export default function AdminDashboard() {
                                     <p className="text-neutral-500 text-xs mt-0.5">Edit, insert, and delete records directly inside Supabase database.</p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    {!selectedTable.readOnly && (
                                     <Button
                                         onClick={openCreateDialog}
                                         className="bg-neutral-900 hover:bg-neutral-800 text-white font-medium text-xs h-9 px-3.5 rounded-lg shadow-sm"
@@ -955,6 +953,7 @@ export default function AdminDashboard() {
                                         <Plus className="mr-1.5 h-4 w-4" />
                                         Add Record
                                     </Button>
+                                    )}
                                     <Button
                                         onClick={() => setIsExportDialogOpen(true)}
                                         variant="outline"
@@ -964,7 +963,7 @@ export default function AdminDashboard() {
                                         Export CSV
                                     </Button>
                                     <Button
-                                        onClick={loadTableData}
+                                        onClick={() => loadTableData(currentPage)}
                                         variant="outline"
                                         size="icon"
                                         className="h-9 w-9 bg-white border-neutral-300 hover:bg-neutral-50 rounded-lg text-neutral-600"
@@ -1057,6 +1056,7 @@ export default function AdminDashboard() {
                                                             );
                                                         })}
                                                         <TableCell className="text-right py-2.5 pr-6">
+                                                            {!selectedTable.readOnly && (
                                                             <div className="flex items-center justify-end space-x-1">
                                                                 <Button
                                                                     onClick={() => openEditDialog(row)}
@@ -1077,6 +1077,7 @@ export default function AdminDashboard() {
                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             </div>
+                                                            )}
                                                         </TableCell>
                                                     </TableRow>
                                                 ))
@@ -1088,7 +1089,7 @@ export default function AdminDashboard() {
                                 {/* Pagination controls */}
                                 <div className="border-t border-neutral-200 px-6 py-3.5 flex items-center justify-between bg-neutral-50">
                                     <span className="text-[11px] font-medium text-neutral-500">
-                                        Showing {paginatedData.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, filteredTableData.length)} of {filteredTableData.length} records
+                                        Showing {paginatedData.length === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, displayTotal)} of {displayTotal} records
                                     </span>
                                     <div className="flex items-center space-x-2">
                                         <Button

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
+import { loginSchema, otpSchema, resendOtpSchema, resetPasswordSchema, signupSchema } from '../validation/authSchemas';
 
 /** Derives a display name from email if full_name is absent. */
 const getDisplayName = (email: string, fullName?: string): string => {
@@ -9,11 +10,11 @@ const getDisplayName = (email: string, fullName?: string): string => {
 };
 
 export const signup = async (req: Request, res: Response) => {
-    const { email, password, full_name } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+    const parsed = signupSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
     }
+    const { email, password, full_name } = parsed.data;
 
     try {
         const { data, error } = await supabase.auth.signUp({
@@ -37,11 +38,11 @@ export const signup = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
     }
+    const { email, password } = parsed.data;
 
     try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -71,17 +72,17 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const verifyOtp = async (req: Request, res: Response) => {
-    const { email, token, type } = req.body;
-
-    if (!email || !token) {
-        return res.status(400).json({ error: 'Email and token are required' });
+    const parsed = otpSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
     }
+    const { email, token, type } = parsed.data;
 
     try {
         const { data, error } = await supabase.auth.verifyOtp({
             email,
             token,
-            type: type || 'signup',
+            type: (type || 'signup') as 'signup',
         });
 
         if (error) throw error;
@@ -93,14 +94,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
 };
 
 export const resendOtp = async (req: Request, res: Response) => {
-    const { email, type } = req.body;
-
-    if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
+    const parsed = resendOtpSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
     }
+    const { email, type } = parsed.data;
 
     try {
-        const { error } = await supabase.auth.resend({ email, type: type || 'signup' });
+        const { error } = await supabase.auth.resend({ email, type: (type || 'signup') as 'signup' });
         if (error) throw error;
         return res.status(200).json({ message: `OTP resent to ${email}` });
     } catch (error: any) {
@@ -110,11 +111,11 @@ export const resendOtp = async (req: Request, res: Response) => {
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
-    const { email } = req.body;
-
-    if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
     }
+    const { email } = parsed.data;
 
     try {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {

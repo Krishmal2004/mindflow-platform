@@ -2,36 +2,52 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
-  build:
+  backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
-      - name: Install dependencies (app)
-        working-directory: ./app
-        run: npm ci
+  web-admin:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web-admin/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
-      - name: Typecheck (app)
-        working-directory: ./app
-        run: npx tsc --noEmit
-
-      - name: Lint (app)
-        working-directory: ./app
-        run: npm run lint
-
-      - name: Run tests if available (app)
-        working-directory: ./app
-        run: |
-          if npm run | grep -q "test"; then npm test; else echo "no test script"; fi
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit

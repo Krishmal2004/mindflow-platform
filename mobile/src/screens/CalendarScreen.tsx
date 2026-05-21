@@ -18,7 +18,7 @@ import { Svg, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../config/api';
+import { apiFetch } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { LeavesDecoration } from '../components/LeavesDecoration';
 import { StatusBar } from 'expo-status-bar';
@@ -57,9 +57,6 @@ export default function CalendarScreen() {
     const fetchCalendarEvents = async () => {
         try {
             setIsLoadingEvents(true);
-            const token = await AsyncStorage.getItem('authToken');
-            if (!token) return;
-
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
@@ -75,14 +72,10 @@ export default function CalendarScreen() {
             const startStr = startDate.toISOString().split('T')[0];
             const endStr = endDate.toISOString().split('T')[0];
 
-            const response = await fetch(`${API_URL}/api/calendar/events?start=${startStr}&end=${endStr}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setCalendarEvents(data);
-            }
+            const { ok, data } = await apiFetch<CalendarEvent[]>(
+                `/api/calendar/events?start=${startStr}&end=${endStr}`
+            );
+            if (ok && data) setCalendarEvents(data);
         } catch (error) {
             console.error('Error fetching calendar events:', error);
         } finally {

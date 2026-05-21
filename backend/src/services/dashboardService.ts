@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { getISOWeekNumber } from '../utils/date';
+import { STREAK_LOOKBACK_DAYS } from '../constants/limits';
 
 export class DashboardService {
     public async getUserSummary(userId: string) {
@@ -12,6 +13,8 @@ export class DashboardService {
         const startOfToday = new Date(today);
         startOfToday.setHours(0, 0, 0, 0);
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const streakSince = new Date(today);
+        streakSince.setDate(today.getDate() - STREAK_LOOKBACK_DAYS);
 
         // Parallel queries for performance
         const [
@@ -24,7 +27,7 @@ export class DashboardService {
             { count: wemwbs14Count },
             { data: profile },
         ] = await Promise.all([
-            supabase.from('daily_sliders').select('created_at').eq('user_id', userId).order('created_at', { ascending: false }),
+            supabase.from('daily_sliders').select('created_at').eq('user_id', userId).gte('created_at', streakSince.toISOString()).order('created_at', { ascending: false }),
             supabase.from('daily_sliders').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', sixMonthsAgo.toISOString()),
             supabase.from('daily_sliders').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', thirtyDaysAgo.toISOString()),
             supabase.from('voice_recordings').select('created_at').eq('user_id', userId).gte('created_at', sixMonthsAgo.toISOString()),

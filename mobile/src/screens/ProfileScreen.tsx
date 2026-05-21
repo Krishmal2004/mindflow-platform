@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/colors';
 import { API_URL } from '../config/api';
+import { apiFetch, clearAuthStorage } from '../lib/apiClient';
 import { PopupModal } from '../components/PopupModal';
 import { LeavesDecoration } from '../components/LeavesDecoration';
 
@@ -46,19 +47,8 @@ export default function ProfileScreen() {
 
     const fetchProfile = async () => {
         try {
-            const token = await getAuthToken();
-            if (!token) return;
-
-            const response = await fetch(`${API_URL}/api/profile`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setProfileData(data);
-            }
+            const { ok, data } = await apiFetch<{ username: string; research_id: string | null; email: string | null }>('/api/profile');
+            if (ok && data) setProfileData(data);
         } catch (error) {
             console.log('Error fetching profile', error);
         } finally {
@@ -68,8 +58,7 @@ export default function ProfileScreen() {
 
     const handleSignOut = async () => {
         try {
-            await AsyncStorage.removeItem('authToken');
-            await AsyncStorage.removeItem('user');
+            await clearAuthStorage();
             navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],

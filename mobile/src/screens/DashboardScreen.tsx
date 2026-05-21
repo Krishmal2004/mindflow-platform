@@ -10,7 +10,7 @@ import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } fr
 
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
-import { API_URL } from '../config/api';
+import { apiFetch } from '../lib/apiClient';
 import { LeavesDecoration } from '../components/LeavesDecoration';
 import { JourneyIcons } from '../components/JourneyIcons';
 import {
@@ -222,17 +222,8 @@ export default function DashboardScreen() {
         useCallback(() => {
             const checkStatuses = async () => {
                 try {
-                    const token = await AsyncStorage.getItem('authToken');
-                    if (!token) return;
-
-                    const response = await fetch(`${API_URL}/api/journey/status`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        setStatuses(data);
-                    }
+                    const { ok, data } = await apiFetch<Record<string, { completed: boolean; nextReset?: string }>>('/api/journey/status');
+                    if (ok && data) setStatuses(data);
                 } catch (error) {
                     console.log('Dashboard status check failed:', error);
                 }

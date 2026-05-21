@@ -232,7 +232,6 @@ async function seed() {
             id: adminId,
             username: 'admin',
             email: 'admin@mindflow.app',
-            password: 'admin123', // In production, this would be a real hash
         });
         
         if (adminErr) console.error('    Admin error:', adminErr.message);
