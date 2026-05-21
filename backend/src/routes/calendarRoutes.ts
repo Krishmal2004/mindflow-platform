@@ -1,8 +1,8 @@
-import express from 'express';
+import { Router } from 'express';
+import { requireAuth } from '../middlewares/authMiddleware';
 import { getCalendarEvents } from '../controllers/calendarController';
-import { AuthenticatedRequest, requireAuth } from '../middlewares/authMiddleware';
 
-const router = express.Router();
+const router = Router();
 
 router.get('/events', requireAuth, getCalendarEvents);
 

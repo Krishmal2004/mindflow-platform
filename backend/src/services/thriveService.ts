@@ -1,11 +1,10 @@
 import { supabase } from '../config/supabase';
 
 export class ThriveService {
-    // Check if user has submitted in the last 14 days
+    /** Check if user has submitted WEMWBS-14 in the last 14 days. */
     public async getThriveStatus(userId: string) {
-        const today = new Date();
-        const fourteenDaysAgo = new Date(today);
-        fourteenDaysAgo.setDate(today.getDate() - 14);
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
         const { data, error } = await supabase
             .from('questionnaire_wemwbs14_responses')
@@ -17,41 +16,26 @@ export class ThriveService {
 
         if (error) throw error;
 
-        const lastSubmission = data && data[0];
+        const last = data?.[0];
         let nextReset: Date | null = null;
-
-        if (lastSubmission) {
-            const lastDate = new Date(lastSubmission.created_at);
-            nextReset = new Date(lastDate);
-            nextReset.setDate(lastDate.getDate() + 14);
+        if (last) {
+            nextReset = new Date(last.created_at);
+            nextReset.setDate(nextReset.getDate() + 14);
         }
 
-        return {
-            completed: !!lastSubmission,
-            nextReset
-        };
+        return { completed: !!last, nextReset };
     }
 
-    // Submit a new thrive entry (WEMWBS)
-    public async submitThriveEntry(userId: string, entryData: any) {
-        // Validation: Ensure all 14 questions are present
-        const questions = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10', 'q11', 'q12', 'q13', 'q14'];
-        for (const q of questions) {
-            if (!entryData[q] || entryData[q] < 1 || entryData[q] > 5) {
-                throw new Error(`Invalid answer for ${q}. Must be between 1 and 5.`);
-            }
-        }
+    /** Submit WEMWBS-14 response (validated at controller layer). */
+    public async submitThriveEntry(userId: string, entry: Record<string, number>) {
+        const questions = Array.from({ length: 14 }, (_, i) => `q${i + 1}`);
 
         const payload: Record<string, any> = {
             user_id: userId,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
         };
-        for (const q of questions) {
-            payload[q] = entryData[q];
-        }
-        if (typeof entryData.duration === 'number') {
-            payload.duration = entryData.duration;
-        }
+        for (const q of questions) payload[q] = entry[q];
+        if (typeof entry.duration === 'number') payload.duration = entry.duration;
 
         const { data, error } = await supabase
             .from('questionnaire_wemwbs14_responses')

@@ -1,11 +1,10 @@
 import { supabase } from '../config/supabase';
 
 export class StressService {
-    // Check if user has submitted in the last 30 days
+    /** Check if user has submitted PSS-10 in the last 30 days. */
     public async getStressStatus(userId: string) {
-        const today = new Date();
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(today.getDate() - 30);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const { data, error } = await supabase
             .from('questionnaire_pss10_responses')
@@ -17,41 +16,26 @@ export class StressService {
 
         if (error) throw error;
 
-        const lastSubmission = data && data[0];
+        const last = data?.[0];
         let nextReset: Date | null = null;
-
-        if (lastSubmission) {
-            const lastDate = new Date(lastSubmission.created_at);
-            nextReset = new Date(lastDate);
-            nextReset.setDate(lastDate.getDate() + 30);
+        if (last) {
+            nextReset = new Date(last.created_at);
+            nextReset.setDate(nextReset.getDate() + 30);
         }
 
-        return {
-            completed: !!lastSubmission,
-            nextReset
-        };
+        return { completed: !!last, nextReset };
     }
 
-    // Submit a new stress entry (PSS-10)
-    public async submitStressEntry(userId: string, entryData: any) {
-        // Validation: Ensure all 10 questions are present
+    /** Submit PSS-10 response (validated at controller layer). */
+    public async submitStressEntry(userId: string, entry: Record<string, number>) {
         const questions = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10'];
-        for (const q of questions) {
-            if (!entryData[q] || entryData[q] < 1 || entryData[q] > 5) {
-                throw new Error(`Invalid answer for ${q}. Must be between 1 and 5.`);
-            }
-        }
 
         const payload: Record<string, any> = {
             user_id: userId,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
         };
-        for (const q of questions) {
-            payload[q] = entryData[q];
-        }
-        if (typeof entryData.duration === 'number') {
-            payload.duration = entryData.duration;
-        }
+        for (const q of questions) payload[q] = entry[q];
+        if (typeof entry.duration === 'number') payload.duration = entry.duration;
 
         const { data, error } = await supabase
             .from('questionnaire_pss10_responses')

@@ -2,18 +2,12 @@ import { supabase } from '../config/supabase';
 import { r2, BUCKET_NAME, PUBLIC_URL_BASE } from '../config/r2';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getISOWeekNumber } from '../utils/date';
 
 export class WeeklyService {
-    private getWeekNumber(d: Date): [number, number] {
-        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        const weekNo = Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1) / 7);
-        return [d.getUTCFullYear(), weekNo];
-    }
-
+    /** Check if user has submitted a recording this ISO week. */
     public async getWeeklyStatus(userId: string) {
-        const [year, week] = this.getWeekNumber(new Date());
+        const [year, week] = getISOWeekNumber(new Date());
 
         const { data, error } = await supabase
             .from('voice_recordings')
@@ -25,21 +19,19 @@ export class WeeklyService {
 
         if (error) throw error;
 
-        // Calculate next reset (Next Monday)
+        // Next Monday as reset boundary
         const now = new Date();
         const nextReset = new Date(now);
-        nextReset.setDate(now.getDate() + (8 - (now.getDay() || 7))); // Next Monday
+        nextReset.setDate(now.getDate() + (8 - (now.getDay() || 7)));
         nextReset.setHours(0, 0, 0, 0);
 
-        return { completed: data && data.length > 0, week, year, nextReset };
+        return { completed: !!(data?.length), week, year, nextReset };
     }
 
-    // Generate Presigned URL (Optional: Kept for reference or mobile use)
+    /** Generate a presigned upload URL for direct client upload. */
     public async getUploadUrl(userId: string) {
-        const [year, week] = this.getWeekNumber(new Date());
-        const weekStr = week.toString().padStart(2, '0');
-        const fileName = `weekly-${year}-W${weekStr}-${userId}.wav`;
-        const fileKey = `WeeklyVoice/${fileName}`;
+        const [year, week] = getISOWeekNumber(new Date());
+        const fileKey = `WeeklyVoice/weekly-${year}-W${week.toString().padStart(2, '0')}-${userId}.wav`;
 
         const command = new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -47,40 +39,28 @@ export class WeeklyService {
             ContentType: 'audio/wav',
         });
 
-        // Expires in 5 minutes
         const url = await getSignedUrl(r2, command, { expiresIn: 300 });
-
-        return {
-            url,
-            fileKey,
-            fileUrl: `${PUBLIC_URL_BASE}/${fileKey}`
-        };
+        return { url, fileKey, fileUrl: `${PUBLIC_URL_BASE}/${fileKey}` };
     }
 
-    // Proxy Upload: Receive Buffer and Upload to R2
+    /** Proxy upload: receives buffer from multer and uploads to R2. */
     public async uploadAudio(userId: string, fileBuffer: Buffer, mimeType: string) {
-        const [year, week] = this.getWeekNumber(new Date());
-        const weekStr = week.toString().padStart(2, '0');
-        const fileName = `weekly-${year}-W${weekStr}-${userId}.wav`;
-        const fileKey = `WeeklyVoice/${fileName}`;
+        const [year, week] = getISOWeekNumber(new Date());
+        const fileKey = `WeeklyVoice/weekly-${year}-W${week.toString().padStart(2, '0')}-${userId}.wav`;
 
-        const command = new PutObjectCommand({
+        await r2.send(new PutObjectCommand({
             Bucket: BUCKET_NAME,
             Key: fileKey,
             Body: fileBuffer,
             ContentType: mimeType || 'audio/wav',
-        });
+        }));
 
-        await r2.send(command);
-
-        return {
-            fileKey,
-            fileUrl: `${PUBLIC_URL_BASE}/${fileKey}`
-        };
+        return { fileKey, fileUrl: `${PUBLIC_URL_BASE}/${fileKey}` };
     }
 
+    /** Fetch the admin-published weekly video for this week. */
     public async getWeeklyVideo() {
-        const [year, week] = this.getWeekNumber(new Date());
+        const [, week] = getISOWeekNumber(new Date());
 
         const { data, error } = await supabase
             .from('weekly_recordings')
@@ -90,23 +70,24 @@ export class WeeklyService {
             .limit(1)
             .single();
 
-        if (error && error.code !== 'PGRST116') throw error; // Ignore not found
+        // PGRST116 = "not found" — expected when no video published
+        if (error && error.code !== 'PGRST116') throw error;
         return data || null;
     }
 
-    // Submit metadata for the uploaded recording
-    public async submitWeeklyEntry(userId: string, recordingData: { file_url: string, file_key: string, duration?: number }) {
-        const [year, week] = this.getWeekNumber(new Date());
+    /** Save recording metadata after successful upload. */
+    public async submitWeeklyEntry(userId: string, recordingData: { file_url: string; file_key: string; duration?: number }) {
+        const [year, week] = getISOWeekNumber(new Date());
 
         const { data, error } = await supabase
             .from('voice_recordings')
             .insert({
                 user_id: userId,
                 week_number: week,
-                year: year,
+                year,
                 file_url: recordingData.file_url,
                 file_key: recordingData.file_key,
-                duration: recordingData.duration
+                duration: recordingData.duration,
             })
             .select()
             .single();
