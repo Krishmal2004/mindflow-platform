@@ -9,6 +9,7 @@ import {
     Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../constants/colors';
 
 interface PopupModalProps {
     visible: boolean;
@@ -39,7 +40,7 @@ export const PopupModal = ({ visible, type, title, message, buttonText = 'OK', o
     const getIconAndColors = () => {
         switch (type) {
             case 'success':
-                return { icon: 'checkmark-circle', color: '#10B981', bgColor: '#D1FAE5' };
+                return { icon: 'checkmark-circle', color: Colors.primary, bgColor: '#E6F4EA' };
             case 'error':
                 return { icon: 'close-circle', color: '#EF4444', bgColor: '#FEE2E2' };
             case 'warning':
@@ -133,8 +134,8 @@ const popupStyles = StyleSheet.create({
     },
     button: {
         width: '100%',
-        paddingVertical: 14,
-        borderRadius: 14,
+        paddingVertical: 16,
+        borderRadius: 30,
         alignItems: 'center',
     },
     buttonText: {

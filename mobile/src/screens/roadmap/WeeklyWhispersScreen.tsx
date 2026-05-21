@@ -19,9 +19,15 @@ import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path, G, Defs, LinearGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 
-import { Colors } from '../../constants/colors';
+import { Colors as GlobalColors } from '../../constants/colors';
+const Colors = {
+    ...GlobalColors,
+    primary: '#6366F1',
+};
+const THEME_BG = '#EEF2FF';
 import { API_URL } from '../../config/api';
 import { VoiceRecordingIllustration } from '../../components/MeditationIllustration';
+import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { PopupModal } from '../../components/PopupModal';
 
 const { width, height: screenHeight } = Dimensions.get('window');
@@ -349,14 +355,17 @@ export default function WeeklyWhispersScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
+                {/* Background leaves */}
+                <LeavesDecoration width={width} height={width} color={Colors.primary} />
+
                 <View style={styles.successContainer}>
                     <View style={styles.successIcon}>
-                        <Ionicons name="checkmark-circle" size={80} color="#8B5CF6" />
+                        <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
                     </View>
                     <Text style={styles.successTitle}>Already Submitted!</Text>
                     <Text style={styles.successText}>You've completed this week's recording.</Text>
                     {nextReset && (
-                        <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: '#8B5CF6' }]}>
+                        <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: Colors.primary }]}>
                             Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </Text>
                     )}
@@ -394,10 +403,13 @@ export default function WeeklyWhispersScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
+                {/* Background leaves */}
+                <LeavesDecoration width={width} height={width} color={Colors.primary} />
+
                 <ScrollView contentContainerStyle={styles.introContent}>
                     {/* Large SVG Illustration */}
                     <View style={styles.illustrationContainer}>
-                        <VoiceRecordingIllustration width={width * 0.75} height={width * 0.75} />
+                        <VoiceRecordingIllustration width={width * 0.75} height={width * 0.75} color={Colors.primary} />
                     </View>
 
                     {/* Title and Description */}
@@ -407,7 +419,7 @@ export default function WeeklyWhispersScreen() {
                     <View style={styles.introCard}>
                         <View style={styles.introIconRow}>
                             <View style={styles.introIconCircle}>
-                                <Ionicons name="mic" size={24} color="#8B5CF6" />
+                                <Ionicons name="mic" size={24} color={Colors.primary} />
                             </View>
                             <Text style={styles.introCardTitle}>What You'll Do</Text>
                         </View>
@@ -417,11 +429,11 @@ export default function WeeklyWhispersScreen() {
 
                         <View style={styles.infoBadges}>
                             <View style={styles.badge}>
-                                <Ionicons name="time-outline" size={16} color="#8B5CF6" />
+                                <Ionicons name="time-outline" size={16} color={Colors.primary} />
                                 <Text style={styles.badgeText}>15-45 sec</Text>
                             </View>
                             <View style={styles.badge}>
-                                <Ionicons name="book-outline" size={16} color="#8B5CF6" />
+                                <Ionicons name="book-outline" size={16} color={Colors.primary} />
                                 <Text style={styles.badgeText}>Read Aloud</Text>
                             </View>
                         </View>
@@ -453,31 +465,47 @@ export default function WeeklyWhispersScreen() {
                 onConfirm={popup.onConfirm}
             />
 
+            {/* Background leaves */}
+            <LeavesDecoration width={width} height={width} color={Colors.primary} />
+
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => setCurrentStep('intro')} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#1E293B" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Record</Text>
-                <View style={{ width: 40 }} />
+                <Text style={styles.title}>Weekly Whispers</Text>
+                <View style={styles.progressBadge}>
+                    <Text style={styles.progressText}>{formatTime(recordingDuration)}</Text>
+                </View>
             </View>
 
             {!recordingUri ? (
-                <View style={styles.recordingScreenContainer}>
-                    {/* Fixed Top Section: SVG + Recording Controls */}
-                    <View style={styles.fixedTopSection}>
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.instructionText}>
+                        Read the passage aloud in your normal speaking voice:
+                    </Text>
+
+                    <View style={styles.questionCard}>
+                        <View style={styles.passageHeader}>
+                            <Ionicons name="book-outline" size={18} color={Colors.primary} />
+                            <Text style={styles.passageLabel}>PASSAGE TO READ</Text>
+                        </View>
+                        
+                        <View style={styles.passageContainer}>
+                            <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
+                                <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
+                            </ScrollView>
+                        </View>
+
+                        <View style={styles.divider} />
+
                         <View style={styles.recordingRow}>
                             {/* Left Side: SVG Illustration */}
                             <View style={styles.leftSideContainer}>
-                                <VoiceRecordingIllustration width={width * 0.4} height={width * 0.4} />
+                                <VoiceRecordingIllustration width={width * 0.32} height={width * 0.32} color={Colors.primary} />
                             </View>
 
                             {/* Right Side: Controls */}
                             <View style={styles.rightSideContainer}>
-                                {/* Timer */}
-                                <Text style={[styles.timerText, isRecording && styles.timerRecording]}>
-                                    {formatTime(recordingDuration)}
-                                </Text>
-
                                 {/* Record Button */}
                                 <TouchableOpacity
                                     onPress={handleToggleRecording}
@@ -494,11 +522,11 @@ export default function WeeklyWhispersScreen() {
                                 </TouchableOpacity>
 
                                 <Text style={[styles.statusText, isRecording && styles.statusRecording]}>
-                                    {isRecording ? 'Stop' : 'Start'}
+                                    {isRecording ? 'Tap to Stop' : 'Tap to Record'}
                                 </Text>
 
                                 {!isRecording && (
-                                    <Text style={styles.hintText}>15-45s</Text>
+                                    <Text style={styles.hintText}>Min 15s | Max 45s</Text>
                                 )}
                             </View>
                         </View>
@@ -506,36 +534,25 @@ export default function WeeklyWhispersScreen() {
                         {isRecording && (
                             <View style={styles.recordingIndicator}>
                                 <View style={styles.pulseDot} />
-                                <Text style={styles.recordingText}>Recording...</Text>
+                                <Text style={styles.recordingText}>Recording in progress...</Text>
                             </View>
                         )}
                     </View>
-
-                    {/* Scrollable Passage Section */}
-                    <View style={styles.passageSection}>
-                        <View style={styles.passageHeader}>
-                            <Ionicons name="book-outline" size={18} color="#8B5CF6" />
-                            <Text style={styles.passageLabel}>READ ALOUD</Text>
-                        </View>
-                        <ScrollView
-                            style={styles.passageScrollView}
-                            showsVerticalScrollIndicator={true}
-                        >
-                            <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
-                            <View style={{ height: 20 }} />
-                        </ScrollView>
-                    </View>
-                </View>
+                </ScrollView>
             ) : (
-                <View style={styles.reviewContainer}>
-                    <View style={styles.reviewCard}>
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.instructionText}>
+                        Review your recording before submitting:
+                    </Text>
+
+                    <View style={styles.questionCard}>
                         <View style={styles.reviewIconCircle}>
-                            <Ionicons name="checkmark-circle" size={64} color="#10B981" />
+                            <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
                         </View>
                         <Text style={styles.reviewTitle}>Recording Complete!</Text>
 
                         <View style={styles.waveformContainer}>
-                            {[16, 24, 32, 20, 40, 28, 18, 36, 22, 30].map((h, i) => (
+                            {[16, 24, 32, 20, 40, 28, 18, 36, 22, 30, 26, 34, 18, 22, 28].map((h, i) => (
                                 <View key={i} style={[styles.waveBar, { height: h }]} />
                             ))}
                         </View>
@@ -543,8 +560,8 @@ export default function WeeklyWhispersScreen() {
                         <Text style={styles.reviewDuration}>Duration: {formatTime(recordingDuration)}</Text>
 
                         <View style={styles.buttonRow}>
-                            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-                                <Ionicons name="refresh" size={20} color="#8B5CF6" />
+                            <TouchableOpacity style={styles.retryButton} onPress={handleRetry} activeOpacity={0.7}>
+                                <Ionicons name="refresh" size={20} color={Colors.primary} />
                                 <Text style={styles.retryButtonText}>Retake</Text>
                             </TouchableOpacity>
 
@@ -552,6 +569,7 @@ export default function WeeklyWhispersScreen() {
                                 style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
                                 onPress={handleSubmit}
                                 disabled={uploading}
+                                activeOpacity={0.7}
                             >
                                 {uploading ? (
                                     <ActivityIndicator color="#FFFFFF" />
@@ -564,7 +582,7 @@ export default function WeeklyWhispersScreen() {
                             </TouchableOpacity>
                         </View>
                     </View>
-                </View>
+                </ScrollView>
             )}
         </SafeAreaView>
     );
@@ -573,7 +591,7 @@ export default function WeeklyWhispersScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F6F8F9', // Soft cream backdrop
     },
     loadingContainer: {
         flex: 1,
@@ -585,20 +603,57 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
+        paddingVertical: 14,
     },
     backButton: {
         width: 40,
         height: 40,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
     },
     title: {
-        fontSize: 18,
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#2D3436',
+    },
+    progressBadge: {
+        backgroundColor: THEME_BG,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    progressText: {
+        color: Colors.primary,
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    content: {
+        padding: 20,
+    },
+    instructionText: {
+        fontSize: 15,
         fontWeight: '600',
-        color: '#1E293B',
+        color: '#636E72',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    questionCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 30, // Standardized bottom panel/card curves
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.04,
+        shadowRadius: 16,
+        elevation: 4,
+        minHeight: 320,
     },
     // Intro Screen
     introContent: {
@@ -610,26 +665,28 @@ const styles = StyleSheet.create({
     },
     introTitle: {
         fontSize: 28,
-        fontWeight: '700',
-        color: '#1E293B',
-        marginBottom: 8,
+        fontWeight: '800',
+        color: '#2D3436',
+        marginBottom: 4,
+        textAlign: 'center',
     },
     introSubtitle: {
-        fontSize: 16,
-        color: '#64748B',
-        marginBottom: 32,
+        fontSize: 15,
+        color: '#636E72',
+        marginBottom: 28,
+        textAlign: 'center',
     },
     introCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 24,
         padding: 24,
         width: '100%',
         marginBottom: 32,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.04,
         shadowRadius: 12,
-        elevation: 4,
+        elevation: 3,
     },
     introIconRow: {
         flexDirection: 'row',
@@ -637,34 +694,34 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     introIconCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#EDE9FE',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: THEME_BG,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
     introCardTitle: {
         fontSize: 18,
-        fontWeight: '600',
-        color: '#1E293B',
+        fontWeight: '700',
+        color: '#2D3436',
     },
     introCardText: {
         fontSize: 14,
-        color: '#64748B',
+        color: '#636E72',
         lineHeight: 22,
-        marginBottom: 16,
     },
     infoBadges: {
         flexDirection: 'row',
         gap: 12,
+        marginTop: 16,
     },
     badge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#EDE9FE',
+        backgroundColor: THEME_BG,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 20,
@@ -672,22 +729,23 @@ const styles = StyleSheet.create({
     badgeText: {
         fontSize: 13,
         fontWeight: '500',
-        color: '#8B5CF6',
+        color: Colors.primary,
     },
     goButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
-        backgroundColor: '#8B5CF6',
+        backgroundColor: Colors.primary,
         paddingVertical: 18,
-        paddingHorizontal: 48,
+        paddingHorizontal: 32,
         borderRadius: 30,
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 8,
+        width: '100%',
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+        gap: 10,
     },
     goButtonText: {
         fontSize: 18,
@@ -695,19 +753,11 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     // Recording Screen
-    recordingScreenContainer: {
-        flex: 1,
-    },
-    fixedTopSection: {
-        paddingTop: 16,
-        paddingHorizontal: 20,
-        backgroundColor: '#F8FAFC',
-    },
     recordingRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 10,
+        marginTop: 8,
     },
     leftSideContainer: {
         flex: 1,
@@ -719,27 +769,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    timerText: {
-        fontSize: 36,
-        fontWeight: '700',
-        color: '#8B5CF6',
-        marginTop: 8,
-    },
-    timerRecording: {
-        color: '#EF4444',
-    },
     recordButtonContainer: {
-        marginTop: 16,
-        marginBottom: 12,
+        marginTop: 8,
+        marginBottom: 10,
     },
     recordButton: {
         width: 72,
         height: 72,
         borderRadius: 36,
-        backgroundColor: '#8B5CF6',
+        backgroundColor: Colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#8B5CF6',
+        shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
@@ -750,50 +791,44 @@ const styles = StyleSheet.create({
         shadowColor: '#EF4444',
     },
     statusText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: '#64748B',
     },
     statusRecording: {
         color: '#EF4444',
+        fontWeight: '700',
     },
     hintText: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#94A3B8',
         marginTop: 4,
     },
     recordingIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
+        justifyContent: 'center',
+        marginTop: 16,
+        backgroundColor: '#FEF2F2',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
     },
     pulseDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         backgroundColor: '#EF4444',
         marginRight: 8,
     },
     recordingText: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#EF4444',
         fontWeight: '600',
     },
     // Passage Section
-    passageSection: {
-        flex: 1,
-        marginTop: 16,
-        marginHorizontal: 20,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-        marginBottom: 20,
-    },
     passageHeader: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -802,43 +837,40 @@ const styles = StyleSheet.create({
     passageLabel: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#8B5CF6',
+        color: Colors.primary,
         marginLeft: 8,
-        letterSpacing: 1,
+        letterSpacing: 1.5,
     },
-    passageScrollView: {
-        flex: 1,
+    passageContainer: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 20,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginBottom: 8,
     },
     passageText: {
         fontSize: 16,
         color: '#334155',
         lineHeight: 28,
     },
+    divider: {
+        height: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 20,
+    },
     // Review Screen
-    reviewContainer: {
-        flex: 1,
-        padding: 20,
-        justifyContent: 'center',
-    },
-    reviewCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 32,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
-    },
     reviewIconCircle: {
+        alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 16,
     },
     reviewTitle: {
         fontSize: 24,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#2D3436',
         marginBottom: 24,
+        textAlign: 'center',
     },
     waveformContainer: {
         flexDirection: 'row',
@@ -848,20 +880,22 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         width: '100%',
         backgroundColor: '#F1F5F9',
-        borderRadius: 12,
+        borderRadius: 20,
         paddingHorizontal: 20,
     },
     waveBar: {
-        width: 6,
-        backgroundColor: '#8B5CF6',
-        borderRadius: 3,
-        marginHorizontal: 3,
+        width: 4,
+        backgroundColor: Colors.primary,
+        borderRadius: 2,
+        marginHorizontal: 2,
         opacity: 0.7,
     },
     reviewDuration: {
         fontSize: 16,
+        fontWeight: '600',
         color: '#64748B',
         marginBottom: 32,
+        textAlign: 'center',
     },
     buttonRow: {
         flexDirection: 'row',
@@ -874,14 +908,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 14,
-        backgroundColor: '#EDE9FE',
-        borderRadius: 12,
+        paddingVertical: 16,
+        borderRadius: 30,
+        borderWidth: 1.5,
+        borderColor: '#DFE6E9',
+        backgroundColor: '#FFFFFF',
     },
     retryButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#8B5CF6',
+        color: Colors.primary,
     },
     submitButton: {
         flex: 1,
@@ -889,16 +925,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 14,
-        backgroundColor: '#8B5CF6',
-        borderRadius: 12,
+        paddingVertical: 16,
+        borderRadius: 30,
+        backgroundColor: Colors.primary,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
     },
     submitButtonDisabled: {
         opacity: 0.7,
     },
     submitButtonText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#FFFFFF',
     },
     // Success screen
@@ -912,32 +953,43 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: '#EDE9FE',
+        backgroundColor: THEME_BG,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 24,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
     },
     successTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1E293B',
+        color: '#2D3436',
         marginBottom: 12,
+        textAlign: 'center',
     },
     successText: {
         fontSize: 16,
-        color: '#64748B',
+        color: '#636E72',
         textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: 24,
     },
     homeButton: {
-        backgroundColor: '#8B5CF6',
+        backgroundColor: Colors.primary,
+        paddingVertical: 16,
         paddingHorizontal: 32,
-        paddingVertical: 14,
-        borderRadius: 25,
-        marginTop: 32,
+        borderRadius: 30,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 2,
     },
     homeButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
     },
 });

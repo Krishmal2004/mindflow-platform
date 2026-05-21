@@ -118,7 +118,7 @@ export const CalendarIcon = ({ size = 24, color = "#8B5CF6" }) => (
     </Svg>
 );
 
-export const ChartIcon = ({ size = 24, color = "#10B981" }) => (
+export const ChartIcon = ({ size = 24, color = "#749F82" }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path d="M3 3V21H21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <Path d="M7 14L11 10L15 13L21 7" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

@@ -8,21 +8,22 @@ import {
     Alert,
     TextInput,
     ActivityIndicator,
-    Modal
+    Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/api';
 import { Colors } from '../constants/colors';
 import { PopupModal } from '../components/PopupModal';
 import { JourneyIcons } from '../components/JourneyIcons';
+import { LeavesDecoration } from '../components/LeavesDecoration';
 
-const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
+const { width } = Dimensions.get('window');
 
 // Types
 interface AboutMeData {
@@ -52,7 +53,7 @@ export default function AboutMeScreen() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [declarationChecked, setDeclarationChecked] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false); // Success Modal State
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const [data, setData] = useState<AboutMeData>({
         university_id: '',
@@ -184,10 +185,7 @@ export default function AboutMeScreen() {
             });
 
             if (response.ok) {
-                // Alert.alert("Success", "Profile updated successfully!");
-                // navigation.goBack();
-                setShowSuccessModal(true); // Show modal instead of alert
-                // Update local state to reflect completion immediately
+                setShowSuccessModal(true);
                 setData(prev => ({ ...prev, is_completed: true }));
             } else {
                 const err = await response.json();
@@ -223,28 +221,25 @@ export default function AboutMeScreen() {
     }
 
     return (
-        <LinearGradient
-            colors={DASHBOARD_GRADIENT}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.container}>
+            <StatusBar style="dark" />
+            <LeavesDecoration width={width} height={width} />
+
             <SafeAreaView edges={['top', 'left', 'right']}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>About Me</Text>
-                    <View style={{ width: 24 }} />
+                    <View style={{ width: 40 }} />
                 </View>
             </SafeAreaView>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-                {/* Content - Conditionally Render Form or Read-Only View */}
                 {data.is_completed && !showSuccessModal ? (
                     <View style={styles.readOnlyContainer}>
                         <View style={styles.successBanner}>
-                            <Ionicons name="checkmark-circle" size={24} color="#059669" />
+                            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
                             <Text style={styles.successBannerText}>Profile Completed</Text>
                         </View>
 
@@ -322,7 +317,7 @@ export default function AboutMeScreen() {
                 ) : (
                     <>
                         <View style={styles.helpCard}>
-                            <Ionicons name="information-circle-outline" size={24} color="#0EA5E9" style={{ marginBottom: 8 }} />
+                            <Ionicons name="information-circle-outline" size={24} color="#0284C7" style={{ marginBottom: 6 }} />
                             <Text style={styles.helpTitle}>Help us know you better</Text>
                             <Text style={styles.helpText}>
                                 Please provide accurate and truthful information. This helps us personalize your MindFlow experience.
@@ -358,6 +353,7 @@ export default function AboutMeScreen() {
                                         style={[styles.pill, data.education_level === level && styles.pillActive]}
                                         onPress={() => update('education_level', level)}
                                         disabled={data.is_completed}
+                                        activeOpacity={0.7}
                                     >
                                         <Text style={[styles.pillText, data.education_level === level && styles.pillTextActive]}>{level}</Text>
                                     </TouchableOpacity>
@@ -414,6 +410,7 @@ export default function AboutMeScreen() {
                                             style={[styles.pill, isActive && styles.pillActive]}
                                             onPress={() => update('living_situation', sit)}
                                             disabled={data.is_completed}
+                                            activeOpacity={0.7}
                                         >
                                             <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{sit}</Text>
                                         </TouchableOpacity>
@@ -465,6 +462,7 @@ export default function AboutMeScreen() {
                                             style={[styles.pill, isActive && styles.pillActive]}
                                             onPress={() => update('cultural_background', bg)}
                                             disabled={data.is_completed}
+                                            activeOpacity={0.7}
                                         >
                                             <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{bg}</Text>
                                         </TouchableOpacity>
@@ -496,6 +494,7 @@ export default function AboutMeScreen() {
                                         style={[styles.pill, selectedHobbies.includes(hobby) && styles.pillActive]}
                                         onPress={() => toggleHobby(hobby)}
                                         disabled={data.is_completed}
+                                        activeOpacity={0.7}
                                     >
                                         <Text style={[styles.pillText, selectedHobbies.includes(hobby) && styles.pillTextActive]}>{hobby}</Text>
                                     </TouchableOpacity>
@@ -530,7 +529,7 @@ export default function AboutMeScreen() {
                             />
                         </View>
 
-                        {/* Why Mindflow */}
+                        {/* Previous Experience */}
                         <View style={styles.section}>
                             <View style={styles.labelRow}>
                                 <JourneyIcons.History width={20} height={20} color={Colors.primary} />
@@ -552,6 +551,7 @@ export default function AboutMeScreen() {
                             style={[styles.checkboxContainer, declarationChecked && styles.checkboxChecked]}
                             onPress={() => setDeclarationChecked(!declarationChecked)}
                             disabled={data.is_completed}
+                            activeOpacity={0.7}
                         >
                             <View style={[styles.checkbox, declarationChecked && styles.checkboxActive]}>
                                 {declarationChecked && <Ionicons name="checkmark" size={16} color="#fff" />}
@@ -566,6 +566,7 @@ export default function AboutMeScreen() {
                             onPress={save}
                             disabled={saving || !declarationChecked || data.is_completed}
                             style={[styles.saveButton, (saving || !declarationChecked || data.is_completed) && styles.saveButtonDisabled]}
+                            activeOpacity={0.8}
                         >
                             {saving ? (
                                 <ActivityIndicator color="#fff" />
@@ -590,17 +591,14 @@ export default function AboutMeScreen() {
                 />
 
             </ScrollView>
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // Background handled by LinearGradient
-    },
-    gradientHeader: {
-        // Removed
+        backgroundColor: '#F6F8F9',
     },
     loadingContainer: {
         flex: 1,
@@ -615,24 +613,32 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
     },
     backButton: {
-        padding: 8,
-        backgroundColor: 'rgba(255,255,255,0.8)',
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
         borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#2D3436',
     },
     content: {
-        padding: 24,
+        padding: 20,
         paddingBottom: 60,
     },
     helpCard: {
         backgroundColor: '#E0F2FE',
-        borderRadius: 16,
+        borderRadius: 24,
         padding: 16,
-        marginBottom: 24,
+        marginBottom: 8,
         borderWidth: 1,
         borderColor: '#BAE6FD',
     },
@@ -650,46 +656,43 @@ const styles = StyleSheet.create({
     section: {
         marginTop: 20,
         backgroundColor: '#FFFFFF',
-        padding: 16,
-        borderRadius: 16,
+        padding: 20,
+        borderRadius: 24,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.03,
-        shadowRadius: 4,
+        shadowRadius: 12,
         elevation: 2,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#64748B',
-        marginBottom: 8,
     },
     labelRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
         gap: 8,
     },
     labelWithIcon: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#1E293B',
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#2D3436',
     },
     required: {
         color: '#EF4444',
     },
     input: {
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
+        backgroundColor: '#F6F8F9',
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
-        borderRadius: 12,
-        padding: 14,
-        fontSize: 16,
-        color: '#1E293B',
+        borderRadius: 30,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        fontSize: 15,
+        color: '#2D3436',
     },
     textArea: {
-        minHeight: 100,
+        minHeight: 120,
+        borderRadius: 20,
         textAlignVertical: 'top',
+        paddingTop: 16,
     },
     pillContainer: {
         flexDirection: 'row',
@@ -699,41 +702,41 @@ const styles = StyleSheet.create({
     pill: {
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
+        borderRadius: 30,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
     },
     pillActive: {
-        backgroundColor: '#ECFDF5',
-        borderColor: '#10B981',
+        backgroundColor: '#E6F4EA',
+        borderColor: Colors.primary,
     },
     pillText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#64748B',
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#475569',
     },
     pillTextActive: {
-        color: '#059669',
+        color: Colors.primary,
         fontWeight: '700',
     },
     checkboxContainer: {
         flexDirection: 'row',
         marginTop: 32,
-        padding: 16,
+        padding: 20,
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        borderWidth: 1,
+        borderRadius: 24,
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
         alignItems: 'center',
     },
     checkboxChecked: {
-        borderColor: '#10B981',
+        borderColor: Colors.primary,
     },
     checkbox: {
         width: 24,
         height: 24,
-        borderRadius: 6,
+        borderRadius: 8,
         borderWidth: 2,
         borderColor: '#CBD5E1',
         marginRight: 12,
@@ -741,22 +744,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkboxActive: {
-        backgroundColor: '#10B981',
-        borderColor: '#10B981',
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
     },
     checkboxLabel: {
         flex: 1,
         fontSize: 14,
         color: '#475569',
         lineHeight: 20,
+        fontWeight: '500',
     },
     saveButton: {
         marginTop: 24,
-        backgroundColor: '#10B981',
+        backgroundColor: Colors.primary,
         paddingVertical: 18,
-        borderRadius: 16,
+        borderRadius: 30,
         alignItems: 'center',
-        shadowColor: '#10B981',
+        shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -772,102 +776,46 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFFFFF',
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    successModal: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        padding: 32,
-        width: '85%',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
-        shadowRadius: 24,
-        elevation: 10,
-    },
-    successIconCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#64C59A',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-        shadowColor: '#64C59A',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 8,
-    },
-    successTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#1E293B',
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    successMessage: {
-        fontSize: 16,
-        color: '#64748B',
-        textAlign: 'center',
-        marginBottom: 32,
-        lineHeight: 24,
-    },
-    successButton: {
-        backgroundColor: '#1E293B',
-        paddingVertical: 16,
-        paddingHorizontal: 32,
-        borderRadius: 16,
-        width: '100%',
-        alignItems: 'center',
-    },
-    successButtonText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
     readOnlyContainer: {
         paddingTop: 8,
     },
     successBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#D1FAE5',
+        backgroundColor: '#E6F4EA',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 20,
         marginBottom: 24,
         gap: 12,
     },
     successBannerText: {
-        color: '#065F46',
+        color: Colors.primary,
         fontWeight: '700',
         fontSize: 16,
     },
     readOnlySection: {
         marginBottom: 20,
         backgroundColor: '#FFFFFF',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        padding: 20,
+        borderRadius: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.02,
+        shadowRadius: 10,
+        elevation: 1,
     },
     readOnlyLabel: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 12,
+        fontWeight: '700',
         color: '#94A3B8',
         marginBottom: 6,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 1,
     },
     readOnlyValue: {
-        fontSize: 16,
-        color: '#334155',
-        fontWeight: '500',
-        lineHeight: 24,
+        fontSize: 15,
+        color: '#2D3436',
+        fontWeight: '600',
+        lineHeight: 22,
     },
 });

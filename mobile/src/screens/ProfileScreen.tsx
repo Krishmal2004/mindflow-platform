@@ -7,20 +7,22 @@ import {
     TouchableOpacity,
     Alert,
     ActivityIndicator,
-    Modal
+    Modal,
+    Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/colors';
 import { API_URL } from '../config/api';
-import { LinearGradient } from 'expo-linear-gradient';
-import { PopupModal } from '../components/PopupModal'; // Import PopupModal
+import { PopupModal } from '../components/PopupModal';
+import { LeavesDecoration } from '../components/LeavesDecoration';
 
-const DASHBOARD_GRADIENT: [string, string, string] = ['#F0FDF4', '#F8FAFC', '#FFFFFF'];
+const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -44,7 +46,6 @@ export default function ProfileScreen() {
 
     const fetchProfile = async () => {
         try {
-            // setLoading(true); // Don't block UI on regain focus every time
             const token = await getAuthToken();
             if (!token) return;
 
@@ -69,7 +70,6 @@ export default function ProfileScreen() {
         try {
             await AsyncStorage.removeItem('authToken');
             await AsyncStorage.removeItem('user');
-            // Navigate to Auth
             navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
@@ -88,14 +88,6 @@ export default function ProfileScreen() {
         try {
             setResettingPassword(true);
             const token = await getAuthToken();
-            // Note: calling auth/reset-password. This endpoint should exist on backend or be proxied.
-            // Using the backend route we just created: /api/auth/reset-password (which is mapped in main app, check if it's under /api/auth or just /auth)
-            // Usually auth routes are at /api/auth or similar. Let's assume /api/auth based on standard practices, 
-            // but need to verify main server file. Assuming /api/auth for now.
-            // Wait, previous calls use `${API_URL}/api/profile`. 
-            // In `backend/src/app.ts` (not seen yet), likely routes are mounted. 
-            // If I look at `authRoutes.ts`, it has `/signup`, `/login`.
-            // Usually mounted at `/api/auth`. I'll try that.
 
             const response = await fetch(`${API_URL}/api/auth/reset-password`, {
                 method: 'POST',
@@ -129,12 +121,10 @@ export default function ProfileScreen() {
     }
 
     return (
-        <LinearGradient
-            colors={DASHBOARD_GRADIENT}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.container}>
+            <StatusBar style="dark" />
+            <LeavesDecoration width={width} height={width} />
+
             <SafeAreaView edges={['top', 'left', 'right']}>
                 <View style={styles.headerContainer}>
                     <Text style={styles.title}>My Account</Text>
@@ -149,7 +139,7 @@ export default function ProfileScreen() {
                 {/* Profile Hero */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarCircle}>
-                        <Ionicons name="person" size={50} color="#10B981" />
+                        <Ionicons name="person" size={50} color={Colors.primary} />
                     </View>
                     <Text style={styles.userName}>{profileData?.username || 'Mindful User'}</Text>
                     <Text style={styles.userEmail}>{profileData?.email || 'No email on file'}</Text>
@@ -192,10 +182,11 @@ export default function ProfileScreen() {
                     <TouchableOpacity
                         style={[styles.actionButton, { marginTop: 16 }]}
                         onPress={() => navigation.navigate('AboutMe')}
+                        activeOpacity={0.7}
                     >
                         <View style={styles.actionLeft}>
-                            <View style={[styles.iconCircle, { backgroundColor: '#E0F2FE' }]}>
-                                <Ionicons name="document-text-outline" size={24} color="#0EA5E9" />
+                            <View style={[styles.iconCircle, { backgroundColor: '#E6F4EA' }]}>
+                                <Ionicons name="document-text-outline" size={24} color={Colors.primary} />
                             </View>
                             <View>
                                 <Text style={styles.actionText}>About Me Questionnaire</Text>
@@ -214,10 +205,11 @@ export default function ProfileScreen() {
                         style={[styles.actionButton, { marginBottom: 12 }]}
                         onPress={handleResetPassword}
                         disabled={resettingPassword}
+                        activeOpacity={0.7}
                     >
                         <View style={styles.actionLeft}>
-                            <View style={[styles.iconCircle, { backgroundColor: '#F0F9FF' }]}>
-                                <Ionicons name="lock-closed-outline" size={24} color="#0EA5E9" />
+                            <View style={[styles.iconCircle, { backgroundColor: '#E6F4EA' }]}>
+                                <Ionicons name="lock-closed-outline" size={24} color={Colors.primary} />
                             </View>
                             <View>
                                 <Text style={styles.actionText}>Reset Password</Text>
@@ -234,6 +226,7 @@ export default function ProfileScreen() {
                     <TouchableOpacity
                         style={[styles.actionButton, styles.dangerButton]}
                         onPress={() => setShowSignOutModal(true)}
+                        activeOpacity={0.7}
                     >
                         <View style={styles.actionLeft}>
                             <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2' }]}>
@@ -262,12 +255,14 @@ export default function ProfileScreen() {
                             <TouchableOpacity
                                 style={styles.alertCancel}
                                 onPress={() => setShowSignOutModal(false)}
+                                activeOpacity={0.7}
                             >
                                 <Text style={styles.alertCancelText}>Cancel</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.alertConfirm}
                                 onPress={handleSignOut}
+                                activeOpacity={0.7}
                             >
                                 <Text style={styles.alertConfirmText}>Sign Out</Text>
                             </TouchableOpacity>
@@ -285,111 +280,96 @@ export default function ProfileScreen() {
                 buttonText="OK"
                 onClose={() => setShowResetSuccessModal(false)}
             />
-        </LinearGradient >
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        // Background handled by LinearGradient
+        backgroundColor: '#F6F8F9',
     },
     headerContainer: {
         paddingVertical: 12,
         paddingHorizontal: 24,
     },
-    gradientHeader: {
-        paddingBottom: 16,
-        paddingHorizontal: 24,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 5,
-        zIndex: 10,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-    },
-    header: {
-        paddingVertical: 12,
+        backgroundColor: '#F6F8F9',
     },
     title: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#1E293B',
+        color: '#2D3436',
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: 16,
-        color: '#64748B',
+        fontSize: 15,
+        color: '#636E72',
     },
     content: {
-        paddingTop: 24,
-        paddingBottom: 120, // Increased to avoid Nav Bar overlap
+        paddingTop: 20,
+        paddingBottom: 120,
     },
     profileCard: {
         marginHorizontal: 24,
         backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        paddingVertical: 24,
+        borderRadius: 30,
+        paddingVertical: 28,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.04,
+        shadowRadius: 16,
         elevation: 4,
         marginBottom: 8,
     },
     avatarCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#F1FDF9',
+        width: 84,
+        height: 84,
+        borderRadius: 42,
+        backgroundColor: '#E6F4EA',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 14,
         borderWidth: 3,
-        borderColor: '#E8F5F1',
+        borderColor: '#C2E7CD',
     },
     userName: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1E293B',
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#2D3436',
     },
     userEmail: {
         fontSize: 14,
-        color: '#10B981',
-        marginTop: 2,
-        fontWeight: '500',
+        color: Colors.primary,
+        marginTop: 4,
+        fontWeight: '600',
     },
     section: {
         marginTop: 24,
         paddingHorizontal: 24,
     },
     sectionTitle: {
-        fontSize: 13,
-        fontWeight: '700',
+        fontSize: 12,
+        fontWeight: '800',
         color: '#94A3B8',
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 1.5,
         marginBottom: 12,
         paddingLeft: 4,
     },
     infoCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderRadius: 24,
         paddingHorizontal: 20,
         paddingVertical: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.03,
-        shadowRadius: 8,
+        shadowRadius: 12,
         elevation: 2,
     },
     infoRow: {
@@ -402,8 +382,8 @@ const styles = StyleSheet.create({
     infoIcon: {
         width: 36,
         height: 36,
-        borderRadius: 10,
-        backgroundColor: '#F8FAFC',
+        borderRadius: 12,
+        backgroundColor: '#F1F5F9',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -412,15 +392,15 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     infoLabel: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#94A3B8',
-        fontWeight: '500',
+        fontWeight: '600',
         marginBottom: 2,
     },
     infoValue: {
-        fontSize: 16,
-        color: '#1E293B',
-        fontWeight: '600',
+        fontSize: 15,
+        color: '#2D3436',
+        fontWeight: '700',
     },
     actionButton: {
         backgroundColor: '#FFFFFF',
@@ -428,11 +408,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: 16,
-        borderRadius: 20,
+        borderRadius: 24,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.03,
-        shadowRadius: 8,
+        shadowRadius: 12,
         elevation: 2,
     },
     actionLeft: {
@@ -448,23 +428,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     actionText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1E293B',
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#2D3436',
     },
     actionSubtext: {
         fontSize: 12,
-        color: '#64748B',
+        color: '#636E72',
         marginTop: 2,
     },
     dangerButton: {
         marginTop: 0,
-        borderWidth: 1,
-        borderColor: '#FEF2F2',
+        borderWidth: 1.5,
+        borderColor: '#FEE2E2',
     },
     dangerText: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
         color: '#EF4444',
     },
     dangerSubText: {
@@ -474,19 +454,19 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     alertModal: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 28,
-        padding: 32,
+        borderRadius: 30,
+        padding: 28,
         width: '85%',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
         shadowRadius: 24,
         elevation: 10,
     },
@@ -497,20 +477,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#FEF2F2',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
     },
     alertTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#1E293B',
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#2D3436',
         marginBottom: 8,
     },
     alertMessage: {
-        fontSize: 16,
-        color: '#64748B',
+        fontSize: 15,
+        color: '#636E72',
         textAlign: 'center',
-        marginBottom: 32,
-        lineHeight: 24,
+        marginBottom: 28,
+        lineHeight: 22,
+        fontWeight: '500',
     },
     alertActions: {
         flexDirection: 'row',
@@ -521,24 +502,24 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 16,
         backgroundColor: '#F1F5F9',
-        borderRadius: 14,
+        borderRadius: 30,
         alignItems: 'center',
     },
     alertCancelText: {
         fontSize: 16,
-        fontWeight: '600',
-        color: '#64748B',
+        fontWeight: '700',
+        color: '#636E72',
     },
     alertConfirm: {
         flex: 1,
         paddingVertical: 16,
         backgroundColor: '#EF4444',
-        borderRadius: 14,
+        borderRadius: 30,
         alignItems: 'center',
     },
     alertConfirmText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#FFFFFF',
     },
 });

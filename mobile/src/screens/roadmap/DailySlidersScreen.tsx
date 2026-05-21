@@ -16,27 +16,26 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { WebView } from 'react-native-webview';
 
-import { Colors } from '../../constants/colors';
+import { Colors as GlobalColors } from '../../constants/colors';
+const Colors = {
+    ...GlobalColors,
+    primary: '#D97706',
+};
+const THEME_BG = '#FFFBEB';
 import { API_URL } from '../../config/api';
 import { StressIcons, MoodIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
 import { PopupModal } from '../../components/PopupModal';
+import { LeavesDecoration } from '../../components/LeavesDecoration';
 
 const { width } = Dimensions.get('window');
 
 const PRACTICE_TYPES = [
     'Breathing Exercise',
-    'Body Scan',
-    'Walking Meditation',
-    'Guided Meditation',
-    'Mindful Movement',
-    'Journaling',
     'Other'
 ];
 
-// Big 7 Domains
 const INFLUENCING_FACTORS = [
     {
         label: "Academics",
@@ -49,53 +48,51 @@ const INFLUENCING_FACTORS = [
         theory: "Interpersonal belonging/conflict."
     },
     {
-        label: "Physical Health & Sleep",
-        covers: "Tiredness, insomnia, illness, pain, hunger, exercise.",
-        theory: "Biological substrates."
+        label: "Work/Career",
+        covers: "Job tasks, coworkers, boss, workload, career goals.",
+        theory: "Occupational stress/accomplishment."
     },
     {
-        label: "Financial & Living Situation",
-        covers: "Money problems, commute, roommate issues, housing environment.",
-        theory: "Environmental stressors."
+        label: "Health & Vitality",
+        covers: "Exercise, diet, sickness, pain, energy level, physical activity.",
+        theory: "Somatic state impact."
     },
     {
-        label: "Self-Image & Thoughts",
-        covers: "Self-esteem, body image, intrusive thoughts, \"feeling worthless\" or \"feeling proud.\"",
-        theory: "Intrapersonal cognition."
+        label: "Environment",
+        covers: "Weather, noise, living space, commute, crowding, safety.",
+        theory: "Contextual stressor impact."
     },
     {
-        label: "Future & Uncertainty",
-        covers: "Career anxiety, job hunting, general worry about the future.",
-        theory: "Anticipatory anxiety."
+        label: "Personal Care",
+        covers: "Hobbies, relaxation, screen time, self-care, hygiene.",
+        theory: "Restorative/leisure impact."
     },
     {
         label: "Nothing Specific",
-        covers: "\"I just woke up like this,\" hormonal shifts, unexplained mood.",
+        covers: "Hormonal shifts, unexplained mood, general disposition.",
         theory: "Endogenous mood."
     }
 ];
 
 const SLEEP_TIMES = [
-    '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM',
-    '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM',
-    '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM',
-    '3:00 AM', '3:30 AM', '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM'
+    '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM'
 ];
 
 const WAKE_TIMES = [
-    '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM',
-    '3:00 AM', '3:30 AM', '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM',
-    '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM',
-    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM'
+    '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM'
 ];
 
 export default function DailySlidersScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+    // Wizard navigation state
+    const [currentStep, setCurrentStep] = useState(0); // 0 = Video, 1 = Relaxation/Stress, 2 = Practice, 3 = Mood/Factor, 4 = Sleep
+
     // Mindfulness practice state
     const [mindfulnessPractice, setMindfulnessPractice] = useState<'yes' | 'no' | null>(null);
     const [practiceDuration, setPracticeDuration] = useState('');
     const [selectedPractices, setSelectedPractices] = useState<string[]>([]);
+    const [otherPracticeText, setOtherPracticeText] = useState('');
 
     // Video state
     const [weeklyVideoId, setWeeklyVideoId] = useState<string | null>(null);
@@ -172,7 +169,7 @@ export default function DailySlidersScreen() {
             if (response.ok) {
                 const data = await response.json();
                 if (data.completed) {
-                    setAlreadySubmitted(true); // Keep local state just in case, but redirect
+                    setAlreadySubmitted(true);
                     navigation.replace('CompleteTask', {
                         title: 'Great Job Today!',
                         message: 'You have successfully done the Daily Task. See you tomorrow again!',
@@ -199,6 +196,30 @@ export default function DailySlidersScreen() {
         );
     };
 
+    // Check if the current step is valid to proceed
+    const isStepValid = () => {
+        switch (currentStep) {
+            case 0:
+                return true; // Video step is always optional/skippable
+            case 1:
+                return relaxationLevel !== null && stressLevel !== null;
+            case 2:
+                if (mindfulnessPractice === null) return false;
+                if (mindfulnessPractice === 'yes') {
+                    const hasPractice = selectedPractices.length > 0;
+                    const isOtherValid = !selectedPractices.includes('Other') || otherPracticeText.trim() !== '';
+                    return practiceDuration.trim() !== '' && hasPractice && isOtherValid;
+                }
+                return true;
+            case 3:
+                return moodLevel !== null && selectedFactor !== null;
+            case 4:
+                return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
+            default:
+                return false;
+        }
+    };
+
     const getCompletionProgress = () => {
         let completed = 0;
         let total = 7;
@@ -207,7 +228,10 @@ export default function DailySlidersScreen() {
             if (mindfulnessPractice === 'no') {
                 completed++;
             } else if (practiceDuration && selectedPractices.length > 0) {
-                completed++;
+                const isOtherValid = !selectedPractices.includes('Other') || otherPracticeText.trim() !== '';
+                if (isOtherValid) {
+                    completed++;
+                }
             }
         }
         if (stressLevel !== null) completed++;
@@ -221,14 +245,8 @@ export default function DailySlidersScreen() {
     };
 
     const handleSubmit = async () => {
-        if (mindfulnessPractice === null || stressLevel === null || moodLevel === null ||
-            sleepQuality === null || !selectedFactor || !sleepStart || !wakeUp) {
-            showPopup('warning', 'Incomplete', 'Please fill in all required fields');
-            return;
-        }
-
-        if (mindfulnessPractice === 'yes' && (!practiceDuration || selectedPractices.length === 0)) {
-            showPopup('warning', 'Incomplete', 'Please enter practice duration and what you practiced');
+        if (!isStepValid()) {
+            showPopup('warning', 'Incomplete', 'Please fill in all fields on this screen to complete your check-in.');
             return;
         }
 
@@ -256,12 +274,12 @@ export default function DailySlidersScreen() {
                 body: JSON.stringify({
                     mindfulness_practice: mindfulnessPractice,
                     practice_duration: mindfulnessPractice === 'yes' ? parseInt(practiceDuration) : null,
-                    practice_log: mindfulnessPractice === 'yes' ? selectedPractices.join(', ') : null,
+                    practice_log: mindfulnessPractice === 'yes' ? selectedPractices.map(p => p === 'Other' ? otherPracticeText.trim() : p).filter(p => p !== '').join(', ') : null,
                     stress_level: stressLevel,
                     mood: moodLevel,
                     sleep_quality: sleepQuality,
                     relaxation_level: relaxationLevel,
-                    feelings: selectedFactor, // Now sending a single string
+                    feelings: selectedFactor,
                     sleep_start_time: sleepStart,
                     wake_up_time: wakeUp
                 })
@@ -300,36 +318,17 @@ export default function DailySlidersScreen() {
         );
     }
 
-    if (alreadySubmitted) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <StatusBar style="dark" />
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#1E293B" />
-                    </TouchableOpacity>
-                    <Text style={styles.title}>Daily Sliders</Text>
-                    <View style={{ width: 40 }} />
-                </View>
+    const nextStep = () => {
+        if (isStepValid()) {
+            setCurrentStep(prev => Math.min(prev + 1, 4));
+        } else {
+            showPopup('warning', 'Incomplete Section', 'Please answer the current questions before moving forward.');
+        }
+    };
 
-                <View style={styles.successContainer}>
-                    <View style={styles.successIcon}>
-                        <Ionicons name="checkmark-circle" size={80} color="#64C59A" />
-                    </View>
-                    <Text style={styles.successTitle}>Great Job Today!</Text>
-                    <Text style={styles.successText}>You've completed your daily entry.</Text>
-                    <Text style={styles.successText}>See you tomorrow!</Text>
-
-                    <TouchableOpacity
-                        style={styles.homeButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={styles.homeButtonText}>Back to Journey</Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
-        );
-    }
+    const prevStep = () => {
+        setCurrentStep(prev => Math.max(prev - 1, 0));
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -343,386 +342,477 @@ export default function DailySlidersScreen() {
                 onConfirm={popup.onConfirm}
             />
 
+            {/* Background leaves */}
+            <LeavesDecoration width={width} height={width} color={Colors.primary} />
+
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                    <Ionicons name="close" size={24} color="#1E293B" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Daily Sliders</Text>
+                <Text style={styles.title}>Daily Check-in</Text>
                 <View style={styles.progressBadge}>
                     <Text style={styles.progressText}>{getCompletionProgress()}%</Text>
                 </View>
             </View>
 
+            {/* Step Progress Line */}
+            <View style={styles.progressBarContainer}>
+                <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${(currentStep + 1) * 20}%` }]} />
+                </View>
+                <Text style={styles.stepIndicator}>Step {currentStep + 1} of 5</Text>
+            </View>
+
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                {/* 1. This Week's Recording (Moved to Top) */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#FCE7F3' }]}>
-                            <Ionicons name="headset-outline" size={24} color="#EC4899" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>This Week's Recording</Text>
-                            <Text style={styles.sectionSubtitle}>Listen to today's guided session</Text>
-                        </View>
-                    </View>
-
-                    {weeklyVideoId ? (
-                        <View style={{ height: 220, borderRadius: 12, overflow: 'hidden', backgroundColor: '#000' }}>
-                            <WebView
-                                style={{ flex: 1 }}
-                                javaScriptEnabled={true}
-                                domStorageEnabled={true}
-                                source={{ uri: `https://www.youtube.com/embed/${weeklyVideoId}` }}
-                            />
-                        </View>
-                    ) : (
-                        <View style={styles.recordingCard}>
-                            <View style={styles.recordingIcon}>
-                                <Ionicons name="headset" size={48} color="#CBD5E1" />
+                {/* STEP 0: Guided Video Session */}
+                {currentStep === 0 && (
+                    <View style={styles.wizardCard}>
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
+                                    <Ionicons name="play-circle-outline" size={24} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Guided Session</Text>
+                                    <Text style={styles.sectionSubtitle}>Take a moment to listen to today's audio guide</Text>
+                                </View>
                             </View>
-                            <View style={styles.recordingInfo}>
-                                <Text style={styles.recordingTitle}>No recording available</Text>
-                                <Text style={styles.recordingDuration}>Check back next week</Text>
+
+                            {weeklyVideoId ? (
+                                <View style={styles.videoWrapper}>
+                                    <WebView
+                                        style={{ flex: 1 }}
+                                        javaScriptEnabled={true}
+                                        domStorageEnabled={true}
+                                        source={{ uri: `https://www.youtube.com/embed/${weeklyVideoId}` }}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.recordingCard}>
+                                    <View style={styles.recordingIcon}>
+                                        <Ionicons name="headset" size={48} color="#CBD5E1" />
+                                    </View>
+                                    <View style={styles.recordingInfo}>
+                                        <Text style={styles.recordingTitle}>No guided session today</Text>
+                                        <Text style={styles.recordingDuration}>You can skip directly to sliders</Text>
+                                    </View>
+                                </View>
+                            )}
+                            <Text style={styles.stepTip}>Tip: You can watch the session video first, then swipe or tap next to record your sliders.</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* STEP 1: Relaxation & Stress Level */}
+                {currentStep === 1 && (
+                    <View style={styles.wizardCard}>
+                        {/* Relaxation */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
+                                    <Ionicons name="leaf-outline" size={24} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Relaxation Level</Text>
+                                    <Text style={styles.sectionSubtitle}>Select the emoji that best reflects your relaxation level</Text>
+                                </View>
                             </View>
-                        </View>
-                    )}
-                </View>
 
-                {/* 2. Relaxation Level (Moved Here) */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#ECFDF5' }]}>
-                            <Ionicons name="leaf-outline" size={24} color="#059669" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Relaxation Level</Text>
-                            <Text style={styles.sectionSubtitle}>How relaxed do you feel? (1-5)</Text>
-                        </View>
-                    </View>
-                    <View style={styles.emojiRow}>
-                        {RelaxationIcons.map((IconComponent, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.emojiButton,
-                                    relaxationLevel === index + 1 && styles.emojiButtonSelected
-                                ]}
-                                onPress={() => setRelaxationLevel(index + 1)}
-                            >
-                                <IconComponent size={36} />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.scaleLabels}>
-                        <Text style={styles.scaleText}>Tense</Text>
-                        <Text style={styles.scaleText}>Calm</Text>
-                    </View>
-                </View>
-
-                {/* 3. Mindfulness Practice */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={styles.sectionIconCircle}>
-                            <Ionicons name="flower-outline" size={24} color="#667eea" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
-                            <Text style={styles.sectionSubtitle}>Did you practice mindfulness today?</Text>
-                        </View>
-                    </View>
-                    <View style={styles.yesNoRow}>
-                        <TouchableOpacity
-                            style={[
-                                styles.yesNoButton,
-                                mindfulnessPractice === 'yes' && styles.yesButtonSelected
-                            ]}
-                            onPress={() => setMindfulnessPractice('yes')}
-                        >
-                            <Ionicons
-                                name={mindfulnessPractice === 'yes' ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                                size={24}
-                                color={mindfulnessPractice === 'yes' ? '#FFFFFF' : '#64C59A'}
-                            />
-                            <Text style={[
-                                styles.yesNoText,
-                                mindfulnessPractice === 'yes' && styles.yesNoTextSelected
-                            ]}>Yes</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.yesNoButton,
-                                mindfulnessPractice === 'no' && styles.noButtonSelected
-                            ]}
-                            onPress={() => setMindfulnessPractice('no')}
-                        >
-                            <Ionicons
-                                name={mindfulnessPractice === 'no' ? 'close-circle' : 'close-circle-outline'}
-                                size={24}
-                                color={mindfulnessPractice === 'no' ? '#FFFFFF' : '#EF4444'}
-                            />
-                            <Text style={[
-                                styles.yesNoText,
-                                mindfulnessPractice === 'no' && styles.yesNoTextSelected
-                            ]}>No</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {mindfulnessPractice === 'yes' && (
-                        <View style={styles.practiceDetails}>
-                            <Text style={styles.practiceLabel}>Duration (minutes)</Text>
-                            <TextInput
-                                style={styles.durationInput}
-                                placeholder="e.g., 10"
-                                placeholderTextColor="#94A3B8"
-                                value={practiceDuration}
-                                onChangeText={setPracticeDuration}
-                                keyboardType="numeric"
-                            />
-
-                            <Text style={[styles.practiceLabel, { marginTop: 16 }]}>What did you practice?</Text>
-                            <View style={styles.practiceGrid}>
-                                {PRACTICE_TYPES.map((practice) => (
+                            <View style={styles.emojiRow}>
+                                {RelaxationIcons.map((IconComponent, index) => (
                                     <TouchableOpacity
-                                        key={practice}
+                                        key={index}
                                         style={[
-                                            styles.practiceChip,
-                                            selectedPractices.includes(practice) && styles.practiceChipSelected
+                                            styles.emojiButton,
+                                            relaxationLevel === index + 1 && styles.emojiButtonSelected
                                         ]}
-                                        onPress={() => togglePractice(practice)}
+                                        onPress={() => setRelaxationLevel(index + 1)}
+                                        activeOpacity={0.7}
                                     >
-                                        <Text style={[
-                                            styles.practiceChipText,
-                                            selectedPractices.includes(practice) && styles.practiceChipTextSelected
-                                        ]}>
-                                            {practice}
-                                        </Text>
+                                        <IconComponent size={36} />
                                     </TouchableOpacity>
                                 ))}
                             </View>
+                            <View style={styles.scaleLabels}>
+                                <Text style={styles.scaleText}>Very Tense (1)</Text>
+                                <Text style={styles.scaleText}>Deeply Calm (5)</Text>
+                            </View>
                         </View>
-                    )}
-                </View>
 
-                {/* 3. Stress Level */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#FEE2E2' }]}>
-                            <Ionicons name="flash-outline" size={24} color="#EF4444" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Stress Level</Text>
-                            <Text style={styles.sectionSubtitle}>How stressed do you feel? (1-5)</Text>
-                        </View>
-                    </View>
-                    <View style={styles.emojiRow}>
-                        {StressIcons.map((IconComponent, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.emojiButton,
-                                    stressLevel === index + 1 && styles.emojiButtonSelected
-                                ]}
-                                onPress={() => setStressLevel(index + 1)}
-                            >
-                                <IconComponent size={36} />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.scaleLabels}>
-                        <Text style={styles.scaleText}>Low</Text>
-                        <Text style={styles.scaleText}>High</Text>
-                    </View>
-                </View>
+                        {/* Stress */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                                    <Ionicons name="flash-outline" size={24} color="#EF4444" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Stress Level</Text>
+                                    <Text style={styles.sectionSubtitle}>Select the emoji that matches your stress level today</Text>
+                                </View>
+                            </View>
 
-                {/* 4. Mood Level */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#D1FAE5' }]}>
-                            <Ionicons name="happy-outline" size={24} color="#64C59A" />
+                            <View style={styles.emojiRow}>
+                                {StressIcons.map((IconComponent, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.emojiButton,
+                                            stressLevel === index + 1 && styles.emojiButtonSelected
+                                        ]}
+                                        onPress={() => setStressLevel(index + 1)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <IconComponent size={36} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <View style={styles.scaleLabels}>
+                                <Text style={styles.scaleText}>Peaceful (1)</Text>
+                                <Text style={styles.scaleText}>Highly Stressed (5)</Text>
+                            </View>
                         </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Mood Level</Text>
-                            <Text style={styles.sectionSubtitle}>How is your mood today? (1-5)</Text>
-                        </View>
                     </View>
-                    <View style={styles.emojiRow}>
-                        {MoodIcons.map((IconComponent, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.emojiButton,
-                                    moodLevel === index + 1 && styles.emojiButtonSelected
-                                ]}
-                                onPress={() => setMoodLevel(index + 1)}
-                            >
-                                <IconComponent size={36} />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.scaleLabels}>
-                        <Text style={styles.scaleText}>Bad</Text>
-                        <Text style={styles.scaleText}>Good</Text>
-                    </View>
-                </View>
+                )}
 
-                {/* 5. Influencing Factors */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#FEF3C7' }]}>
-                            <Ionicons name="pricetag-outline" size={24} color="#F59E0B" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Influencing Factors</Text>
-                            <Text style={styles.sectionSubtitle}>What affected your mood today? (Select one)</Text>
-                        </View>
-                    </View>
-                    <View style={{ gap: 12 }}>
-                        {INFLUENCING_FACTORS.map((item) => (
-                            <TouchableOpacity
-                                key={item.label}
-                                style={[
-                                    styles.factorChip,
-                                    { width: '100%', alignItems: 'flex-start', padding: 12 },
-                                    selectedFactor === item.label && styles.factorChipSelected
-                                ]}
-                                onPress={() => toggleFactor(item.label)}
-                            >
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                {/* STEP 2: Mindfulness Practice */}
+                {currentStep === 2 && (
+                    <View style={styles.wizardCard}>
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: '#E0E7FF' }]}>
+                                    <Ionicons name="flower-outline" size={24} color="#6366F1" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
+                                    <Text style={styles.sectionSubtitle}>Did you spend time practicing mindfulness today?</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.yesNoRow}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.yesNoButton,
+                                        mindfulnessPractice === 'yes' && styles.yesButtonSelected
+                                    ]}
+                                    onPress={() => setMindfulnessPractice('yes')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={mindfulnessPractice === 'yes' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                        size={22}
+                                        color={mindfulnessPractice === 'yes' ? '#FFFFFF' : Colors.primary}
+                                    />
                                     <Text style={[
-                                        styles.factorText,
-                                        { fontSize: 15, fontWeight: '600', marginBottom: 4 },
-                                        selectedFactor === item.label && styles.factorTextSelected
-                                    ]}>
-                                        {item.label}
-                                    </Text>
-                                    {selectedFactor === item.label && (
-                                        <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                                        styles.yesNoText,
+                                        mindfulnessPractice === 'yes' && styles.yesNoTextSelected
+                                    ]}>Yes, I did</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.yesNoButton,
+                                        mindfulnessPractice === 'no' && styles.noButtonSelected
+                                    ]}
+                                    onPress={() => setMindfulnessPractice('no')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={mindfulnessPractice === 'no' ? 'close-circle' : 'close-circle-outline'}
+                                        size={22}
+                                        color={mindfulnessPractice === 'no' ? '#FFFFFF' : '#EF4444'}
+                                    />
+                                    <Text style={[
+                                        styles.yesNoText,
+                                        mindfulnessPractice === 'no' && styles.yesNoTextSelected
+                                    ]}>No</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {mindfulnessPractice === 'yes' && (
+                                <View style={styles.practiceDetails}>
+                                    <Text style={styles.practiceLabel}>Practice Duration (minutes)</Text>
+                                    <TextInput
+                                        style={styles.durationInput}
+                                        placeholder="Enter duration (e.g. 15)"
+                                        placeholderTextColor="#94A3B8"
+                                        value={practiceDuration}
+                                        onChangeText={setPracticeDuration}
+                                        keyboardType="numeric"
+                                    />
+
+                                    <Text style={[styles.practiceLabel, { marginTop: 20 }]}>What did you practice?</Text>
+                                    <View style={styles.practiceGrid}>
+                                        {PRACTICE_TYPES.map((practice) => {
+                                            const isSelected = selectedPractices.includes(practice);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={practice}
+                                                    style={[
+                                                        styles.practiceChip,
+                                                        isSelected && styles.practiceChipSelected
+                                                    ]}
+                                                    onPress={() => togglePractice(practice)}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[
+                                                        styles.practiceChipText,
+                                                        isSelected && styles.practiceChipTextSelected
+                                                    ]}>
+                                                        {practice}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+
+                                    {selectedPractices.includes('Other') && (
+                                        <View style={{ marginTop: 16 }}>
+                                            <Text style={styles.practiceLabel}>Please specify what you practiced</Text>
+                                            <TextInput
+                                                style={styles.durationInput}
+                                                placeholder="Enter practice name"
+                                                placeholderTextColor="#94A3B8"
+                                                value={otherPracticeText}
+                                                onChangeText={setOtherPracticeText}
+                                            />
+                                        </View>
                                     )}
                                 </View>
-
-                                <Text style={[
-                                    { fontSize: 13, color: '#64748B', marginTop: 2 },
-                                    selectedFactor === item.label && { color: '#E0E7FF' }
-                                ]}>
-                                    <Text style={{ fontWeight: '600' }}>Covers: </Text>{item.covers}
-                                </Text>
-                                <Text style={[
-                                    { fontSize: 12, color: '#94A3B8', marginTop: 4, fontStyle: 'italic' },
-                                    selectedFactor === item.label && { color: '#CBD5E1' }
-                                ]}>
-                                    Theory: {item.theory}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                {/* 5. Sleep Schedule */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#EDE9FE' }]}>
-                            <Ionicons name="time-outline" size={24} color="#8B5CF6" />
-                        </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Sleep Schedule</Text>
-                            <Text style={styles.sectionSubtitle}>When did you sleep and wake up?</Text>
+                            )}
                         </View>
                     </View>
+                )}
 
-                    <Text style={styles.timeLabel}>Sleep Time</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll}>
-                        {SLEEP_TIMES.map((time) => (
-                            <TouchableOpacity
-                                key={time}
-                                style={[
-                                    styles.timeChip,
-                                    sleepStart === time && styles.timeChipSelected
-                                ]}
-                                onPress={() => setSleepStart(time)}
-                            >
-                                <Text style={[
-                                    styles.timeChipText,
-                                    sleepStart === time && styles.timeChipTextSelected
-                                ]}>
-                                    {time}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                {/* STEP 3: Mood & Factor */}
+                {currentStep === 3 && (
+                    <View style={styles.wizardCard}>
+                        {/* Mood */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
+                                    <Ionicons name="happy-outline" size={24} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Mood Level</Text>
+                                    <Text style={styles.sectionSubtitle}>How would you rate your mood today?</Text>
+                                </View>
+                            </View>
 
-                    <Text style={[styles.timeLabel, { marginTop: 16 }]}>Wake Time</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll}>
-                        {WAKE_TIMES.map((time) => (
-                            <TouchableOpacity
-                                key={time}
-                                style={[
-                                    styles.timeChip,
-                                    wakeUp === time && styles.timeChipSelected
-                                ]}
-                                onPress={() => setWakeUp(time)}
-                            >
-                                <Text style={[
-                                    styles.timeChipText,
-                                    wakeUp === time && styles.timeChipTextSelected
-                                ]}>
-                                    {time}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-
-                {/* 6. Sleep Quality */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <View style={[styles.sectionIconCircle, { backgroundColor: '#DBEAFE' }]}>
-                            <Ionicons name="moon-outline" size={24} color="#3B82F6" />
+                            <View style={styles.emojiRow}>
+                                {MoodIcons.map((IconComponent, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.emojiButton,
+                                            moodLevel === index + 1 && styles.emojiButtonSelected
+                                        ]}
+                                        onPress={() => setMoodLevel(index + 1)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <IconComponent size={36} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <View style={styles.scaleLabels}>
+                                <Text style={styles.scaleText}>Low/Heavy (1)</Text>
+                                <Text style={styles.scaleText}>Joyful/Bright (5)</Text>
+                            </View>
                         </View>
-                        <View>
-                            <Text style={styles.sectionTitle}>Sleep Quality</Text>
-                            <Text style={styles.sectionSubtitle}>How well did you sleep? (1-5)</Text>
+
+                        {/* Factor */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                                    <Ionicons name="pricetag-outline" size={24} color="#F59E0B" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Primary Influencing Factor</Text>
+                                    <Text style={styles.sectionSubtitle}>Select the single factor that mostly affected your mood today</Text>
+                                </View>
+                            </View>
+
+                            <View style={{ gap: 10 }}>
+                                {INFLUENCING_FACTORS.map((item) => {
+                                    const isSelected = selectedFactor === item.label;
+                                    return (
+                                        <TouchableOpacity
+                                            key={item.label}
+                                            style={[
+                                                styles.factorChip,
+                                                isSelected && styles.factorChipSelected
+                                            ]}
+                                            onPress={() => toggleFactor(item.label)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                <Text style={[
+                                                    styles.factorText,
+                                                    isSelected && styles.factorTextSelected
+                                                ]}>
+                                                    {item.label}
+                                                </Text>
+                                                {isSelected && (
+                                                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                                                )}
+                                            </View>
+                                            <Text style={[styles.factorDesc, isSelected && styles.factorDescSelected]}>
+                                                {item.covers}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
                         </View>
                     </View>
-                    <View style={styles.emojiRow}>
-                        {SleepIcons.map((IconComponent, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.emojiButton,
-                                    sleepQuality === index + 1 && styles.emojiButtonSelected
-                                ]}
-                                onPress={() => setSleepQuality(index + 1)}
-                            >
-                                <IconComponent size={36} />
-                            </TouchableOpacity>
-                        ))}
+                )}
+
+                {/* STEP 4: Sleep Schedule */}
+                {currentStep === 4 && (
+                    <View style={styles.wizardCard}>
+                        {/* Sleep quality */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: '#DBEAFE' }]}>
+                                    <Ionicons name="moon-outline" size={24} color="#3B82F6" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Sleep Quality</Text>
+                                    <Text style={styles.sectionSubtitle}>Rate the quality of your sleep last night</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.emojiRow}>
+                                {SleepIcons.map((IconComponent, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.emojiButton,
+                                            sleepQuality === index + 1 && styles.emojiButtonSelected
+                                        ]}
+                                        onPress={() => setSleepQuality(index + 1)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <IconComponent size={36} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <View style={styles.scaleLabels}>
+                                <Text style={styles.scaleText}>Restless (1)</Text>
+                                <Text style={styles.scaleText}>Refreshed (5)</Text>
+                            </View>
+                        </View>
+
+                        {/* Sleep Times */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
+                                    <Ionicons name="time-outline" size={24} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Sleep Schedule</Text>
+                                    <Text style={styles.sectionSubtitle}>Select your approximate sleep and wake times</Text>
+                                </View>
+                            </View>
+
+                            <Text style={styles.timeSectionLabel}>Approximate bedtime</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll} contentContainerStyle={{ paddingVertical: 4 }}>
+                                {SLEEP_TIMES.map((time) => (
+                                    <TouchableOpacity
+                                        key={time}
+                                        style={[
+                                            styles.timeChip,
+                                            sleepStart === time && styles.timeChipSelected
+                                        ]}
+                                        onPress={() => setSleepStart(time)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={[
+                                            styles.timeChipText,
+                                            sleepStart === time && styles.timeChipTextSelected
+                                        ]}>
+                                            {time}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            <Text style={[styles.timeSectionLabel, { marginTop: 16 }]}>Approximate wake time</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.timeScroll} contentContainerStyle={{ paddingVertical: 4 }}>
+                                {WAKE_TIMES.map((time) => (
+                                    <TouchableOpacity
+                                        key={time}
+                                        style={[
+                                            styles.timeChip,
+                                            wakeUp === time && styles.timeChipSelected
+                                        ]}
+                                        onPress={() => setWakeUp(time)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={[
+                                            styles.timeChipText,
+                                            wakeUp === time && styles.timeChipTextSelected
+                                        ]}>
+                                            {time}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
                     </View>
-                    <View style={styles.scaleLabels}>
-                        <Text style={styles.scaleText}>Poor</Text>
-                        <Text style={styles.scaleText}>Great</Text>
-                    </View>
-                </View>
+                )}
 
-
-
-
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                    style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                    onPress={handleSubmit}
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting ? (
-                        <ActivityIndicator color="#FFFFFF" />
+                {/* Navigation Controls inside Wizard */}
+                <View style={styles.navigationRow}>
+                    {currentStep > 0 ? (
+                        <TouchableOpacity
+                            style={styles.backStepButton}
+                            onPress={prevStep}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
+                            <Text style={styles.backStepButtonText}>Back</Text>
+                        </TouchableOpacity>
                     ) : (
-                        <Text style={styles.submitButtonText}>Submit Daily Check-in</Text>
+                        <View style={{ flex: 1 }} />
                     )}
-                </TouchableOpacity>
 
-                <View style={{ height: 100 }} />
+                    {currentStep < 4 ? (
+                        <TouchableOpacity
+                            style={[
+                                styles.nextStepButton,
+                                !isStepValid() && styles.nextStepButtonDisabled
+                            ]}
+                            onPress={nextStep}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.nextStepButtonText}>Next Step</Text>
+                            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={[
+                                styles.submitStepButton,
+                                (isSubmitting || !isStepValid()) && styles.submitStepButtonDisabled
+                            ]}
+                            onPress={handleSubmit}
+                            disabled={isSubmitting || !isStepValid()}
+                            activeOpacity={0.7}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <>
+                                    <Text style={styles.submitStepButtonText}>Finish & Save</Text>
+                                    <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                <View style={{ height: 40 }} />
             </ScrollView>
         </SafeAreaView>
     );
@@ -731,7 +821,7 @@ export default function DailySlidersScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F6F8F9', // Soft cream backdrop
     },
     loadingContainer: {
         flex: 1,
@@ -743,50 +833,81 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
+        paddingVertical: 14,
     },
     backButton: {
         width: 40,
         height: 40,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
     },
     title: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1E293B',
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#2D3436',
     },
     progressBadge: {
-        backgroundColor: Colors.primary,
+        backgroundColor: THEME_BG,
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 16,
+        borderRadius: 20,
     },
     progressText: {
-        color: '#FFFFFF',
+        color: Colors.primary,
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    progressBarContainer: {
+        paddingHorizontal: 24,
+        marginBottom: 12,
+        alignItems: 'center',
+    },
+    progressBarBg: {
+        height: 8,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
+        width: '100%',
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: Colors.primary,
+        borderRadius: 4,
+    },
+    stepIndicator: {
         fontSize: 12,
         fontWeight: '600',
+        color: '#64748B',
+        marginTop: 6,
     },
     content: {
         padding: 20,
     },
-    section: {
+    wizardCard: {
+        backgroundColor: 'transparent',
+        borderRadius: 0,
+        padding: 0,
+        minHeight: 300,
+    },
+    samsungPanel: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 20,
+        borderRadius: 24,
+        padding: 24,
         marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
     },
     sectionIconCircle: {
         width: 44,
@@ -798,19 +919,20 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1E293B',
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#2D3436',
     },
     sectionSubtitle: {
         fontSize: 12,
         color: '#64748B',
         marginTop: 2,
+        lineHeight: 16,
     },
-    // Yes/No buttons
     yesNoRow: {
         flexDirection: 'row',
         gap: 12,
+        marginVertical: 10,
     },
     yesNoButton: {
         flex: 1,
@@ -818,48 +940,48 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 14,
-        borderRadius: 12,
+        paddingVertical: 16,
+        borderRadius: 30, // Premium rounded pill
         backgroundColor: '#F1F5F9',
-        borderWidth: 2,
-        borderColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
     },
     yesButtonSelected: {
-        backgroundColor: '#64C59A',
-        borderColor: '#64C59A',
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
     },
     noButtonSelected: {
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
     },
     yesNoText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: '#475569',
     },
     yesNoTextSelected: {
         color: '#FFFFFF',
     },
-    // Practice details
     practiceDetails: {
-        marginTop: 16,
-        paddingTop: 16,
+        marginTop: 20,
+        paddingTop: 20,
         borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
+        borderTopColor: '#F1F5F9',
     },
     practiceLabel: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#475569',
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#2D3436',
         marginBottom: 8,
     },
     durationInput: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
-        padding: 14,
-        fontSize: 16,
-        color: '#1E293B',
-        borderWidth: 1,
+        backgroundColor: '#F6F8F9',
+        borderRadius: 30, // Consistent rounded styling
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        fontSize: 15,
+        color: '#2D3436',
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
     },
     practiceGrid: {
@@ -868,16 +990,16 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     practiceChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         backgroundColor: '#F1F5F9',
-        borderRadius: 20,
+        borderRadius: 30, // Rounded pill
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     practiceChipSelected: {
-        backgroundColor: '#667eea',
-        borderColor: '#667eea',
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
     },
     practiceChipText: {
         fontSize: 13,
@@ -885,53 +1007,43 @@ const styles = StyleSheet.create({
     },
     practiceChipTextSelected: {
         color: '#FFFFFF',
-        fontWeight: '500',
+        fontWeight: '600',
     },
-    // Emoji buttons
     emojiRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        marginVertical: 10,
     },
     emojiButton: {
-        width: (width - 80) / 5 - 8,
+        width: (width - 88) / 5 - 6,
         aspectRatio: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: '#F6F8F9',
+        borderRadius: 20,
         borderWidth: 2,
         borderColor: 'transparent',
     },
     emojiButtonSelected: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: THEME_BG,
         borderColor: Colors.primary,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
     },
     scaleLabels: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 8,
+        marginTop: 6,
     },
     scaleText: {
         fontSize: 11,
         color: '#94A3B8',
-    },
-    // Factors
-    factorsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+        fontWeight: '500',
     },
     factorChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        backgroundColor: '#F1F5F9',
+        width: '100%',
+        padding: 16,
+        backgroundColor: '#F6F8F9',
         borderRadius: 20,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
     },
     factorChipSelected: {
@@ -939,18 +1051,25 @@ const styles = StyleSheet.create({
         borderColor: Colors.primary,
     },
     factorText: {
-        fontSize: 13,
-        color: '#475569',
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#2D3436',
     },
     factorTextSelected: {
         color: '#FFFFFF',
-        fontWeight: '500',
     },
-    // Time chips
-    timeLabel: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#475569',
+    factorDesc: {
+        fontSize: 12,
+        color: '#64748B',
+        marginTop: 4,
+    },
+    factorDescSelected: {
+        color: '#E6F4EA',
+    },
+    timeSectionLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#2D3436',
         marginBottom: 8,
     },
     timeScroll: {
@@ -960,7 +1079,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         backgroundColor: '#F1F5F9',
-        borderRadius: 20,
+        borderRadius: 30, // Rounded pill
         marginHorizontal: 4,
         borderWidth: 1,
         borderColor: '#E2E8F0',
@@ -975,17 +1094,29 @@ const styles = StyleSheet.create({
     },
     timeChipTextSelected: {
         color: '#FFFFFF',
-        fontWeight: '500',
+        fontWeight: '600',
     },
-    // Recording card
+    videoWrapper: {
+        height: 200,
+        borderRadius: 20,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
     recordingCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-        borderRadius: 12,
+        backgroundColor: '#F6F8F9',
+        borderRadius: 20,
         padding: 16,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
+        marginBottom: 16,
     },
     recordingIcon: {
         marginRight: 16,
@@ -996,35 +1127,87 @@ const styles = StyleSheet.create({
     recordingTitle: {
         fontSize: 15,
         fontWeight: '600',
-        color: '#1E293B',
+        color: '#2D3436',
     },
     recordingDuration: {
         fontSize: 12,
         color: '#64748B',
         marginTop: 2,
     },
-    // Submit
-    submitButton: {
-        backgroundColor: Colors.primary,
-        paddingVertical: 16,
-        borderRadius: 30,
-        alignItems: 'center',
+    stepTip: {
+        fontSize: 11,
+        fontStyle: 'italic',
+        color: '#94A3B8',
+        lineHeight: 16,
+        textAlign: 'center',
         marginTop: 8,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
     },
-    submitButtonDisabled: {
-        opacity: 0.7,
+    navigationRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+        gap: 12,
     },
-    submitButtonText: {
-        color: '#FFFFFF',
+    backStepButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 16,
+        borderRadius: 30, // Matching corner radius
+        borderWidth: 1.5,
+        borderColor: '#DFE6E9',
+        backgroundColor: '#FFFFFF',
+    },
+    backStepButtonText: {
         fontSize: 16,
         fontWeight: '600',
+        color: '#636E72',
     },
-    // Success
+    nextStepButton: {
+        flex: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 16,
+        borderRadius: 30, // Consistent with primary button style
+        backgroundColor: Colors.primary,
+    },
+    nextStepButtonDisabled: {
+        backgroundColor: '#DFE6E9',
+        opacity: 0.7,
+    },
+    nextStepButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    submitStepButton: {
+        flex: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 16,
+        borderRadius: 30,
+        backgroundColor: Colors.primary, // Sage green highlight
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    submitStepButtonDisabled: {
+        backgroundColor: '#DFE6E9',
+        opacity: 0.7,
+    },
+    submitStepButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
     successContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -1035,7 +1218,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: '#ECFDF5',
+        backgroundColor: THEME_BG,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 24,

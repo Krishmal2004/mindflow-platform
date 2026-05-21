@@ -121,7 +121,7 @@ export default function LoginScreen() {
 
             {/* Background Decoration */}
             <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} />
+                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
             </View>
 
             <KeyboardAvoidingView
@@ -140,7 +140,7 @@ export default function LoginScreen() {
 
                     {/* Illustration - Centered */}
                     <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                        <MeditationIllustration width={width * 0.75} height={width * 0.75} />
+                        <MeditationIllustration width={width * 0.75} height={width * 0.75} color={Colors.primary} />
                     </Animated.View>
 
                     {/* Bottom Panel Form - Animated Slide Up */}

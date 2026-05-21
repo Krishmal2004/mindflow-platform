@@ -47,12 +47,12 @@ export const JourneyIcons = {
     ),
 
     // Chart Icon for Thrive Tracker
-    Chart: ({ width = 40, height = 40, color = "#10B981" }: IconProps) => (
+    Chart: ({ width = 40, height = 40, color = "#749F82" }: IconProps) => (
         <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
             <Defs>
                 <LinearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0" stopColor="#34D399" stopOpacity="1" />
-                    <Stop offset="1" stopColor="#059669" stopOpacity="1" />
+                    <Stop offset="0" stopColor="#94BCA1" stopOpacity="1" />
+                    <Stop offset="1" stopColor="#749F82" stopOpacity="1" />
                 </LinearGradient>
             </Defs>
             <Path d="M18 20V10" stroke="url(#chartGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
