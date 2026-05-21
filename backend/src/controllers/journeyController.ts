@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { supabase } from '../config/supabase';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { DailyService } from '../services/dailyService';
 import { WeeklyService } from '../services/weeklyService';
 import { ThriveService } from '../services/thriveService';
@@ -12,49 +13,40 @@ const thriveService = new ThriveService();
 const stressService = new StressService();
 const mindfulService = new MindfulService();
 
-export const getJourneyStatus = async (req: Request, res: Response) => {
+/** Aggregated status for all 5 journey steps. */
+export const getJourneyStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        const userId = (req as any).user?.id;
-        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+        if (!req.user?.id) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
 
         const [daily, weekly, thrive, stress, mindful] = await Promise.all([
-            dailyService.getDailyStatus(userId),
-            weeklyService.getWeeklyStatus(userId),
-            thriveService.getThriveStatus(userId),
-            stressService.getStressStatus(userId),
-            mindfulService.getMindfulStatus(userId)
+            dailyService.getDailyStatus(req.user.id),
+            weeklyService.getWeeklyStatus(req.user.id),
+            thriveService.getThriveStatus(req.user.id),
+            stressService.getStressStatus(req.user.id),
+            mindfulService.getMindfulStatus(req.user.id),
         ]);
 
-        res.json({
-            daily,
-            weekly,
-            thrive,
-            stress,
-            mindful
-        });
-
+        res.json({ daily, weekly, thrive, stress, mindful });
     } catch (error) {
-        console.error('Error in getJourneyStatus:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('getJourneyStatus:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
-export const getJourneyData = async (req: Request, res: Response) => {
+/** Full journey data for admin/web dashboard consumption. */
+export const getJourneyData = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        const userId = (req as any).user?.id;
-
-        if (!userId) {
-            return res.status(401).json({ error: 'Unauthorized' });
+        if (!req.user?.id) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
         }
 
-        // Parallel fetching for performance
-        const [
-            dailyRes,
-            weeklyRes,
-            pss10Res,
-            ffmq15Res,
-            wemwbs14Res
-        ] = await Promise.all([
+        const userId = req.user.id;
+
+        const [dailyRes, weeklyRes, pss10Res, ffmq15Res, wemwbs14Res] = await Promise.all([
             supabase.from('daily_sliders').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
             supabase.from('voice_recordings').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
             supabase.from('questionnaire_pss10_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
@@ -74,12 +66,11 @@ export const getJourneyData = async (req: Request, res: Response) => {
             research: {
                 pss10: pss10Res.data || [],
                 ffmq15: ffmq15Res.data || [],
-                wemwbs14: wemwbs14Res.data || []
-            }
+                wemwbs14: wemwbs14Res.data || [],
+            },
         });
-
     } catch (error) {
-        console.error('Error in getJourneyData:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error('getJourneyData:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

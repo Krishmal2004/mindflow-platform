@@ -1,19 +1,13 @@
 import { supabase } from '../config/supabase';
 
-interface FFMQResponse {
-    user_id: string;
-    q1: number; q2: number; q3: number; q4: number; q5: number;
-    q6: number; q7: number; q8: number; q9: number; q10: number;
-    q11: number; q12: number; q13: number; q14: number; q15: number;
-    duration: number;
-}
+/** Reverse scoring: Score = 6 - UserRating. */
+const reverseScore = (val: number): number => 6 - val;
 
 export class MindfulService {
-    // Check if user has submitted in the last 30 days
+    /** Check if user has submitted FFMQ-15 in the last 30 days. */
     public async getMindfulStatus(userId: string) {
-        const today = new Date();
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(today.getDate() - 30);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const { data, error } = await supabase
             .from('questionnaire_ffmq15_responses')
@@ -25,71 +19,34 @@ export class MindfulService {
 
         if (error) throw error;
 
-        const lastSubmission = data && data[0];
+        const last = data?.[0];
         let nextReset: Date | null = null;
-
-        if (lastSubmission) {
-            const lastDate = new Date(lastSubmission.created_at);
-            nextReset = new Date(lastDate);
-            nextReset.setDate(lastDate.getDate() + 30);
+        if (last) {
+            nextReset = new Date(last.created_at);
+            nextReset.setDate(nextReset.getDate() + 30);
         }
 
-        return {
-            completed: !!lastSubmission,
-            nextReset
-        };
+        return { completed: !!last, nextReset };
     }
 
-    // Submit a new FFMQ entry
-    public async submitMindfulEntry(userId: string, entryData: any) {
+    /** Submit FFMQ-15 entry with facet scoring. */
+    public async submitMindfulEntry(userId: string, entry: Record<string, number>) {
         const questions = Array.from({ length: 15 }, (_, i) => `q${i + 1}`);
 
-        // 1. Validation
+        // Validate all 15 answers
         for (const q of questions) {
-            if (!entryData[q] || entryData[q] < 1 || entryData[q] > 5) {
-                throw new Error(`Invalid answer for ${q}. Must be between 1 and 5.`);
+            if (!entry[q] || entry[q] < 1 || entry[q] > 5) {
+                throw new Error(`Invalid answer for ${q}. Must be 1–5.`);
             }
         }
 
-        // 2. Calculate Facet Scores with Reverse Scoring Logic
-        // Formula: Score = 6 - UserRating (for reverse items)
+        // Facet scores (reverse-scored items noted)
+        const observingScore = entry.q1 + entry.q6 + entry.q11;
+        const describingScore = entry.q2 + entry.q7 + reverseScore(entry.q12);
+        const awarenessScore = reverseScore(entry.q3) + reverseScore(entry.q8) + reverseScore(entry.q13);
+        const nonJudgingScore = reverseScore(entry.q4) + reverseScore(entry.q9) + reverseScore(entry.q14);
+        const nonReactivityScore = entry.q5 + entry.q10 + entry.q15;
 
-        const getScore = (qKey: string, isReverse: boolean): number => {
-            const val = entryData[qKey] as number;
-            return isReverse ? (6 - val) : val;
-        };
-
-        // Facet: Observing (Q1, Q6, Q11) - NO Reverse
-        const observingScore =
-            getScore('q1', false) +
-            getScore('q6', false) +
-            getScore('q11', false);
-
-        // Facet: Describing (Q2, Q7, Q12) - Q12 Reverse
-        const describingScore =
-            getScore('q2', false) +
-            getScore('q7', false) +
-            getScore('q12', true);
-
-        // Facet: Awareness (Q3, Q8, Q13) - ALL Reverse
-        const awarenessScore =
-            getScore('q3', true) +
-            getScore('q8', true) +
-            getScore('q13', true);
-
-        // Facet: Non-Judging (Q4, Q9, Q14) - ALL Reverse
-        const nonJudgingScore =
-            getScore('q4', true) +
-            getScore('q9', true) +
-            getScore('q14', true);
-
-        // Facet: Non-Reactivity (Q5, Q10, Q15) - NO Reverse
-        const nonReactivityScore =
-            getScore('q5', false) +
-            getScore('q10', false) +
-            getScore('q15', false);
-
-        // 3. Prepare Payload (explicit fields only)
         const payload: Record<string, any> = {
             user_id: userId,
             observing_score: observingScore,
@@ -97,14 +54,11 @@ export class MindfulService {
             awareness_score: awarenessScore,
             non_judging_score: nonJudgingScore,
             non_reactivity_score: nonReactivityScore,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
         };
-        for (const q of questions) {
-            payload[q] = entryData[q];
-        }
-        if (typeof entryData.duration === 'number') {
-            payload.duration = entryData.duration;
-        }
+
+        for (const q of questions) payload[q] = entry[q];
+        if (typeof entry.duration === 'number') payload.duration = entry.duration;
 
         const { data, error } = await supabase
             .from('questionnaire_ffmq15_responses')

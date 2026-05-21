@@ -5,11 +5,12 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const dailyService = new DailyService();
 
+/** Daily sliders: all core metrics are 1–5 per DB CHECK constraints. */
 const dailyEntrySchema = z.object({
-    stress_level: z.number().min(1).max(10),
-    mood: z.number().min(1).max(10),
-    sleep_quality: z.number().min(1).max(10),
-    relaxation_level: z.number().min(1).max(10),
+    stress_level: z.number().int().min(1).max(5),
+    mood: z.number().int().min(1).max(5),
+    sleep_quality: z.number().int().min(1).max(5),
+    relaxation_level: z.number().int().min(1).max(5),
     sleep_start_time: z.string().optional().nullable(),
     wake_up_time: z.string().optional().nullable(),
     feelings: z.string().max(2000).optional().nullable(),
@@ -20,10 +21,8 @@ const dailyEntrySchema = z.object({
 
 export const getDailyStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.user || !req.user.id) {
-            res.status(401).json({ error: 'User not authenticated' });
-            return;
-        }
+        if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
         const status = await dailyService.getDailyStatus(req.user.id);
 
         if (status.completed) {
@@ -33,21 +32,18 @@ export const getDailyStatus = async (req: AuthenticatedRequest, res: Response): 
             res.json(status);
         }
     } catch (error: any) {
-        console.error('Error in getDailyStatus:', error);
+        console.error('getDailyStatus:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
     }
 };
 
 export const submitDailyEntry = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.user || !req.user.id) {
-            res.status(401).json({ error: 'User not authenticated' });
-            return;
-        }
+        if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
         const validation = dailyEntrySchema.safeParse(req.body);
         if (!validation.success) {
-            res.status(400).json({ error: 'Invalid submission data', details: validation.error.issues });
+            res.status(400).json({ error: 'Invalid submission', details: validation.error.issues });
             return;
         }
 
@@ -55,26 +51,25 @@ export const submitDailyEntry = async (req: AuthenticatedRequest, res: Response)
         const history = await dailyService.getRecentHistory(req.user.id);
         res.json({ ...result, history });
     } catch (error: any) {
-        console.error('Error in submitDailyEntry:', error);
+        console.error('submitDailyEntry:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
     }
 };
 
 export const updateVideoProgress = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.user || !req.user.id) {
-            res.status(401).json({ error: 'User not authenticated' });
-            return;
-        }
+        if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
         const { seconds } = req.body;
-        if (typeof seconds !== 'number') {
-            res.status(400).json({ error: 'Seconds must be a number' });
+        if (typeof seconds !== 'number' || seconds < 0) {
+            res.status(400).json({ error: 'Seconds must be a non-negative number' });
             return;
         }
+
         const result = await dailyService.updateVideoProgress(req.user.id, seconds);
         res.json(result);
     } catch (error: any) {
-        console.error('Error in updateVideoProgress:', error);
+        console.error('updateVideoProgress:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
     }
 };

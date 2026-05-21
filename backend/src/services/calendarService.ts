@@ -1,11 +1,11 @@
 import { supabase } from '../config/supabase';
 
 export class CalendarService {
-    public async getCalendarEvents(userId: string, startDate: string, endDate: string) {
+    /** Fetch calendar events within a date range (shared events, no per-user filter). */
+    public async getCalendarEvents(_userId: string, startDate: string, endDate: string) {
         const { data, error } = await supabase
             .from('calendar_events')
             .select('*')
-            .eq('user_id', userId)
             .gte('event_date', startDate)
             .lte('event_date', endDate)
             .order('event_date', { ascending: true });

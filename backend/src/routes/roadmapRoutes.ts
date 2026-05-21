@@ -3,7 +3,6 @@ import { requireAuth } from '../middlewares/authMiddleware';
 import { upload } from '../middlewares/uploadMiddleware';
 import * as dailyController from '../controllers/dailyController';
 import * as weeklyController from '../controllers/weeklyController';
-import * as questionnaireController from '../controllers/questionnaireController';
 import * as calendarController from '../controllers/calendarController';
 import * as thriveController from '../controllers/thriveController';
 import * as stressController from '../controllers/stressController';
@@ -22,15 +21,10 @@ router.get('/weekly/video', requireAuth, weeklyController.getWeeklyVideo);
 router.post('/weekly/upload', requireAuth, upload.single('file'), weeklyController.uploadAudio);
 router.post('/weekly', requireAuth, weeklyController.submitWeeklyEntry);
 
-// Main Questionnaire
-router.get('/questionnaire/active', requireAuth, questionnaireController.getActiveQuestionnaire);
-router.get('/questionnaire/status', requireAuth, questionnaireController.getQuestionnaireStatus);
-router.post('/questionnaire/submit', requireAuth, questionnaireController.submitQuestionnaire);
-
-// Calendar
+// Calendar (web-admin and web-app use /api/roadmap/calendar/events)
 router.get('/calendar/events', requireAuth, calendarController.getCalendarEvents);
 
-// Thrive Tracker (WEMWBS)
+// Thrive Tracker (WEMWBS-14)
 router.get('/thrive/status', requireAuth, thriveController.getThriveStatus);
 router.post('/thrive', requireAuth, thriveController.submitThriveEntry);
 
