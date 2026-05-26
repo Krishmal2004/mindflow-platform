@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/Auth.png" />
+    <link rel="apple-touch-icon" href="/Auth.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MindFlow" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="MindFlow — Track your daily well-being, complete guided exercises, and contribute to mindfulness research." />
+    <link rel="manifest" href="/manifest.json" />
+    <title>MindFlow</title>
+    <style>
+      /* Prevent iOS tap highlight and overscroll */
+      html { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+      body { -webkit-user-select: none; user-select: text; overscroll-behavior: none; }
+      /* Safe area padding for notched devices */
+      :root { --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); --sal: env(safe-area-inset-left); --sar: env(safe-area-inset-right); }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

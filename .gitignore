@@ -1,0 +1,41 @@
+# ===========================
+# Root .gitignore
+# ===========================
+
+# Environment variables (ALL .env files across ALL subdirectories)
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Expo / React Native
+.expo/
+web-build/
+
+# Vite
+*.local
