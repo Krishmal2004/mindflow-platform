@@ -10,6 +10,7 @@ import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
 import { API_URL } from '../config/api';
 
+
 const MeditationSplash = require('../../assets/app-icon.png');
 const { width } = Dimensions.get('window');
 
@@ -18,7 +19,6 @@ export default function SplashScreen() {
     const opacity = useSharedValue(0);
     const scale = useSharedValue(0.8);
     const textOpacity = useSharedValue(0);
-
 
     useEffect(() => {
         opacity.value = withTiming(1, { duration: 1200, easing: Easing.out(Easing.exp) });
@@ -35,7 +35,6 @@ export default function SplashScreen() {
                 const alreadyLaunched = await AsyncStorage.getItem('alreadyLaunched');
 
                 if (isLoggedIn === 'true' && token) {
-                    // VERIFY TOKEN WITH BACKEND
                     try {
                         const response = await fetch(`${API_URL}/api/profile`, {
                             method: 'GET',
@@ -45,23 +44,14 @@ export default function SplashScreen() {
                         });
 
                         if (response.ok) {
-                            // Token is valid, proceed
                             navigation.replace('MainTabs' as any);
                         } else {
-                            // Token expired or invalid
                             console.log("Session expired, directing to login");
                             await AsyncStorage.multiRemove(['isLoggedIn', 'authToken', 'user']);
                             navigation.replace('Login');
                         }
                     } catch (netError) {
-                        // If network error, we might want to let them in (offline mode) or block.
-                        // For now, assuming standard online-first app, we'll let them in if we think we have a token,
-                        // OR safer: redirect to login if we can't verify.
-                        // Given the user issue "not connected to DB", it's better to force verification or handle offline gracefully.
-                        // Let's assume strict verification for fixing the "issue".
                         console.log("Network error verifying session", netError);
-                        // Optional: Navigate to MainTabs but show offline banner?
-                        // For this specific fix request "keeping the session... not connected", forcing re-login on fail is safer.
                         navigation.replace('Login');
                     }
                 } else if (alreadyLaunched === null) {
@@ -78,7 +68,6 @@ export default function SplashScreen() {
         validateSession();
     }, []);
 
-
     const imageStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
         transform: [{ scale: scale.value }],
@@ -92,7 +81,6 @@ export default function SplashScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-
             <Animated.View style={[styles.imageContainer, imageStyle]}>
                 <Image
                     source={MeditationSplash}
@@ -102,10 +90,10 @@ export default function SplashScreen() {
             </Animated.View>
 
             <Animated.View style={[styles.textContainer, textStyle]}>
-                {/* <View style={styles.titleWrapper}>
+                <View style={styles.titleWrapper}>
                     <Text style={styles.titleThin}>Mind</Text>
                     <Text style={styles.titleBold}>Flow</Text>
-                </View> */}
+                </View>
                 <Text style={styles.subtitle}>Find your inner peace</Text>
             </Animated.View>
         </View>
@@ -115,51 +103,61 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F0F4F8', // Softer background
+        backgroundColor: Colors.background,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    decorationContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 0,
     },
     imageContainer: {
-        marginBottom: 40,
+        marginBottom: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        width: width * 0.8,
-        height: width * 0.8,
-        backgroundColor: 'rgba(255,255,255,0.5)',
-        borderRadius: width * 0.4,
-        shadowColor: "#667eea",
+        width: 200,
+        height: 200,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 100,
+        shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.12,
         shadowRadius: 20,
+        elevation: 4,
+        zIndex: 1,  
     },
     illustration: {
-        width: '80%',
-        height: '80%',
+        width: '65%',
+        height: '65%',
     },
     textContainer: {
         alignItems: 'center',
+        zIndex: 1,
     },
     titleWrapper: {
         flexDirection: 'row',
-        marginBottom: 12,
+        marginBottom: 8,
     },
     titleThin: {
-        fontSize: 42,
+        fontSize: 36,
         fontWeight: '300',
         color: '#2D3436',
-        letterSpacing: 2,
+        letterSpacing: 1,
     },
     titleBold: {
-        fontSize: 42,
-        fontWeight: '700',
+        fontSize: 36,
+        fontWeight: '800',
         color: Colors.primary,
-        letterSpacing: 2,
+        letterSpacing: 1,
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: 13,
         color: '#636E72',
-        letterSpacing: 4,
+        letterSpacing: 3,
         textTransform: 'uppercase',
-        fontWeight: '500',
+        fontWeight: '600',
     },
 });

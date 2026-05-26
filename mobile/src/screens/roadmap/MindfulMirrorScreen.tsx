@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootStackParamList } from '../../types/navigation';
 
 import { API_URL } from '../../config/api';
 import { Colors as GlobalColors } from '../../constants/colors';
@@ -54,7 +56,7 @@ const SCALE_OPTIONS = [
 ];
 
 export default function MindfulMirrorScreen() {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const startTimeRef = useRef<number | null>(null);
 
     // State
@@ -103,8 +105,12 @@ export default function MindfulMirrorScreen() {
             if (response.ok) {
                 const data = await response.json();
                 if (data.completed) {
-                    setAlreadySubmitted(true);
-                    if (data.nextReset) setNextReset(new Date(data.nextReset));
+                    navigation.replace('CompleteTask', {
+                        title: 'Great Job!',
+                        message: 'You have successfully completed the Mindful Mirror. See you in 1 month!',
+                        buttonText: 'Back to Journey'
+                    });
+                    return;
                 }
             }
         } catch (error) {
@@ -171,7 +177,11 @@ export default function MindfulMirrorScreen() {
             }
 
             showPopup('success', 'Reflection Saved!', 'Thank you for taking a moment to reflect on your mindfulness journey.', () => {
-                setAlreadySubmitted(true);
+                navigation.replace('CompleteTask', {
+                    title: 'Great Job!',
+                    message: 'You have successfully completed the Mindful Mirror. See you in 1 month!',
+                    buttonText: 'Back to Journey'
+                });
             });
 
         } catch (error: any) {

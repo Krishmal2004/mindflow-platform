@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path, Circle, Line, Text as SvgText, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Colors } from '../constants/colors';
 import { RootStackParamList } from '../types/navigation';
 import { LeavesDecoration } from '../components/LeavesDecoration';
@@ -119,6 +120,27 @@ export default function CompleteTaskScreen() {
     const sleepData = historyData?.map(d => d.sleep_quality).filter(v => v != null) || [];
     const relaxationData = historyData?.map(d => d.relaxation_level).filter(v => v != null) || [];
 
+    // Entrance Animations
+    const fadeAnim = useSharedValue(0);
+    const scaleAnim = useSharedValue(0.8);
+    const slideAnim = useSharedValue(24);
+
+    useEffect(() => {
+        fadeAnim.value = withTiming(1, { duration: 750, easing: Easing.out(Easing.quad) });
+        scaleAnim.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.back(1.5)) });
+        slideAnim.value = withTiming(0, { duration: 800, easing: Easing.out(Easing.cubic) });
+    }, []);
+
+    const animatedIconStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ scale: scaleAnim.value }],
+    }));
+
+    const animatedContentStyle = useAnimatedStyle(() => ({
+        opacity: fadeAnim.value,
+        transform: [{ translateY: slideAnim.value }],
+    }));
+
     const toggleStats = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setStatsExpanded(!statsExpanded);
@@ -127,11 +149,11 @@ export default function CompleteTaskScreen() {
     const isDaily = historyData && historyData.length > 0;
     
     // Choose theme colors dynamically
-    const themeColor = isDaily ? '#D97706' : '#6366F1';
-    const themeBg = isDaily ? '#FFFBEB' : '#EEF2FF';
+    const themeColor = isDaily ? '#D97706' : Colors.primary;
+    const themeBg = isDaily ? '#FFFBEB' : '#E6F4EA';
     const themeBgGrad = isDaily 
         ? ['#FFFBEB', '#FFF9F0', '#FFFFFF'] as const
-        : ['#F5F3FF', '#EEF2FF', '#FFFFFF'] as const;
+        : ['#E6F4EA', '#F1F7F3', '#FFFFFF'] as const;
 
     return (
         <LinearGradient
@@ -150,15 +172,17 @@ export default function CompleteTaskScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.header}>
-                    <View style={[styles.successIcon, { shadowColor: themeColor }]}>
+                    <Animated.View style={[styles.successIcon, { shadowColor: themeColor }, animatedIconStyle]}>
                         <Ionicons name="checkmark-circle" size={80} color={themeColor} />
-                    </View>
-                    <Text style={styles.title}>{title}</Text>
-                    <Text style={styles.message}>{message}</Text>
+                    </Animated.View>
+                    <Animated.View style={[styles.textCenter, animatedContentStyle]}>
+                        <Text style={styles.title}>{title}</Text>
+                        <Text style={styles.message}>{message}</Text>
+                    </Animated.View>
                 </View>
 
                 {historyData && historyData.length > 0 && (
-                    <View style={styles.statsCard}>
+                    <Animated.View style={[styles.statsCard, animatedContentStyle]}>
                         <TouchableOpacity
                             style={styles.statsHeaderButton}
                             onPress={toggleStats}
@@ -185,19 +209,21 @@ export default function CompleteTaskScreen() {
                                 <SimpleLineChart data={relaxationData} color="#0D9488" label="Relaxation Level" />
                             </View>
                         )}
-                    </View>
+                    </Animated.View>
                 )}
 
-                <TouchableOpacity
-                    style={[styles.homeButton, { backgroundColor: themeColor, shadowColor: themeColor }]}
-                    onPress={() => navigation.reset({
-                        index: 0,
-                        routes: [{ name: 'MainTabs' }],
-                    })}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.homeButtonText}>{buttonText}</Text>
-                </TouchableOpacity>
+                <Animated.View style={[{ width: '100%' }, animatedContentStyle]}>
+                    <TouchableOpacity
+                        style={[styles.homeButton, { backgroundColor: themeColor, shadowColor: themeColor }]}
+                        onPress={() => navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'MainTabs' }],
+                        })}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.homeButtonText}>{buttonText}</Text>
+                    </TouchableOpacity>
+                </Animated.View>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -223,6 +249,9 @@ const styles = StyleSheet.create({
     header: {
         alignItems: 'center',
         marginBottom: 30,
+    },
+    textCenter: {
+        alignItems: 'center',
     },
     successIcon: {
         marginBottom: 20,

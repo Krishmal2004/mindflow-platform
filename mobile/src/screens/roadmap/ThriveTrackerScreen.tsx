@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RootStackParamList } from '../../types/navigation';
 
 import { API_URL } from '../../config/api';
 import { Colors } from '../../constants/colors';
@@ -48,7 +50,7 @@ const SCALE_OPTIONS = [
 ];
 
 export default function ThriveTrackerScreen() {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const startTimeRef = useRef<number | null>(null);
 
     // State
@@ -97,8 +99,12 @@ export default function ThriveTrackerScreen() {
             if (response.ok) {
                 const data = await response.json();
                 if (data.completed) {
-                    setAlreadySubmitted(true);
-                    if (data.nextReset) setNextReset(new Date(data.nextReset));
+                    navigation.replace('CompleteTask', {
+                        title: 'Great Job!',
+                        message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!',
+                        buttonText: 'Back to Journey'
+                    });
+                    return;
                 }
             }
         } catch (error) {
@@ -165,7 +171,11 @@ export default function ThriveTrackerScreen() {
             }
 
             showPopup('success', 'Response Saved!', 'Thank you for tracking your wellbeing today.', () => {
-                setAlreadySubmitted(true);
+                navigation.replace('CompleteTask', {
+                    title: 'Great Job!',
+                    message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!',
+                    buttonText: 'Back to Journey'
+                });
             });
 
         } catch (error: any) {

@@ -59,7 +59,30 @@ backend/
 
 ---
 
-## 3. Deployment & Infrastructure
+## 3. Admin Web Portal (`/web-admin`)
+The client portal designed for researchers and platform administrators.
+
+- **Framework**: React with Vite
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Visualization**: Recharts (interactive participation metrics and score analytics)
+- **Authentication**: Supabase client authentication
+
+### Directory Structure
+```
+web-admin/
+├── src/
+│   ├── components/      # Common UI items & boundaries
+│   ├── hooks/           # User authentication hooks
+│   ├── pages/           # AdminDashboard, LoginPage, LandingPage
+│   ├── lib/             # API and Supabase connectors
+│   └── main.tsx         # App entry mounting point
+└── vite.config.ts       # Vite build configurations
+```
+
+---
+
+## 4. Deployment & Infrastructure
 - **Database**: PostgreSQL (Self-hosted or Cloud provider).
 - **Backend**: Can be deployed to any Node.js compatible host (Render, Railway, Heroku, AWS).
 - **Mobile**:
