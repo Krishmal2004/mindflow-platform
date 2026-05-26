@@ -30,11 +30,20 @@ export default function LoginScreen() {
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
 
     useEffect(() => {
         // Simple Fade In and slight scale up
         fadeAnim.value = withTiming(1, { duration: 800 });
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
+
+        const showSubscription = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
     }, []);
 
     const showNotification = (type: NotificationType, message: string) => {
@@ -138,10 +147,12 @@ export default function LoginScreen() {
                         <Text style={styles.headerText}>MindFlow</Text>
                     </Animated.View>
 
-                    {/* Illustration - Centered */}
-                    <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                        <MeditationIllustration width={width * 0.75} height={width * 0.75} color={Colors.primary} />
-                    </Animated.View>
+                    {/* Illustration - Centered (Hidden when keyboard is active to prevent scrolling) */}
+                    {!keyboardVisible && (
+                        <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                            <MeditationIllustration width={width * 0.67} height={width * 0.67} color={Colors.primary} />
+                        </Animated.View>
+                    )}
 
                     {/* Bottom Panel Form - Animated Slide Up */}
                     <Animated.View style={[styles.bottomPanel, panelStyle]}>
@@ -217,29 +228,29 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 60,
+        paddingTop: 40,
     },
     headerText: {
         fontSize: 16,
         fontWeight: '600',
         color: '#636E72', // Text Secondary
         letterSpacing: 2,
-        marginBottom: 20,
+        marginBottom: 10,
         textTransform: 'uppercase',
     },
     illustrationContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
+        marginBottom: 15,
     },
     bottomPanel: {
         backgroundColor: '#E3F2FD', // Soft Blue
         width: '100%',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
-        paddingTop: 30,
-        paddingBottom: 40,
-        paddingHorizontal: 30,
+        paddingTop: 24,
+        paddingBottom: 24,
+        paddingHorizontal: 24,
         alignItems: 'center',
         flex: 1, // Take remaining space
         shadowColor: "#000",
@@ -260,17 +271,17 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#2D3436',
         letterSpacing: 1,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     formContainer: {
         width: '100%',
-        gap: 15,
+        gap: 12,
     },
     inputWrapper: {
         backgroundColor: '#FFFFFF',
         borderRadius: 30,
         paddingHorizontal: 20,
-        paddingVertical: 14,
+        paddingVertical: 12,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -284,14 +295,14 @@ const styles = StyleSheet.create({
     loginButton: {
         backgroundColor: Colors.primary,
         borderRadius: 30,
-        paddingVertical: 18,
+        paddingVertical: 15,
         alignItems: 'center',
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
         elevation: 4,
-        marginTop: 10,
+        marginTop: 5,
     },
     loginButtonText: {
         color: '#FFFFFF',
@@ -302,7 +313,7 @@ const styles = StyleSheet.create({
     switchButton: {
         backgroundColor: '#95C27E', // Light Green
         borderRadius: 30,
-        paddingVertical: 18,
+        paddingVertical: 15,
         alignItems: 'center',
         shadowColor: '#95C27E',
         shadowOffset: { width: 0, height: 4 },

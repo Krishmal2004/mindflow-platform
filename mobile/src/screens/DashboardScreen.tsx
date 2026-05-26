@@ -13,6 +13,7 @@ import { Colors } from '../constants/colors';
 import { apiFetch } from '../lib/apiClient';
 import { LeavesDecoration } from '../components/LeavesDecoration';
 import { JourneyIcons } from '../components/JourneyIcons';
+import { PopupModal } from '../components/PopupModal';
 import {
     YogaSmall,
     QuoteIcon,
@@ -59,6 +60,7 @@ interface RoadmapNodeProps {
     top: number;
     left?: number;
     right?: number;
+    onPressLocked?: (isTimeLocked: boolean, nextReset: Date | null) => void;
 }
 
 const RoadmapNode = ({
@@ -77,6 +79,7 @@ const RoadmapNode = ({
     top,
     left,
     right,
+    onPressLocked,
 }: RoadmapNodeProps) => {
     const navigation = useNavigation<DashboardNavProp>();
     
@@ -97,6 +100,8 @@ const RoadmapNode = ({
     const handlePress = () => {
         if (!locked) {
             navigation.navigate(route as any);
+        } else if (onPressLocked) {
+            onPressLocked(completed, nextReset);
         }
     };
 
@@ -111,7 +116,7 @@ const RoadmapNode = ({
                 { flexDirection: isRightNode ? 'row-reverse' : 'row' }
             ]}
             onPress={handlePress}
-            activeOpacity={locked ? 1 : 0.7}
+            activeOpacity={locked ? 0.8 : 0.7}
         >
             {/* Circle Badge Wrapper */}
             <View style={styles.circleWrapper}>
@@ -216,6 +221,65 @@ export default function DashboardScreen() {
         const locked = s.completed && nextReset && nextReset > now;
 
         return { completed: s.completed, locked, nextReset };
+    };
+
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
+
+    const handleNodeLockedPress = (nodeTitle: string, isTimeLocked: boolean, nextReset: Date | null) => {
+        if (isTimeLocked && nextReset) {
+            const timeString = nextReset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateString = nextReset.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            setModalTitle('Session Completed');
+            setModalMessage(
+                `You have completed ${nodeTitle}!\n\nIt will unlock again on ${dateString} at ${timeString}.\n\nThank you!`
+            );
+        } else {
+            // Sequence locked
+            const nextStep = JOURNEY_STEPS.find(step => step.id === activeStepId);
+            const completedSteps = JOURNEY_STEPS.filter(step => step.id < activeStepId).map(step => step.title);
+            
+            let completedText = '';
+            if (completedSteps.length === 0) {
+                completedText = 'no sessions yet';
+            } else if (completedSteps.length === 1) {
+                completedText = completedSteps[0];
+            } else {
+                completedText = completedSteps.slice(0, -1).join(', ') + ' and ' + completedSteps[completedSteps.length - 1];
+            }
+            
+            const nextText = nextStep ? nextStep.title : 'all steps';
+            setModalTitle('Session Locked');
+            setModalMessage(
+                `You have completed ${completedText}.\n\nNext, you have ${nextText} to complete.\n\nThank you!`
+            );
+        }
+        setModalVisible(true);
+    };
+
+    const renderNode = (stepIndex: number, top: number, left?: number, right?: number) => {
+        const step = JOURNEY_STEPS[stepIndex];
+        const status = getStatus(step.statusKey);
+        
+        // Sequence lock: locked if the first incomplete step is before this one
+        const isSequenceLocked = activeStepId > 0 && step.id > activeStepId;
+        const isNodeLocked = status.locked || isSequenceLocked;
+        
+        return (
+            <RoadmapNode
+                key={step.id}
+                {...step}
+                {...status}
+                locked={isNodeLocked}
+                isActive={activeStepId === step.id}
+                pulseAnim={pulseAnim}
+                top={top}
+                left={left}
+                right={right}
+                onPressLocked={(timeLocked, reset) => handleNodeLockedPress(step.title, timeLocked, reset)}
+            />
+        );
     };
 
     useFocusEffect(
@@ -465,80 +529,11 @@ export default function DashboardScreen() {
                             />
                         </Svg>
 
-                        {/* Node 1: Daily Sliders (Right) */}
-                        {(() => {
-                            const status = getStatus('daily');
-                            return (
-                                <RoadmapNode
-                                    {...JOURNEY_STEPS[0]}
-                                    {...status}
-                                    isActive={activeStepId === 1}
-                                    pulseAnim={pulseAnim}
-                                    top={30}
-                                    right={24}
-                                />
-                            );
-                        })()}
-
-                        {/* Node 2: Weekly Whispers (Left) */}
-                        {(() => {
-                            const status = getStatus('weekly');
-                            return (
-                                <RoadmapNode
-                                    {...JOURNEY_STEPS[1]}
-                                    {...status}
-                                    isActive={activeStepId === 2}
-                                    pulseAnim={pulseAnim}
-                                    top={130}
-                                    left={24}
-                                />
-                            );
-                        })()}
-
-                        {/* Node 3: Thrive Tracker (Right) */}
-                        {(() => {
-                            const status = getStatus('thrive');
-                            return (
-                                <RoadmapNode
-                                    {...JOURNEY_STEPS[2]}
-                                    {...status}
-                                    isActive={activeStepId === 3}
-                                    pulseAnim={pulseAnim}
-                                    top={230}
-                                    right={24}
-                                />
-                            );
-                        })()}
-
-                        {/* Node 4: Stress Snapshot (Left) */}
-                        {(() => {
-                            const status = getStatus('stress');
-                            return (
-                                <RoadmapNode
-                                    {...JOURNEY_STEPS[3]}
-                                    {...status}
-                                    isActive={activeStepId === 4}
-                                    pulseAnim={pulseAnim}
-                                    top={330}
-                                    left={24}
-                                />
-                            );
-                        })()}
-
-                        {/* Node 5: Mindful Mirror (Right - Final) */}
-                        {(() => {
-                            const status = getStatus('mindful');
-                            return (
-                                <RoadmapNode
-                                    {...JOURNEY_STEPS[4]}
-                                    {...status}
-                                    isActive={activeStepId === 5}
-                                    pulseAnim={pulseAnim}
-                                    top={430}
-                                    right={24}
-                                />
-                            );
-                        })()}
+                        {renderNode(0, 30, undefined, 24)}
+                        {renderNode(1, 130, 24)}
+                        {renderNode(2, 230, undefined, 24)}
+                        {renderNode(3, 330, 24)}
+                        {renderNode(4, 430, undefined, 24)}
                     </View>
                 </View>
 
@@ -546,6 +541,14 @@ export default function DashboardScreen() {
                 <View style={{ height: 100 }} />
 
             </ScrollView>
+
+            <PopupModal
+                visible={modalVisible}
+                type="info"
+                title={modalTitle}
+                message={modalMessage}
+                onClose={() => setModalVisible(false)}
+            />
         </LinearGradient>
     );
 }

@@ -79,6 +79,14 @@ export default function WeeklyWhispersScreen() {
 
     useEffect(() => {
         checkPermissionAndStatus();
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+            if (recordingRef.current) {
+                recordingRef.current.stopAndUnloadAsync().catch(err => console.log('Cleanup error', err));
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -406,10 +414,10 @@ export default function WeeklyWhispersScreen() {
                 {/* Background leaves */}
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
 
-                <ScrollView contentContainerStyle={styles.introContent}>
+                <ScrollView contentContainerStyle={styles.introContent} scrollEnabled={false}>
                     {/* Large SVG Illustration */}
                     <View style={styles.illustrationContainer}>
-                        <VoiceRecordingIllustration width={width * 0.75} height={width * 0.75} color={Colors.primary} />
+                        <VoiceRecordingIllustration width={width * 0.67} height={width * 0.67} color={Colors.primary} />
                     </View>
 
                     {/* Title and Description */}
@@ -469,7 +477,32 @@ export default function WeeklyWhispersScreen() {
             <LeavesDecoration width={width} height={width} color={Colors.primary} />
 
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => setCurrentStep('intro')} style={styles.backButton}>
+                <TouchableOpacity
+                    onPress={async () => {
+                        if (isRecording) {
+                            try {
+                                if (intervalRef.current) {
+                                    clearInterval(intervalRef.current);
+                                    intervalRef.current = null;
+                                }
+                                if (recordingRef.current) {
+                                    await recordingRef.current.stopAndUnloadAsync();
+                                }
+                            } catch (e) {
+                                console.log('Error stopping recording on back:', e);
+                            } finally {
+                                recordingRef.current = null;
+                                setIsRecording(false);
+                            }
+                        }
+                        if (recordingUri) {
+                            setRecordingUri(null);
+                        } else {
+                            setCurrentStep('intro');
+                        }
+                    }}
+                    style={styles.backButton}
+                >
                     <Ionicons name="arrow-back" size={24} color="#1E293B" />
                 </TouchableOpacity>
                 <Text style={styles.title}>Weekly Whispers</Text>
@@ -491,7 +524,7 @@ export default function WeeklyWhispersScreen() {
                         </View>
                         
                         <View style={styles.passageContainer}>
-                            <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
+                            <ScrollView nestedScrollEnabled style={{ maxHeight: 300 }}>
                                 <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
                             </ScrollView>
                         </View>
@@ -501,7 +534,7 @@ export default function WeeklyWhispersScreen() {
                         <View style={styles.recordingRow}>
                             {/* Left Side: SVG Illustration */}
                             <View style={styles.leftSideContainer}>
-                                <VoiceRecordingIllustration width={width * 0.32} height={width * 0.32} color={Colors.primary} />
+                                <VoiceRecordingIllustration width={width * 0.4} height={width * 0.4} color={Colors.primary} />
                             </View>
 
                             {/* Right Side: Controls */}
@@ -647,7 +680,7 @@ const styles = StyleSheet.create({
     questionCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 30, // Standardized bottom panel/card curves
-        padding: 24,
+        padding: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.04,
@@ -657,31 +690,31 @@ const styles = StyleSheet.create({
     },
     // Intro Screen
     introContent: {
-        padding: 24,
+        padding: 16,
         alignItems: 'center',
     },
     illustrationContainer: {
-        marginBottom: 24,
+        marginBottom: 16,
     },
     introTitle: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: '800',
         color: '#2D3436',
-        marginBottom: 4,
+        marginBottom: 2,
         textAlign: 'center',
     },
     introSubtitle: {
-        fontSize: 15,
+        fontSize: 14,
         color: '#636E72',
-        marginBottom: 28,
+        marginBottom: 16,
         textAlign: 'center',
     },
     introCard: {
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
-        padding: 24,
+        padding: 16,
         width: '100%',
-        marginBottom: 32,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.04,
@@ -736,7 +769,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: Colors.primary,
-        paddingVertical: 18,
+        paddingVertical: 14,
         paddingHorizontal: 32,
         borderRadius: 30,
         width: '100%',
@@ -774,9 +807,9 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     recordButton: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: Colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
@@ -844,20 +877,20 @@ const styles = StyleSheet.create({
     passageContainer: {
         backgroundColor: '#F8FAFC',
         borderRadius: 20,
-        padding: 16,
+        padding: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     passageText: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#334155',
-        lineHeight: 28,
+        lineHeight: 22,
     },
     divider: {
         height: 1,
         backgroundColor: '#E2E8F0',
-        marginVertical: 20,
+        marginVertical: 12,
     },
     // Review Screen
     reviewIconCircle: {
@@ -866,10 +899,10 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     reviewTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '700',
         color: '#2D3436',
-        marginBottom: 24,
+        marginBottom: 16,
         textAlign: 'center',
     },
     waveformContainer: {
@@ -894,7 +927,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#64748B',
-        marginBottom: 32,
+        marginBottom: 16,
         textAlign: 'center',
     },
     buttonRow: {
@@ -908,7 +941,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 16,
+        paddingVertical: 12,
         borderRadius: 30,
         borderWidth: 1.5,
         borderColor: '#DFE6E9',
@@ -925,7 +958,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 16,
+        paddingVertical: 12,
         borderRadius: 30,
         backgroundColor: Colors.primary,
         shadowColor: Colors.primary,
@@ -947,12 +980,12 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 40,
+        padding: 24,
     },
     successIcon: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 90,
+        height: 90,
+        borderRadius: 45,
         backgroundColor: THEME_BG,
         justifyContent: 'center',
         alignItems: 'center',
@@ -963,23 +996,23 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
     },
     successTitle: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#2D3436',
-        marginBottom: 12,
+        marginBottom: 8,
         textAlign: 'center',
     },
     successText: {
-        fontSize: 16,
+        fontSize: 14,
         color: '#636E72',
         textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 24,
+        lineHeight: 20,
+        marginBottom: 16,
     },
     homeButton: {
         backgroundColor: Colors.primary,
-        paddingVertical: 16,
-        paddingHorizontal: 32,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
         borderRadius: 30,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },

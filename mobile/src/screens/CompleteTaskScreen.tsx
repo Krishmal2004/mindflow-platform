@@ -4,7 +4,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, G, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/colors';
 import { RootStackParamList } from '../types/navigation';
 import { LeavesDecoration } from '../components/LeavesDecoration';
@@ -48,29 +49,56 @@ const SimpleLineChart = ({ data, color, label, yMax = 5 }: GraphProps) => {
         pathD = '';
     }
 
+    // Create closed path for fill
+    let fillPathD = '';
+    if (points.length > 1) {
+        fillPathD = `${pathD} L ${points[points.length - 1].x + 10} ${CHART_HEIGHT} L ${points[0].x + 10} ${CHART_HEIGHT} Z`;
+    }
+
+    const uniqueId = label.replace(/\s+/g, '');
+
     return (
         <View style={styles.chartContainer}>
             <Text style={[styles.chartTitle, { color }]}>{label}</Text>
             <Svg width={CHART_WIDTH + 40} height={CHART_HEIGHT + 30} style={{ marginLeft: -10 }}>
+                <Defs>
+                    <SvgLinearGradient id={`grad-${uniqueId}`} x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                        <Stop offset="100%" stopColor={color} stopOpacity="0.0" />
+                    </SvgLinearGradient>
+                </Defs>
+
                 {/* Y-Axis Lines (Grid) */}
                 {[0, 1, 2, 3, 4, 5].map(i => {
                     const y = CHART_HEIGHT - ((i / yMax) * CHART_HEIGHT);
                     return (
                         <G key={i}>
-                            <Line x1="10" y1={y} x2={CHART_WIDTH + 10} y2={y} stroke="#E2E8F0" strokeWidth="1" />
+                            <Line x1="10" y1={y} x2={CHART_WIDTH + 10} y2={y} stroke="#F1F5F9" strokeWidth="1" />
                         </G>
                     );
                 })}
 
+                {/* Filled Area */}
+                {fillPathD ? (
+                    <Path d={fillPathD} fill={`url(#grad-${uniqueId})`} />
+                ) : null}
+
                 {/* The Line */}
                 {pathD ? (
-                    <Path d={pathD} stroke={color} strokeWidth="3" fill="none" />
+                    <Path d={pathD} stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                 ) : null}
 
                 {/* Data Points */}
                 {points.map((p, i) => (
-                    <Circle key={i} cx={p.x + 10} cy={p.y} r="4" fill="#FFF" stroke={color} strokeWidth="2" />
+                    <G key={i}>
+                        <Circle cx={p.x + 10} cy={p.y} r="6" fill={color} opacity="0.25" />
+                        <Circle cx={p.x + 10} cy={p.y} r="3" fill="#FFFFFF" stroke={color} strokeWidth="2.5" />
+                    </G>
                 ))}
+
+                {/* X-Axis Labels */}
+                <SvgText x="10" y={CHART_HEIGHT + 18} fill="#94A3B8" fontSize="10" fontWeight="600" textAnchor="start">7 Days Ago</SvgText>
+                <SvgText x={CHART_WIDTH + 10} y={CHART_HEIGHT + 18} fill="#94A3B8" fontSize="10" fontWeight="600" textAnchor="end">Today</SvgText>
             </Svg>
         </View>
     );
@@ -86,7 +114,6 @@ export default function CompleteTaskScreen() {
     const { title, message, buttonText = "Back to Journey", historyData } = route.params;
 
     // Extract data for charts
-    // Assuming historyData is ordered oldest to newest from backend
     const stressData = historyData?.map(d => d.stress_level).filter(v => v != null) || [];
     const moodData = historyData?.map(d => d.mood).filter(v => v != null) || [];
     const sleepData = historyData?.map(d => d.sleep_quality).filter(v => v != null) || [];
@@ -97,20 +124,34 @@ export default function CompleteTaskScreen() {
         setStatsExpanded(!statsExpanded);
     };
 
+    const isDaily = historyData && historyData.length > 0;
+    
+    // Choose theme colors dynamically
+    const themeColor = isDaily ? '#D97706' : '#6366F1';
+    const themeBg = isDaily ? '#FFFBEB' : '#EEF2FF';
+    const themeBgGrad = isDaily 
+        ? ['#FFFBEB', '#FFF9F0', '#FFFFFF'] as const
+        : ['#F5F3FF', '#EEF2FF', '#FFFFFF'] as const;
+
     return (
-        <View style={styles.container}>
+        <LinearGradient
+            colors={themeBgGrad}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
             <StatusBar style="dark" />
 
             {/* Background Decoration */}
             <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={width * 0.8} />
+                <LeavesDecoration width={width} height={width * 0.8} color={themeColor} />
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.header}>
-                    <View style={styles.successIcon}>
-                        <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
+                    <View style={[styles.successIcon, { shadowColor: themeColor }]}>
+                        <Ionicons name="checkmark-circle" size={80} color={themeColor} />
                     </View>
                     <Text style={styles.title}>{title}</Text>
                     <Text style={styles.message}>{message}</Text>
@@ -124,8 +165,8 @@ export default function CompleteTaskScreen() {
                             activeOpacity={0.7}
                         >
                             <View style={styles.statsTitleContainer}>
-                                <View style={[styles.iconCircle, { backgroundColor: '#E6F4EA' }]}>
-                                    <Ionicons name="stats-chart" size={20} color={Colors.primary} />
+                                <View style={[styles.iconCircle, { backgroundColor: themeBg }]}>
+                                    <Ionicons name="stats-chart" size={20} color={themeColor} />
                                 </View>
                                 <Text style={styles.statsHeader}>Your Progress (7 Days)</Text>
                             </View>
@@ -139,16 +180,16 @@ export default function CompleteTaskScreen() {
                         {statsExpanded && (
                             <View style={styles.chartsContainer}>
                                 <SimpleLineChart data={stressData} color="#EF4444" label="Stress Level" />
-                                <SimpleLineChart data={moodData} color={Colors.primary} label="Mood Level" />
+                                <SimpleLineChart data={moodData} color="#D97706" label="Mood Level" />
                                 <SimpleLineChart data={sleepData} color="#3B82F6" label="Sleep Quality" />
-                                <SimpleLineChart data={relaxationData} color={Colors.primary} label="Relaxation Level" />
+                                <SimpleLineChart data={relaxationData} color="#0D9488" label="Relaxation Level" />
                             </View>
                         )}
                     </View>
                 )}
 
                 <TouchableOpacity
-                    style={styles.homeButton}
+                    style={[styles.homeButton, { backgroundColor: themeColor, shadowColor: themeColor }]}
                     onPress={() => navigation.reset({
                         index: 0,
                         routes: [{ name: 'MainTabs' }],
@@ -160,14 +201,13 @@ export default function CompleteTaskScreen() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
-        </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F8F9',
     },
     decorationContainer: {
         position: 'absolute',
@@ -186,10 +226,9 @@ const styles = StyleSheet.create({
     },
     successIcon: {
         marginBottom: 20,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.15,
-        shadowRadius: 10,
+        shadowRadius: 12,
         elevation: 8,
         backgroundColor: '#FFF',
         borderRadius: 50,
@@ -198,25 +237,28 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#2D3436',
+        color: '#1E293B',
         marginBottom: 10,
         textAlign: 'center',
     },
     message: {
         fontSize: 16,
-        color: '#636E72',
+        color: '#64748B',
         textAlign: 'center',
         lineHeight: 24,
+        paddingHorizontal: 16,
     },
     statsCard: {
         width: '100%',
         backgroundColor: '#FFFFFF',
         borderRadius: 24,
         marginBottom: 30,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 12,
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
         elevation: 3,
         overflow: 'hidden',
     },
@@ -242,7 +284,7 @@ const styles = StyleSheet.create({
     statsHeader: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#2D3436',
+        color: '#1E293B',
         letterSpacing: 0.3,
     },
     chartsContainer: {
@@ -255,20 +297,18 @@ const styles = StyleSheet.create({
     },
     chartTitle: {
         fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 10,
+        fontWeight: '700',
+        marginBottom: 12,
         alignSelf: 'flex-start',
         marginLeft: 10,
     },
     homeButton: {
-        backgroundColor: Colors.primary,
         paddingVertical: 18,
         paddingHorizontal: 40,
         borderRadius: 30,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
-        shadowRadius: 12,
+        shadowRadius: 10,
         elevation: 6,
         width: '100%',
         alignItems: 'center',
