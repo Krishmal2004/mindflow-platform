@@ -252,7 +252,7 @@ export default function MindfulMirrorScreen() {
 
                 <ScrollView contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.illustrationContainer}>
-                        <MirrorIllustration width={width * 0.7} height={width * 0.7} color={Colors.primary} />
+                        <MirrorIllustration width={width * 0.63} height={width * 0.63} color={Colors.primary} />
                     </View>
 
                     <Text style={styles.introTitle}>Self-Reflection</Text>
@@ -266,7 +266,7 @@ export default function MindfulMirrorScreen() {
                             <Text style={styles.introCardTitle}>Instructions</Text>
                         </View>
                         <Text style={styles.introCardText}>
-                            Please rate each of the following statements based on what is generally true for you. Be as honest as possible.
+                            Please rate each of the following statements based on what has been true for you over the last month. Be as honest as possible.
                         </Text>
                     </View>
 
@@ -330,7 +330,7 @@ export default function MindfulMirrorScreen() {
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <Text style={styles.instructionText}>
-                    Rate the statement based on what is true for you:
+                    In the last month, how often has each statement been true for you:
                 </Text>
 
                 <View style={styles.questionCard}>

@@ -246,7 +246,7 @@ export default function ThriveTrackerScreen() {
 
                 <ScrollView contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.illustrationContainer}>
-                        <ThriveIllustration width={width * 0.7} height={width * 0.7} color={Colors.primary} />
+                        <ThriveIllustration width={width * 0.63} height={width * 0.63} color={Colors.primary} />
                     </View>
 
                     <Text style={styles.introTitle}>Mental Wellbeing</Text>

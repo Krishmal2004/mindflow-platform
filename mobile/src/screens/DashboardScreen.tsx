@@ -37,11 +37,11 @@ const MINDFULNESS_QUOTES = [
 
 // Roadmap steps configuration
 const JOURNEY_STEPS = [
-    { id: 1, title: 'Daily Sliders', subtitle: 'Track your mood', route: 'DailySliders', Icon: JourneyIcons.Sun, color: '#D97706', bgColor: '#FFFBEB', statusKey: 'daily' },
-    { id: 2, title: 'Weekly Whispers', subtitle: 'Reflect weekly', route: 'WeeklyWhispers', Icon: JourneyIcons.Microphone, color: '#6366F1', bgColor: '#EEF2FF', statusKey: 'weekly' },
-    { id: 3, title: 'Thrive Tracker', subtitle: 'Monitor growth', route: 'ThriveTracker', Icon: JourneyIcons.Chart, color: '#749F82', bgColor: '#E6F4EA', statusKey: 'thrive' },
-    { id: 4, title: 'Stress Snapshot', subtitle: 'Capture stress', route: 'StressSnapshot', Icon: JourneyIcons.StressCamera, color: '#E07A5F', bgColor: '#FFF4F2', statusKey: 'stress' },
-    { id: 5, title: 'Mindful Mirror', subtitle: 'Self-reflection', route: 'MindfulMirror', Icon: JourneyIcons.Mirror, color: '#0D9488', bgColor: '#F0FDFA', statusKey: 'mindful' },
+    { id: 1, title: 'Daily Sliders', subtitle: 'Daily check-in (Resets 12 AM)', route: 'DailySliders', Icon: JourneyIcons.Sun, color: '#D97706', bgColor: '#FFFBEB', statusKey: 'daily' },
+    { id: 2, title: 'Weekly Whispers', subtitle: 'Weekly voice journal (Once a week)', route: 'WeeklyWhispers', Icon: JourneyIcons.Microphone, color: '#6366F1', bgColor: '#EEF2FF', statusKey: 'weekly' },
+    { id: 3, title: 'Thrive Tracker', subtitle: 'Wellbeing tracker (Last 2 weeks)', route: 'ThriveTracker', Icon: JourneyIcons.Chart, color: '#749F82', bgColor: '#E6F4EA', statusKey: 'thrive' },
+    { id: 4, title: 'Stress Snapshot', subtitle: 'Perceived stress (Last 1 month)', route: 'StressSnapshot', Icon: JourneyIcons.StressCamera, color: '#E07A5F', bgColor: '#FFF4F2', statusKey: 'stress' },
+    { id: 5, title: 'Mindful Mirror', subtitle: 'Mindfulness check (Last 1 month)', route: 'MindfulMirror', Icon: JourneyIcons.Mirror, color: '#0D9488', bgColor: '#F0FDFA', statusKey: 'mindful' },
 ];
 
 interface RoadmapNodeProps {
@@ -85,13 +85,14 @@ const RoadmapNode = ({
     
     let statusText = subtitle;
     if (completed) {
-        statusText = nextReset 
-            ? `Next: ${nextReset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-            : 'Completed';
-        if (id === 2 && nextReset) {
+        if (id === 1) {
+            statusText = 'Next: Tomorrow';
+        } else if (id === 2 && nextReset) {
             statusText = `Next: ${nextReset.toLocaleDateString(undefined, { weekday: 'short' })}`;
         } else if (id > 2 && nextReset) {
             statusText = `Next: ${nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        } else {
+            statusText = 'Completed';
         }
     } else if (locked) {
         statusText = 'Locked';
@@ -231,9 +232,17 @@ export default function DashboardScreen() {
         if (isTimeLocked && nextReset) {
             const timeString = nextReset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const dateString = nextReset.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            
+            const isTomorrow = nextReset.toDateString() === tomorrow.toDateString();
+            const dateText = isTomorrow ? 'Tomorrow' : `on ${dateString}`;
+            
             setModalTitle('Session Completed');
             setModalMessage(
-                `You have completed ${nodeTitle}!\n\nIt will unlock again on ${dateString} at ${timeString}.\n\nThank you!`
+                `You have completed ${nodeTitle}!\n\nIt will unlock again ${dateText} at ${timeString}.\n\nThank you!`
             );
         } else {
             // Sequence locked

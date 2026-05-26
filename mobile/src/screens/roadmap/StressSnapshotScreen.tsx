@@ -247,7 +247,7 @@ export default function StressSnapshotScreen() {
 
                 <ScrollView contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.illustrationContainer}>
-                        <StressIllustration width={width * 0.7} height={width * 0.7} color={Colors.primary} />
+                        <StressIllustration width={width * 0.63} height={width * 0.63} color={Colors.primary} />
                     </View>
 
                     <Text style={styles.introTitle}>Perceived Stress</Text>

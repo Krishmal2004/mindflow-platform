@@ -524,7 +524,7 @@ export default function WeeklyWhispersScreen() {
                         </View>
                         
                         <View style={styles.passageContainer}>
-                            <ScrollView nestedScrollEnabled style={{ maxHeight: 300 }}>
+                            <ScrollView nestedScrollEnabled style={{ maxHeight: 230 }}>
                                 <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
                             </ScrollView>
                         </View>
