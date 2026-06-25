@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
-import { loginSchema, otpSchema, resendOtpSchema, resetPasswordSchema, signupSchema } from '../validation/authSchemas';
+import { loginSchema, otpSchema, resendOtpSchema, resetPasswordSchema, confirmResetSchema, signupSchema } from '../validation/authSchemas';
 
 /** Derives a display name from email if full_name is absent. */
 const getDisplayName = (email: string, fullName?: string): string => {
@@ -121,14 +121,43 @@ export const resetPassword = async (req: Request, res: Response) => {
     const { email } = parsed.data;
 
     try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://mindflow.app/reset-password',
-        });
-
+        // Send OTP for password recovery (requires "Email OTP" enabled in Supabase project)
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
-        return res.status(200).json({ message: 'Password reset link sent to your email.' });
+        return res.status(200).json({ message: 'A verification code has been sent to your email.' });
     } catch (error: any) {
         console.error('Reset Password Error:', error.message);
-        return res.status(400).json({ error: error.message || 'Failed to send reset email' });
+        return res.status(400).json({ error: error.message || 'Failed to send reset code' });
+    }
+};
+
+export const confirmPasswordReset = async (req: Request, res: Response) => {
+    const parsed = confirmResetSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
+    }
+    const { email, token, newPassword } = parsed.data;
+
+    try {
+        // Verify the recovery OTP — returns the user session if valid
+        const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'recovery',
+        });
+        if (verifyError) throw verifyError;
+        if (!data.user) throw new Error('Could not identify user from token');
+
+        // Use service-role admin API to update the password directly
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+            data.user.id,
+            { password: newPassword },
+        );
+        if (updateError) throw updateError;
+
+        return res.status(200).json({ message: 'Password updated successfully.' });
+    } catch (error: any) {
+        console.error('Confirm Reset Error:', error.message);
+        return res.status(400).json({ error: error.message || 'Password reset failed' });
     }
 };

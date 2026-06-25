@@ -241,11 +241,13 @@ const RoadmapNode = ({
 };
 
 export default function DashboardScreen() {
+    const navigation = useNavigation<DashboardNavProp>();
     const [userName, setUserName] = useState('User');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
     const [currentFactIndex, setCurrentFactIndex] = useState(0);
     const [statuses, setStatuses] = useState<any>({});
     const [researchGroup, setResearchGroup] = useState('');
+    const [summaryLoaded, setSummaryLoaded] = useState(false);
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -306,11 +308,34 @@ export default function DashboardScreen() {
     const renderNode = (stepIndex: number, top: number, left?: number, right?: number) => {
         const step = JOURNEY_STEPS[stepIndex];
         const status = getStatus(step.statusKey);
-        
+
+        // All nodes locked until researcher assigns a group
+        if (isUnassigned) {
+            return (
+                <RoadmapNode
+                    key={step.id}
+                    {...step}
+                    completed={false}
+                    locked={true}
+                    nextReset={null}
+                    isActive={false}
+                    pulseAnim={pulseAnim}
+                    top={top}
+                    left={left}
+                    right={right}
+                    onPressLocked={() => {
+                        setModalTitle('Group Not Yet Assigned');
+                        setModalMessage('Your researcher has not assigned you to a study group yet.\n\nData entry will be available once your Research ID is set.\n\nIn the meantime, please complete your About Me profile.');
+                        setModalVisible(true);
+                    }}
+                />
+            );
+        }
+
         // Sequence lock: locked if the first incomplete step is before this one
         const isSequenceLocked = activeStepId > 0 && step.id > activeStepId;
         const isNodeLocked = status.locked || isSequenceLocked;
-        
+
         return (
             <RoadmapNode
                 key={step.id}
@@ -337,6 +362,7 @@ export default function DashboardScreen() {
                     ]);
                     if (statusRes.ok && statusRes.data) setStatuses(statusRes.data);
                     if (summaryRes.ok && summaryRes.data) setResearchGroup(summaryRes.data.group || '');
+                    setSummaryLoaded(true);
                 } catch (error) {
                     console.log('Dashboard status check failed:', error);
                 }
@@ -413,6 +439,7 @@ export default function DashboardScreen() {
     const currentQuote = MINDFULNESS_QUOTES[currentQuoteIndex];
     const currentFact = FUN_FACTS[currentFactIndex];
     const isControlGroup = researchGroup === 'cg';
+    const isUnassigned = summaryLoaded && researchGroup === '';
     const mapWidth = width - 48;
     const mapHeight = 520;
     const activeStepId = getActiveStepId();
@@ -462,6 +489,29 @@ export default function DashboardScreen() {
                         {isControlGroup ? <>WHAT WOULD YOU{'\n'}LIKE TO DO?</> : <>READY FOR YOUR{'\n'}MINDFUL MOMENT?</>}
                     </Text>
                 </View>
+
+                {/* Pending-assignment banner — shown only when no research group is set */}
+                {isUnassigned && (
+                    <View style={styles.pendingBanner}>
+                        <View style={styles.pendingIconCircle}>
+                            <Ionicons name="time-outline" size={22} color="#D97706" />
+                        </View>
+                        <View style={styles.pendingBannerBody}>
+                            <Text style={styles.pendingBannerTitle}>Waiting for Group Assignment</Text>
+                            <Text style={styles.pendingBannerSub}>
+                                Your researcher will assign your study group shortly. Data entry is locked until then.
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.pendingAboutMeBtn}
+                                onPress={() => navigation.navigate('AboutMe')}
+                                activeOpacity={0.75}
+                            >
+                                <Ionicons name="document-text-outline" size={14} color="#D97706" />
+                                <Text style={styles.pendingAboutMeBtnText}>Complete About Me Profile</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
 
                 {/* Daily Thoughts card: mindfulness quotes for the experimental group,
                     non-mindfulness fun facts (in orange) for the control group (.cg) — this
@@ -815,5 +865,63 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#94A3B8',
         marginTop: 2,
+    },
+    // Pending-assignment banner
+    pendingBanner: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFBEB',
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: '#FDE68A',
+        padding: 16,
+        marginBottom: 20,
+        gap: 12,
+        alignItems: 'flex-start',
+        shadowColor: '#D97706',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    pendingIconCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FEF3C7',
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexShrink: 0,
+    },
+    pendingBannerBody: {
+        flex: 1,
+        gap: 4,
+    },
+    pendingBannerTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#92400E',
+    },
+    pendingBannerSub: {
+        fontSize: 12,
+        color: '#B45309',
+        lineHeight: 18,
+    },
+    pendingAboutMeBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        marginTop: 8,
+        backgroundColor: '#FEF3C7',
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+    },
+    pendingAboutMeBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#D97706',
     },
 });

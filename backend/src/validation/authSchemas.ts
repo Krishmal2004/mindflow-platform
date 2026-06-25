@@ -25,3 +25,9 @@ export const resendOtpSchema = z.object({
 export const resetPasswordSchema = z.object({
     email: z.string().email('Valid email is required'),
 });
+
+export const confirmResetSchema = z.object({
+    email: z.string().email('Valid email is required'),
+    token: z.string().min(4).max(10),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});

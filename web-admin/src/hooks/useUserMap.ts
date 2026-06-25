@@ -1,19 +1,36 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-/** Maps userId → username for display throughout the admin panel. */
 export type UserMap = Map<string, string>;
+export type GroupMap = Map<string, 'cg' | 'ex' | null>;
+
+export interface ProfileEntry {
+    id: string;
+    username: string;
+    research_id: string;
+}
 
 export function useUserMap() {
     const [userMap, setUserMap] = useState<UserMap>(new Map());
+    const [groupMap, setGroupMap] = useState<GroupMap>(new Map());
+    const [profilesList, setProfilesList] = useState<ProfileEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadUsers = async () => {
         try {
-            const { data } = await supabase.from('profiles').select('id, username');
-            const map = new Map<string, string>();
-            (data || []).forEach((p) => map.set(p.id, p.username || p.id.slice(0, 8)));
-            setUserMap(map);
+            const { data } = await supabase.from('profiles').select('id, username, research_id');
+            const umap = new Map<string, string>();
+            const gmap = new Map<string, 'cg' | 'ex' | null>();
+            const list: ProfileEntry[] = [];
+            (data || []).forEach((p) => {
+                umap.set(p.id, p.username || p.id.slice(0, 8));
+                const rid = (p.research_id || '').toLowerCase();
+                gmap.set(p.id, rid.endsWith('.ex') ? 'ex' : rid.endsWith('.cg') ? 'cg' : null);
+                list.push({ id: p.id, username: p.username || '', research_id: p.research_id || '' });
+            });
+            setUserMap(umap);
+            setGroupMap(gmap);
+            setProfilesList(list);
         } catch (err) {
             console.error('Failed to load user map:', err);
         } finally {
@@ -21,17 +38,18 @@ export function useUserMap() {
         }
     };
 
-    useEffect(() => {
-        loadUsers();
-    }, []);
+    useEffect(() => { loadUsers(); }, []);
 
-    /** Resolve a userId to its display username. Falls back to truncated UUID. */
-    const resolveUser = (userId: any): string => {
+    const resolveUser = (userId: unknown): string => {
         if (!userId || typeof userId !== 'string') return String(userId ?? '-');
         return userMap.get(userId) ?? (userId.length > 8 ? userId.slice(0, 8) + '…' : userId);
     };
 
-    /** Find a userId by searching username (case-insensitive). */
+    const userInitial = (userId: unknown): string => {
+        const name = resolveUser(userId);
+        return name.charAt(0).toUpperCase() || 'U';
+    };
+
     const findUserIdsByName = (query: string): string[] => {
         if (!query.trim()) return [];
         const q = query.toLowerCase();
@@ -42,5 +60,5 @@ export function useUserMap() {
         return matches;
     };
 
-    return { userMap, resolveUser, findUserIdsByName, loading, refreshUserMap: loadUsers };
+    return { userMap, groupMap, profilesList, resolveUser, userInitial, findUserIdsByName, loading, refreshUserMap: loadUsers };
 }
