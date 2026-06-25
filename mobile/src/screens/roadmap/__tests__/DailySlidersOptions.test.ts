@@ -1,5 +1,7 @@
 import { PRACTICE_TYPES, INFLUENCING_FACTORS } from '../DailySlidersScreen';
 
+jest.mock('react-native-webview', () => ({ WebView: () => null }));
+
 describe('Mindfulness Practice options', () => {
     it('offers "Physical Session" instead of "Breathing Exercise"', () => {
         expect(PRACTICE_TYPES).toContain('Physical Session');

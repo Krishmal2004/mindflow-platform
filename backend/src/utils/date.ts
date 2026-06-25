@@ -13,10 +13,3 @@ export function startOfToday(): Date {
     d.setHours(0, 0, 0, 0);
     return d;
 }
-
-/** Date N days ago from today. */
-export function daysAgo(n: number): Date {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return d;
-}

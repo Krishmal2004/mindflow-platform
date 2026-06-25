@@ -274,23 +274,21 @@ CREATE TABLE IF NOT EXISTS weekly_recordings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- target_group: which study arm this video is for ('ex'/'cg'), or NULL to show to everyone.
+ALTER TABLE weekly_recordings
+ADD COLUMN IF NOT EXISTS target_group TEXT CHECK (target_group IN ('ex', 'cg'));
+
 -- RLS: weekly_recordings
 ALTER TABLE weekly_recordings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can access weekly recordings" ON weekly_recordings;
 CREATE POLICY "Users can access weekly recordings" ON weekly_recordings FOR SELECT USING (true);
 
--- Index
-CREATE INDEX IF NOT EXISTS idx_weekly_recordings_week_no ON weekly_recordings(week_no);
+-- Index: week_no is the leading column, so this also covers plain week_no lookups.
+-- At most one video per group per week (NULL/group-agnostic rows are exempt, e.g. legacy Week 1 entry).
+DROP INDEX IF EXISTS idx_weekly_recordings_week_no;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_recordings_week_group ON weekly_recordings(week_no, target_group);
 
--- Seed Data: Weekly Recordings
-INSERT INTO weekly_recordings (week_no, title, youtube_id, description, published_at)
-VALUES (
-    1, 'Guided Mindfulness Practice — Week 1 (2026)', 'wAIoe992Qak',
-    'Curated guided mindfulness practice for the first week of 2026 (YouTube)',
-    '2026-01-01T00:00:00Z'
-)
-ON CONFLICT DO NOTHING;
 
 -- ==============================================================================
 -- 3. QUESTIONNAIRE SYSTEM (Specific Research Instruments)
@@ -482,7 +480,44 @@ CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date ON calendar_events(eve
 
 
 -- ==============================================================================
--- 5. PERMISSIONS
+-- 5. PUSH NOTIFICATIONS
+-- ==============================================================================
+
+-- ------------------------------------------------------------------------------
+-- Table: push_tokens
+-- Purpose: Stores each device's Expo push token so the backend can send
+-- scheduled reminder notifications (morning greeting / pending-task nudge).
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS push_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    expo_push_token TEXT NOT NULL UNIQUE,
+    platform TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Trigger: Update updated_at
+DROP TRIGGER IF EXISTS update_push_tokens_updated_at ON push_tokens;
+CREATE TRIGGER update_push_tokens_updated_at
+    BEFORE UPDATE ON push_tokens
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS: push_tokens
+ALTER TABLE push_tokens ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users manage own push tokens" ON push_tokens;
+CREATE POLICY "Users manage own push tokens"
+    ON push_tokens
+    FOR ALL
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+-- Index
+CREATE INDEX IF NOT EXISTS idx_push_tokens_user_id ON push_tokens(user_id);
+
+-- ==============================================================================
+-- 6. PERMISSIONS
 -- ==============================================================================
 
 -- Grant Usage Permissions
@@ -498,6 +533,7 @@ GRANT ALL ON TABLE questionnaire_ffmq15_responses TO authenticated;
 GRANT ALL ON TABLE questionnaire_wemwbs14_responses TO authenticated;
 
 GRANT ALL ON TABLE calendar_events TO authenticated;
+GRANT ALL ON TABLE push_tokens TO authenticated;
 
 -- Grant Sequence Permissions
 GRANT USAGE, SELECT ON SEQUENCE daily_sliders_id_seq TO authenticated;
@@ -510,4 +546,5 @@ GRANT USAGE, SELECT ON SEQUENCE questionnaire_ffmq15_responses_id_seq TO authent
 GRANT USAGE, SELECT ON SEQUENCE questionnaire_wemwbs14_responses_id_seq TO authenticated;
 
 GRANT USAGE, SELECT ON SEQUENCE calendar_events_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE push_tokens_id_seq TO authenticated;
 GRANT SELECT ON TABLE admins TO authenticated;

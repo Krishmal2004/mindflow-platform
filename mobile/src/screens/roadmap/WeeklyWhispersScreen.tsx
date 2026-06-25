@@ -20,15 +20,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path, G, Defs, LinearGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 
 import { Colors as GlobalColors } from '../../constants/colors';
+import { API_URL } from '../../config/api';
+import { VoiceRecordingIllustration } from '../../components/MeditationIllustration';
+import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { PopupModal } from '../../components/PopupModal';
 const Colors = {
     ...GlobalColors,
     primary: '#6366F1',
 };
 const THEME_BG = '#EEF2FF';
-import { API_URL } from '../../config/api';
-import { VoiceRecordingIllustration } from '../../components/MeditationIllustration';
-import { LeavesDecoration } from '../../components/LeavesDecoration';
-import { PopupModal } from '../../components/PopupModal';
 
 const { width, height: screenHeight } = Dimensions.get('window');
 
@@ -371,7 +371,7 @@ export default function WeeklyWhispersScreen() {
                         <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
                     </View>
                     <Text style={styles.successTitle}>Already Submitted!</Text>
-                    <Text style={styles.successText}>You've completed this week's recording.</Text>
+                    <Text style={styles.successText}>You&apos;ve completed this week&apos;s recording.</Text>
                     {nextReset && (
                         <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: Colors.primary }]}>
                             Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -429,7 +429,7 @@ export default function WeeklyWhispersScreen() {
                             <View style={styles.introIconCircle}>
                                 <Ionicons name="mic" size={24} color={Colors.primary} />
                             </View>
-                            <Text style={styles.introCardTitle}>What You'll Do</Text>
+                            <Text style={styles.introCardTitle}>What You&apos;ll Do</Text>
                         </View>
                         <Text style={styles.introCardText}>
                             Read a short paragraph aloud in your normal speaking voice. This helps us understand your vocal patterns for research purposes.
@@ -452,7 +452,7 @@ export default function WeeklyWhispersScreen() {
                         style={styles.goButton}
                         onPress={() => setCurrentStep('recording')}
                     >
-                        <Text style={styles.goButtonText}>Let's Go</Text>
+                        <Text style={styles.goButtonText}>Let&apos;s Go</Text>
                         <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                 </ScrollView>

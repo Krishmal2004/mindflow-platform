@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { getISOWeekNumber } from '../utils/date';
+import { deriveResearchGroup } from '../utils/researchGroup';
 import { STREAK_LOOKBACK_DAYS } from '../constants/limits';
 
 export class DashboardService {
@@ -81,10 +82,7 @@ export class DashboardService {
         // Monthly questionnaire completion
         const isMonthlyDone = ((pss10Count || 0) + (ffmq15Count || 0) + (wemwbs14Count || 0)) > 0;
 
-        // Research group from profile suffix
-        let group = '';
-        if (profile?.research_id?.endsWith('.ex')) group = 'ex';
-        else if (profile?.research_id?.endsWith('.cg')) group = 'cg';
+        const group = deriveResearchGroup(profile?.research_id);
 
         return {
             streak: currentStreak,

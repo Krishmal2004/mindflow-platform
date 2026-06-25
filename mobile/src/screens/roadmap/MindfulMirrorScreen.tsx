@@ -18,14 +18,14 @@ import { RootStackParamList } from '../../types/navigation';
 
 import { API_URL } from '../../config/api';
 import { Colors as GlobalColors } from '../../constants/colors';
+import { MirrorIllustration } from '../../components/MeditationIllustration';
+import { PopupModal } from '../../components/PopupModal';
+import { LeavesDecoration } from '../../components/LeavesDecoration';
 const Colors = {
     ...GlobalColors,
     primary: '#0D9488',
 };
 const THEME_BG = '#F0FDFA';
-import { MirrorIllustration } from '../../components/MeditationIllustration';
-import { PopupModal } from '../../components/PopupModal';
-import { LeavesDecoration } from '../../components/LeavesDecoration';
 
 const { width } = Dimensions.get('window');
 

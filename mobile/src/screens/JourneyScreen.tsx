@@ -29,12 +29,6 @@ interface DailySliderData {
     created_at: string;
 }
 
-interface VoiceRecordingData {
-    week_number: number;
-    year: number;
-    created_at: string;
-}
-
 interface QuestionnaireResponse {
     id: number;
     created_at: string;
@@ -56,60 +50,86 @@ const formatDateTime = (dateString: string) => {
     });
 };
 
-const getWeekNumber = (d: Date): [number, number] => {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1) / 7);
-    return [d.getUTCFullYear(), weekNo];
-};
-
 // --- Summary Card (replaces long per-entry lists) ---
+interface SummaryCardEntry {
+    label?: string;
+    date: string;
+}
+
 interface SummaryCardProps {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
     count: number;
     latestLabel?: string;
     latestDate?: string;
+    /** All submission dates; when provided, the card becomes tappable to reveal the full list. */
+    entries?: SummaryCardEntry[];
 }
 
-const SummaryCard = ({ icon, title, count, latestLabel, latestDate }: SummaryCardProps) => (
-    <View style={styles.listItem}>
-        <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-            <Ionicons name={icon} size={20} color={Colors.primary} />
-        </View>
-        <View style={styles.listContent}>
-            <Text style={styles.listTitle}>{title}</Text>
-            {count === 0 ? (
-                <Text style={styles.noDataText}>No submissions yet</Text>
-            ) : (
-                <>
-                    <Text style={styles.summaryCount}>{count} {count === 1 ? 'submission' : 'submissions'}</Text>
-                    {latestDate && (
-                        <Text style={styles.listTime}>Latest: {latestLabel ? `${latestLabel} — ` : ''}{latestDate}</Text>
+const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: SummaryCardProps) => {
+    const [expanded, setExpanded] = useState(false);
+    const isExpandable = !!entries?.length;
+
+    return (
+        <TouchableOpacity
+            style={styles.listItem}
+            activeOpacity={isExpandable ? 0.7 : 1}
+            disabled={!isExpandable}
+            onPress={() => setExpanded(prev => !prev)}
+        >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
+                    <Ionicons name={icon} size={20} color={Colors.primary} />
+                </View>
+                <View style={styles.listContent}>
+                    <Text style={styles.listTitle}>{title}</Text>
+                    {count === 0 ? (
+                        <Text style={styles.noDataText}>No submissions yet</Text>
+                    ) : (
+                        <>
+                            <Text style={styles.summaryCount}>{count} {count === 1 ? 'submission' : 'submissions'}</Text>
+                            {latestDate && (
+                                <Text style={styles.listTime}>Latest: {latestLabel ? `${latestLabel} — ` : ''}{latestDate}</Text>
+                            )}
+                        </>
                     )}
-                </>
+                </View>
+                {isExpandable && (
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#94A3B8" />
+                )}
+            </View>
+            {isExpandable && expanded && (
+                <View style={styles.entryList}>
+                    {entries!.map((entry, index) => (
+                        <View key={index} style={styles.entryRow}>
+                            <Ionicons name="ellipse" size={6} color={Colors.primary} style={{ marginRight: 8 }} />
+                            <Text style={styles.entryText}>
+                                {entry.label ? `${entry.label} — ` : ''}{entry.date}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
             )}
-        </View>
-    </View>
-);
+        </TouchableOpacity>
+    );
+};
 
 export default function JourneyScreen() {
     const [dailyData, setDailyData] = useState<DailySliderData[]>([]);
-    const [weeklyData, setWeeklyData] = useState<VoiceRecordingData[]>([]);
+    const [weeklyData, setWeeklyData] = useState<QuestionnaireResponse[]>([]);
     const [pss10Data, setPss10Data] = useState<QuestionnaireResponse[]>([]);
     const [ffmq15Data, setFfmq15Data] = useState<QuestionnaireResponse[]>([]);
     const [wemwbs14Data, setWemwbs14Data] = useState<QuestionnaireResponse[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'questionnaire'>('daily');
+    const [activeTab, setActiveTab] = useState<'daily' | 'questionnaire'>('daily');
 
     const fetchData = async (force = false) => {
         try {
             const { ok, data } = await apiFetch<{
                 daily?: DailySliderData[];
-                weekly?: VoiceRecordingData[];
+                weekly?: QuestionnaireResponse[];
                 research?: { pss10?: QuestionnaireResponse[]; ffmq15?: QuestionnaireResponse[]; wemwbs14?: QuestionnaireResponse[] };
             }>('/api/journey?limit=90', { force });
 
@@ -149,11 +169,6 @@ export default function JourneyScreen() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
         return Math.min(100, Math.round((dailyData.length / diffDays) * 100));
     }, [dailyData]);
-
-    const weeklyCompletion = useMemo(() => {
-        if (weeklyData.length === 0) return 0;
-        return Math.min(100, Math.round((weeklyData.length / getWeekNumber(new Date())[1]) * 100));
-    }, [weeklyData]);
 
     const researchCompletion = useMemo(() => {
         const total = pss10Data.length + ffmq15Data.length + wemwbs14Data.length;
@@ -226,10 +241,6 @@ export default function JourneyScreen() {
                         <Text style={styles.statLabel}>Daily</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{weeklyCompletion}%</Text>
-                        <Text style={styles.statLabel}>Weekly</Text>
-                    </View>
-                    <View style={styles.statCard}>
                         <Text style={styles.statValue}>{researchCompletion}%</Text>
                         <Text style={styles.statLabel}>Questionnaires</Text>
                     </View>
@@ -237,9 +248,10 @@ export default function JourneyScreen() {
 
                 {/* Tab selector */}
                 <View style={styles.tabContainer}>
-                    {['daily', 'weekly', 'questionnaire'].map((tab) => (
+                    {['daily', 'questionnaire'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
+                            testID={`journey-tab-${tab}`}
                             style={[styles.tab, activeTab === tab && styles.activeTab]}
                             onPress={() => setActiveTab(tab as any)}
                         >
@@ -276,24 +288,18 @@ export default function JourneyScreen() {
                             </View>
                         )}
 
-                        {/* Weekly Tab */}
-                        {activeTab === 'weekly' && (
+                        {/* Questionnaire Tab */}
+                        {activeTab === 'questionnaire' && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Voice Journal Summary</Text>
+                                <Text style={styles.sectionTitle}>Weekly Recording Summary</Text>
                                 <SummaryCard
                                     icon="mic"
                                     title="Weekly Whispers"
                                     count={weeklyData.length}
-                                    latestLabel={weeklyData[0] ? `Week ${weeklyData[0].week_number}, ${weeklyData[0].year}` : undefined}
                                     latestDate={weeklyData[0] ? formatDateTime(weeklyData[0].created_at) : undefined}
                                 />
-                            </View>
-                        )}
 
-                        {/* Questionnaire Tab */}
-                        {activeTab === 'questionnaire' && (
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Questionnaire Summary</Text>
+                                <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Questionnaire Summary</Text>
                                 <SummaryCard
                                     icon="document-text"
                                     title="Perceived Stress Scale (PSS-10)"
@@ -471,5 +477,21 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '700',
         marginTop: 2,
+    },
+    entryList: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    entryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    entryText: {
+        fontSize: 12,
+        color: '#636E72',
+        fontWeight: '500',
     },
 });

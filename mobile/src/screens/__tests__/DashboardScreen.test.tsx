@@ -12,6 +12,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('../../lib/apiClient', () => ({ apiFetch: jest.fn() }));
+jest.mock('../../lib/notifications', () => ({ registerForPushNotificationsAsync: jest.fn() }));
 
 const mockedApiFetch = apiFetch as jest.Mock;
 
@@ -31,6 +32,13 @@ describe('DashboardScreen mindfulness quotes visibility', () => {
 
         await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
         await waitFor(() => expect(queryByText(/Breathe in peace/i)).toBeNull());
+    });
+
+    it('shows a non-mindfulness fun fact card for the control group (.cg)', async () => {
+        mockApi('cg');
+        const { findByText } = await render(<DashboardScreen />);
+
+        expect(await findByText(/Honey never spoils/i)).toBeTruthy();
     });
 
     it('shows the mindfulness quotes card for the experimental group (.ex)', async () => {

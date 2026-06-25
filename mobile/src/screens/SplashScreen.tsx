@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, Image, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,8 +12,8 @@ import { API_URL } from '../config/api';
 import { getPostAuthRoute } from '../lib/postAuthRoute';
 
 
-const MeditationSplash = require('../../assets/app-icon.png');
-const { width } = Dimensions.get('window');
+const MeditationSplash = require('../../assets/app-intro.png');
+const BrainLabsLogo = require('../../assets/brainlabs_logo.png');
 
 export default function SplashScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -29,7 +29,7 @@ export default function SplashScreen() {
         const validateSession = async () => {
             try {
                 // Minimum splash time
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
 
                 const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
                 const token = await AsyncStorage.getItem('authToken');
@@ -98,6 +98,11 @@ export default function SplashScreen() {
                 </View>
                 <Text style={styles.subtitle}>Find your inner peace</Text>
             </Animated.View>
+
+            <Animated.View style={[styles.poweredByContainer, textStyle]}>
+                <Image source={BrainLabsLogo} style={styles.poweredByLogo} resizeMode="contain" />
+                <Text style={styles.poweredByText}>BrainLabs Inc.</Text>
+            </Animated.View>
         </View>
     );
 }
@@ -161,5 +166,23 @@ const styles = StyleSheet.create({
         letterSpacing: 3,
         textTransform: 'uppercase',
         fontWeight: '600',
+    },
+    poweredByContainer: {
+        position: 'absolute',
+        bottom: 48,
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    poweredByLogo: {
+        width: 36,
+        height: 36,
+        marginBottom: 6,
+    },
+    poweredByText: {
+        fontSize: 11,
+        color: '#94A3B8',
+        letterSpacing: 1,
+        fontWeight: '600',
+        textTransform: 'uppercase',
     },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
                 index: 0,
                 routes: [{ name: 'Login' }],
             });
-        } catch (error) {
+        } catch {
             Alert.alert('Error', 'Failed to sign out');
         }
     };
