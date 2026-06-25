@@ -2,6 +2,10 @@
 
 [![CI](https://github.com/BrAINLabs-Inc/mindflow-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BrAINLabs-Inc/mindflow-platform/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![GitHub stars](https://img.shields.io/github/stars/BrAINLabs-Inc/mindflow-platform?style=social)](https://github.com/BrAINLabs-Inc/mindflow-platform/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/BrAINLabs-Inc/mindflow-platform?style=social)](https://github.com/BrAINLabs-Inc/mindflow-platform/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/BrAINLabs-Inc/mindflow-platform?style=social)](https://github.com/BrAINLabs-Inc/mindflow-platform/watchers)
+[![CodeQL](https://github.com/BrAINLabs-Inc/mindflow-platform/actions/workflows/codeql.yml/badge.svg)](https://github.com/BrAINLabs-Inc/mindflow-platform/actions)
 
 MindFlow is a longitudinal mindfulness research platform built by **BrainLabs Inc.** Study participants check in daily through a mobile app (and a web counterpart), logging mood, stress, sleep, and a weekly voice journal, alongside three standardized clinical scales (PSS-10, WEMWBS-14, FFMQ-15). Researchers monitor participation and aggregate results through a web admin portal. The study runs a control/experimental design — participants are split into two arms (`.cg` / `.ex`) that see slightly different in-app content, with the underlying check-ins identical across both.
 
@@ -75,12 +79,6 @@ Bug reports and feature requests: [github.com/BrAINLabs-Inc/mindflow-platform/is
 ## Recent Changes
 
 See the [commit history](https://github.com/BrAINLabs-Inc/mindflow-platform/commits/main) for the full log. Latest at the time of writing:
-
-- `feat:` add notifications, group-aware experiences, and journey screen improvements
-- `feat:` finalize dashboard, onboarding, and survey flow improvements
-- `feat:` dependencies update
-- Merge pull request #1 from `HasithaErandika/release/v2.0`
-- `docs:` add GitHub Pull Request template
 
 ## Contributing
 

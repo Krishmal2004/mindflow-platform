@@ -3,7 +3,7 @@
 export interface FieldConfig {
     name: string;
     label: string;
-    type: 'text' | 'number' | 'boolean' | 'date' | 'textarea' | 'select';
+    type: 'text' | 'number' | 'boolean' | 'date' | 'time' | 'textarea' | 'select';
     options?: { label: string; value: string }[];
     required?: boolean;
     readOnly?: boolean;      // shown but disabled in edit mode
@@ -217,7 +217,7 @@ export const TABLES_CONFIG: TableConfig[] = [
             { name: 'title', label: 'Title', type: 'text', required: true },
             { name: 'description', label: 'Description', type: 'textarea', hideInTable: true },
             { name: 'event_date', label: 'Date', type: 'date', required: true },
-            { name: 'event_time', label: 'Time', type: 'text', required: true },
+            { name: 'event_time', label: 'Time', type: 'time', required: true, defaultValue: '09:00' },
             { name: 'is_completed', label: 'Completed', type: 'boolean', defaultValue: false },
         ],
     },

@@ -15,4 +15,6 @@ export const AUTH_ENDPOINTS = {
     LOGIN: `${API_URL}/api/auth/login`,
     VERIFY_OTP: `${API_URL}/api/auth/verify-otp`,
     RESEND_OTP: `${API_URL}/api/auth/resend-otp`,
+    RESET_PASSWORD: `${API_URL}/api/auth/reset-password`,
+    CONFIRM_RESET: `${API_URL}/api/auth/confirm-reset`,
 };

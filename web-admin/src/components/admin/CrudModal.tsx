@@ -17,8 +17,8 @@ interface CrudModalProps {
     onSubmit: (e: React.FormEvent) => void;
     mode: 'create' | 'edit';
     table: TableConfig;
-    values: Record<string, any>;
-    onChange: (field: string, value: any) => void;
+    values: Record<string, unknown>;
+    onChange: (field: string, value: unknown) => void;
 }
 
 export function CrudModal({ open, onClose, onSubmit, mode, table, values, onChange }: CrudModalProps) {
@@ -88,8 +88,19 @@ export function CrudModal({ open, onClose, onSubmit, mode, table, values, onChan
                                         </Select>
                                     ) : (
                                         <Input
-                                            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                                            value={String(val)}
+                                            type={
+                                                field.type === 'number' ? 'number' :
+                                                field.type === 'date' ? 'date' :
+                                                field.type === 'time' ? 'time' :
+                                                'text'
+                                            }
+                                            value={
+                                                field.type === 'date'
+                                                    ? (String(val).includes('T') ? String(val).split('T')[0] : String(val))
+                                                    : field.type === 'time'
+                                                    ? (String(val).length > 5 ? String(val).slice(0, 5) : String(val))
+                                                    : String(val)
+                                            }
                                             onChange={(e) => onChange(field.name, e.target.value)}
                                             required={field.required}
                                             disabled={isDisabled}
