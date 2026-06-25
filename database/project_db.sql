@@ -69,10 +69,16 @@ CREATE POLICY "Users can update own profile"
     FOR UPDATE 
     USING (id = auth.uid());
 
-CREATE POLICY "Users can insert own profile" 
-    ON profiles 
-    FOR INSERT 
+CREATE POLICY "Users can insert own profile"
+    ON profiles
+    FOR INSERT
     WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins manage all profiles" ON profiles;
+CREATE POLICY "Admins manage all profiles"
+    ON profiles FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
 -- ------------------------------------------------------------------------------
 -- Table: admins
@@ -200,10 +206,16 @@ CREATE POLICY "Users can insert own daily sliders"
     FOR INSERT 
     WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own daily sliders" 
-    ON daily_sliders 
-    FOR UPDATE 
+CREATE POLICY "Users can update own daily sliders"
+    ON daily_sliders
+    FOR UPDATE
     USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins manage all daily sliders" ON daily_sliders;
+CREATE POLICY "Admins manage all daily sliders"
+    ON daily_sliders FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_daily_sliders_user_id ON daily_sliders(user_id);
@@ -251,10 +263,16 @@ CREATE POLICY "Users can insert own recordings"
     FOR INSERT 
     WITH CHECK (user_id = auth.uid());
 
-CREATE POLICY "Users can update own recordings" 
-    ON voice_recordings 
-    FOR UPDATE 
+CREATE POLICY "Users can update own recordings"
+    ON voice_recordings
+    FOR UPDATE
     USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins manage all voice recordings" ON voice_recordings;
+CREATE POLICY "Admins manage all voice recordings"
+    ON voice_recordings FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_voice_recordings_user_id ON voice_recordings(user_id);
@@ -330,6 +348,12 @@ CREATE POLICY "Admins view all PSS10 responses"
     FOR SELECT
     USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Admins manage PSS10" ON questionnaire_pss10_responses;
+CREATE POLICY "Admins manage PSS10"
+    ON questionnaire_pss10_responses FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
+
 -- Index
 CREATE INDEX IF NOT EXISTS idx_pss10_user_id ON questionnaire_pss10_responses(user_id);
 
@@ -383,6 +407,12 @@ CREATE POLICY "Admins view all FFMQ15 responses"
     FOR SELECT
     USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Admins manage FFMQ15" ON questionnaire_ffmq15_responses;
+CREATE POLICY "Admins manage FFMQ15"
+    ON questionnaire_ffmq15_responses FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
+
 -- Index
 CREATE INDEX IF NOT EXISTS idx_ffmq15_user_id ON questionnaire_ffmq15_responses(user_id);
 
@@ -427,6 +457,12 @@ CREATE POLICY "Admins view all WEMWBS14 responses"
     FOR SELECT
     USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Admins manage WEMWBS14" ON questionnaire_wemwbs14_responses;
+CREATE POLICY "Admins manage WEMWBS14"
+    ON questionnaire_wemwbs14_responses FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
+
 -- Index
 CREATE INDEX IF NOT EXISTS idx_wemwbs14_user_id ON questionnaire_wemwbs14_responses(user_id);
 
@@ -470,11 +506,17 @@ ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
 --     FOR ALL 
 --     USING (true);
 
-CREATE POLICY "Allow read access" 
-    ON calendar_events 
-    FOR SELECT 
+CREATE POLICY "Allow read access"
+    ON calendar_events
+    FOR SELECT
     USING (true);
-    
+
+DROP POLICY IF EXISTS "Admins manage calendar events" ON calendar_events;
+CREATE POLICY "Admins manage calendar events"
+    ON calendar_events FOR ALL
+    USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
+    WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
+
 -- Index
 CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date ON calendar_events(event_date);
 

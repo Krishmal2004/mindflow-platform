@@ -1,4 +1,4 @@
-// All table definitions that align with project_db.sql
+// All table definitions that align with database/project_db.sql
 
 export interface FieldConfig {
     name: string;

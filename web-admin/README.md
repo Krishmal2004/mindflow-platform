@@ -45,9 +45,9 @@ npm install
 ### 2. Configure Environment
 Create a .env file in the root of web-admin/ (copy .env.example as a template):
 ```env
-VITE_API_URL=http://localhost:3000
 VITE_SUPABASE_URL=https://your-supabase-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-api-key
+# VITE_API_BASE_URL=http://localhost:3000/api   # optional, this is the default
 ```
 
 ### 3. Run Development Server

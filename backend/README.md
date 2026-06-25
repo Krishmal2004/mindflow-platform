@@ -1,98 +1,57 @@
-# MindFlow Backend Server API (V2)
+# MindFlow Backend
 
-The Express backend serves as the core API coordinator, validating and storing questionnaire submissions, daily check-ins, and managing participant auth verification.
-
----
+The Express/TypeScript API. The only project that holds the Supabase **service-role key**, so it's the only thing that can act on behalf of any user — everything else (mobile, web-admin, web-app) talks to this API, not to Supabase directly (web-admin is a partial exception for some admin-only reads).
 
 ## Features
 
-1.  **Clinical Roadmap Scheduling Logic**:
-    *   Unified scheduling frequency and lock timers:
-        *   **Daily Sliders**: 24h reset cycle (runs from 00:00 to 23:59 daily).
-        *   **Weekly Whispers**: Resets weekly on Mondays at 00:00 (ISO Week schedule).
-        *   **Thrive Tracker (WEMWBS-14)**: Measures wellbeing over the last 2 weeks (14-day lockout).
-        *   **Stress Snapshot (PSS-10) & Mindful Mirror (FFMQ-15)**: Measures stress & mindfulness over the last month (30-day lockout).
-    *   Sequence locking checks so that users must complete preceding steps before unlocking next items.
-2.  **Audio Diary Uploads**:
-    *   Implements multer middleware and AWS S3-compatible pre-signed URL signatures for robust, secure participant voice diary uploads.
-3.  **Security & Stability**:
-    *   Header security using helmet.
-    *   DDOS protection using express-rate-limit.
-    *   Request logging with morgan.
-    *   Request schema payload verification with zod.
+- **Roadmap step endpoints**: Daily Sliders (24h reset), Weekly Whispers voice upload (weekly/ISO-week reset), Thrive Tracker/WEMWBS-14 (14-day lockout), Stress Snapshot/PSS-10 and Mindful Mirror/FFMQ-15 (30-day lockout). `GET /api/journey/status` fans out to all five in parallel for the mobile dashboard's lock/unlock logic.
+- **Audio uploads**: `multer` receives the recording, the service streams it straight to Cloudflare R2 (S3-compatible) — no local disk storage.
+- **Push notification reminders**: `node-cron` jobs (started from `server.ts`) send an 8 AM greeting and a 7 PM "pending tasks" nudge via Expo's push service, computed from real per-user completion status.
+- **Study-group-aware responses**: weekly guided video and calendar events both filter by the caller's `.ex`/`.cg` research group (`src/utils/researchGroup.ts`).
+- **Security**: `helmet`, `express-rate-limit` (separate stricter limit for `/api/auth`), Zod request validation, centralized error handling.
 
----
+## Setup
 
-## Tech Stack
-
-*   **Runtime**: Node.js
-*   **Framework**: Express.js
-*   **Language**: TypeScript
-*   **Database Integration**: Postgres Client (pg pool queries) + Supabase JS Client
-*   **File Parsing**: Multer
-
----
-
-## Getting Started
-
-### Prerequisites
-*   Node.js v20.x (LTS) or higher
-*   A running PostgreSQL database instance (local or hosted)
-
-### 1. Installation
-Navigate to the backend directory and install dependencies:
 ```bash
-cd backend
 npm install
+cp .env.example .env
+npm run dev   # nodemon + ts-node, http://localhost:3000
 ```
 
-### 2. Configure Environment Variables
-Create a .env file in the root of backend/ (based on .env.example):
-```env
-PORT=3000
-DATABASE_URL=postgresql://user:password@localhost:5432/mindflow_db
-SUPABASE_URL=https://your-supabase.supabase.co
-SUPABASE_KEY=your-supabase-anon-key
-AWS_S3_BUCKET=your-bucket-name
-AWS_ACCESS_KEY_ID=your-s3-key-id
-AWS_SECRET_ACCESS_KEY=your-s3-secret-key
-```
+### Environment variables (see `.env.example`)
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — note these names are backend-specific, **not** the `EXPO_PUBLIC_*`/`VITE_*`-prefixed ones the client projects use for the same Supabase project.
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` — Cloudflare R2, for voice-recording uploads.
+- `PORT`, `CORS_ORIGINS` (comma-separated, production only).
 
-### 3. Database Schema Migration
-Initialize the database schemas and constraints by importing the SQL configuration:
-```bash
-psql -d mindflow_db -f ../project_db.sql
-```
+The server throws on startup if `SUPABASE_URL` is missing — that's intentional.
 
-### 4. Running the Server
+### Database
+Schema lives in [`../database/project_db.sql`](../database/project_db.sql), applied via the Supabase SQL editor — there's no local Postgres, no ORM, and no migration tool. See `../docs/database.md`.
 
-#### **Development Mode (with auto-reload)**:
-```bash
-npm run dev
-```
+## Scripts
 
-#### **Production Build & Launch**:
-```bash
-# Compile TS to JS
-npm run build
-
-# Start the compiled server
-npm start
-```
-
----
+| Command | What it does |
+|---|---|
+| `npm run dev` | nodemon + ts-node, watches `src/` |
+| `npm run build` | `tsc` → `dist/` |
+| `npm start` | runs the compiled server (`dist/server.js`) |
+| `npm test` | Jest (`tests/**/*.test.ts`) — mocks the Supabase client at the module boundary, no real DB |
+| `npm run seed` | `ts-node src/seed.ts` — seeds sample data, including `.ex`/`.cg`-tagged research accounts |
+| `npm run lint` / `npm run format` | ESLint / Prettier |
 
 ## Project Structure
 
 ```
-backend/
-├── src/
-│   ├── config/          # Database pools and external SDK clients (Supabase, S3)
-│   ├── controllers/     # Route handlers and input validation schemas (Zod)
-│   ├── middleware/      # Auth validation, rate-limiter, and error handlers
-│   ├── routes/          # Express router path mappings
-│   ├── services/        # Query-level execution (Daily, Weekly, and Questionnaires)
-│   ├── app.ts           # App definition & configurations
-│   └── server.ts        # Server listener entry point
-└── tsconfig.json        # TypeScript compile parameters
+backend/src/
+├── config/        # Supabase client, Cloudflare R2 client
+├── constants/     # Rate limits, pagination caps
+├── controllers/   # Request handlers — auth check, Zod validation, call a service
+├── services/      # Business logic + Supabase queries, one per feature area
+├── routes/        # Express routers, mounted in app.ts under /api/*
+├── middlewares/   # requireAuth / requireAdmin, error handling
+├── jobs/          # node-cron reminder scheduler
+├── utils/         # date helpers, research-group derivation
+├── validation/    # shared Zod schemas
+├── app.ts         # Express app (imported by tests — no side effects on import)
+└── server.ts      # process entry point: app.listen() + starts the cron scheduler
 ```
