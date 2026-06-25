@@ -11,6 +11,7 @@ import { Colors } from '../../constants/colors';
 import { MeditationIllustration } from '../../components/MeditationIllustration';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { Notification, NotificationType } from '../../components/Notification';
+import { getPostAuthRoute } from '../../lib/postAuthRoute';
 
 const { width, height } = Dimensions.get('window');
 
@@ -99,7 +100,8 @@ export default function LoginScreen() {
 
             setLoading(false);
             showNotification('success', 'Welcome back!');
-            setTimeout(() => navigation.replace('MainTabs' as any), 1000);
+            const route = await getPostAuthRoute();
+            setTimeout(() => navigation.replace(route), 1000);
 
         } catch (error: any) {
             console.error('Login Error:', error.message);

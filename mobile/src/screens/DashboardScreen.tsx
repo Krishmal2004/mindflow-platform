@@ -14,11 +14,7 @@ import { apiFetch } from '../lib/apiClient';
 import { LeavesDecoration } from '../components/LeavesDecoration';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
-import {
-    YogaSmall,
-    QuoteIcon,
-    BreathingCircles,
-} from '../components/DashboardIllustrations';
+import { QuoteIcon } from '../components/DashboardIllustrations';
 
 const { width } = Dimensions.get('window');
 
@@ -210,6 +206,7 @@ export default function DashboardScreen() {
     const [userName, setUserName] = useState('User');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
     const [statuses, setStatuses] = useState<any>({});
+    const [researchGroup, setResearchGroup] = useState('');
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -295,8 +292,12 @@ export default function DashboardScreen() {
         useCallback(() => {
             const checkStatuses = async () => {
                 try {
-                    const { ok, data } = await apiFetch<Record<string, { completed: boolean; nextReset?: string }>>('/api/journey/status');
-                    if (ok && data) setStatuses(data);
+                    const [statusRes, summaryRes] = await Promise.all([
+                        apiFetch<Record<string, { completed: boolean; nextReset?: string }>>('/api/journey/status'),
+                        apiFetch<{ group: string }>('/api/dashboard/summary'),
+                    ]);
+                    if (statusRes.ok && statusRes.data) setStatuses(statusRes.data);
+                    if (summaryRes.ok && summaryRes.data) setResearchGroup(summaryRes.data.group || '');
                 } catch (error) {
                     console.log('Dashboard status check failed:', error);
                 }
@@ -417,80 +418,36 @@ export default function DashboardScreen() {
                     <Text style={styles.questionText}>WHAT WOULD YOU{'\n'}LIKE TO DO?</Text>
                 </View>
 
-                {/* Daily Mindfulness Thoughts */}
-                <View style={styles.thoughtsCard}>
-                    <LinearGradient
-                        colors={['#94BCA1', '#749F82']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.thoughtsGradient}
-                    >
-                        <View style={styles.quoteIconContainer}>
-                            <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
-                        </View>
-                        <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
-                            <Text style={styles.thoughtsText}>"{currentQuote.text}"</Text>
-                            <Text style={styles.thoughtsAuthor}>— {currentQuote.author}</Text>
-                        </Animated.View>
-                        <View style={styles.thoughtsIndicator}>
-                            {MINDFULNESS_QUOTES.map((_, index) => (
-                                <View
-                                    key={index}
-                                    style={[
-                                        styles.dot,
-                                        index === currentQuoteIndex && styles.dotActive
-                                    ]}
-                                />
-                            ))}
-                        </View>
-                    </LinearGradient>
-                </View>
-
-                {/* Mindfulness Sessions */}
-                <View style={styles.sectionHeader}>
-                    <View style={styles.pill}>
-                        <Text style={styles.pillText}>MINDFULNESS SESSIONS</Text>
+                {/* Daily Mindfulness Thoughts (experimental group only) */}
+                {researchGroup !== 'cg' && (
+                    <View style={styles.thoughtsCard}>
+                        <LinearGradient
+                            colors={['#94BCA1', '#749F82']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.thoughtsGradient}
+                        >
+                            <View style={styles.quoteIconContainer}>
+                                <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
+                            </View>
+                            <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
+                                <Text style={styles.thoughtsText}>"{currentQuote.text}"</Text>
+                                <Text style={styles.thoughtsAuthor}>— {currentQuote.author}</Text>
+                            </Animated.View>
+                            <View style={styles.thoughtsIndicator}>
+                                {MINDFULNESS_QUOTES.map((_, index) => (
+                                    <View
+                                        key={index}
+                                        style={[
+                                            styles.dot,
+                                            index === currentQuoteIndex && styles.dotActive
+                                        ]}
+                                    />
+                                ))}
+                            </View>
+                        </LinearGradient>
                     </View>
-                </View>
-
-                {/* Large Cards */}
-                <View style={styles.largeCardsContainer}>
-                    {/* Meditation Card */}
-                    <TouchableOpacity
-                        style={[styles.largeCard, { backgroundColor: '#E8F5E9', borderColor: '#C2E7CD', borderWidth: 1 }]}
-                        onPress={() => navigation.navigate('BreathingInhaler' as any)}
-                    >
-                        <View style={styles.cardTextContainer}>
-                            <Text style={styles.cardTitle}>MEDITATION</Text>
-                            <Text style={styles.cardSubtitle}>Breathing Exercises</Text>
-                            <Text style={styles.cardDescription}>
-                                Focus on your breath. Calm your mind. Find inner peace through guided breathing.
-                            </Text>
-                            <Text style={[styles.cardMeta, { color: Colors.primary }]}>5 exercises | 5-10 min</Text>
-                        </View>
-                        <View style={styles.cardImageContainer}>
-                            <BreathingCircles size={90} />
-                        </View>
-                    </TouchableOpacity>
-
-                    {/* Yoga Card */}
-                    <TouchableOpacity
-                        style={[styles.largeCard, { backgroundColor: '#FFF4E5', borderColor: '#FFE0B2', borderWidth: 1 }]}
-                        onPress={() => navigation.navigate('YogaRoute' as any)}
-                    >
-                        <View style={styles.cardImageContainer}>
-                            <YogaSmall width={90} height={90} />
-                        </View>
-                        <View style={[styles.cardTextContainer, { alignItems: 'flex-end' }]}>
-                            <Text style={styles.cardTitle}>YOGA</Text>
-                            <Text style={styles.cardSubtitle}>Daily Motivation</Text>
-                            <Text style={[styles.cardDescription, { textAlign: 'right' }]}>
-                                Stretch your body. Energize your mind. Start the day refreshed.
-                            </Text>
-                            <Text style={[styles.cardMeta, { color: '#C87A53' }]}>Daily yoga routines</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+                )}
 
                 {/* Journey Roadmap Section - Vertical Curved Map */}
                 <View style={styles.roadmapSection}>
@@ -645,72 +602,6 @@ const styles = StyleSheet.create({
     dotActive: {
         backgroundColor: '#FFFFFF',
         width: 18,
-    },
-    // Section Header
-    sectionHeader: {
-        marginBottom: 20,
-        alignItems: 'flex-start',
-    },
-    pill: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    pillText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-        fontSize: 12,
-        letterSpacing: 1,
-    },
-    // Large Cards
-    largeCardsContainer: {
-        marginBottom: 30,
-        gap: 20,
-    },
-    largeCard: {
-        flexDirection: 'row',
-        borderRadius: 20,
-        padding: 24,
-        minHeight: 160,
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    cardTextContainer: {
-        flex: 1,
-    },
-    cardImageContainer: {
-        width: 100,
-        height: 100,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    cardTitle: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: '#5F856B',
-        marginBottom: 4,
-        letterSpacing: 1,
-    },
-    cardSubtitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#2D3436',
-        marginBottom: 8,
-    },
-    cardDescription: {
-        fontSize: 12,
-        color: '#636E72',
-        marginBottom: 12,
-        lineHeight: 18,
-    },
-    cardMeta: {
-        fontSize: 11,
-        fontWeight: '700',
     },
     // Roadmap Section
     roadmapSection: {

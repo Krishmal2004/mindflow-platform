@@ -86,17 +86,4 @@ export class DailyService {
 
         return { success: true };
     }
-
-    /** Recent N days of slider history for graphs (chronological). */
-    public async getRecentHistory(userId: string, days = 7) {
-        const { data, error } = await supabase
-            .from('daily_sliders')
-            .select('created_at, stress_level, mood, sleep_quality, relaxation_level')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(days);
-
-        if (error) throw error;
-        return data?.reverse() || [];
-    }
 }

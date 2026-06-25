@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     Dimensions,
-    Alert,
     TouchableOpacity,
     RefreshControl,
     ActivityIndicator,
@@ -13,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch, clearApiCache } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,6 +64,36 @@ const getWeekNumber = (d: Date): [number, number] => {
     return [d.getUTCFullYear(), weekNo];
 };
 
+// --- Summary Card (replaces long per-entry lists) ---
+interface SummaryCardProps {
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    count: number;
+    latestLabel?: string;
+    latestDate?: string;
+}
+
+const SummaryCard = ({ icon, title, count, latestLabel, latestDate }: SummaryCardProps) => (
+    <View style={styles.listItem}>
+        <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
+            <Ionicons name={icon} size={20} color={Colors.primary} />
+        </View>
+        <View style={styles.listContent}>
+            <Text style={styles.listTitle}>{title}</Text>
+            {count === 0 ? (
+                <Text style={styles.noDataText}>No submissions yet</Text>
+            ) : (
+                <>
+                    <Text style={styles.summaryCount}>{count} {count === 1 ? 'submission' : 'submissions'}</Text>
+                    {latestDate && (
+                        <Text style={styles.listTime}>Latest: {latestLabel ? `${latestLabel} — ` : ''}{latestDate}</Text>
+                    )}
+                </>
+            )}
+        </View>
+    </View>
+);
+
 export default function JourneyScreen() {
     const [dailyData, setDailyData] = useState<DailySliderData[]>([]);
     const [weeklyData, setWeeklyData] = useState<VoiceRecordingData[]>([]);
@@ -76,8 +104,6 @@ export default function JourneyScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'questionnaire'>('daily');
-
-    const scrollViewRef = useRef<ScrollView>(null);
 
     const fetchData = async (force = false) => {
         try {
@@ -188,7 +214,6 @@ export default function JourneyScreen() {
             </SafeAreaView>
 
             <ScrollView
-                ref={scrollViewRef}
                 style={styles.content}
                 contentContainerStyle={{ paddingBottom: 120 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -254,88 +279,39 @@ export default function JourneyScreen() {
                         {/* Weekly Tab */}
                         {activeTab === 'weekly' && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Voice Journal Entries</Text>
-                                {weeklyData.length === 0 ? (
-                                    <Text style={styles.noDataText}>No voice journals recorded yet.</Text>
-                                ) : (
-                                    weeklyData.map((item, index) => (
-                                        <View key={index} style={styles.listItem}>
-                                            <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                <Ionicons name="mic" size={20} color={Colors.primary} />
-                                            </View>
-                                            <View style={styles.listContent}>
-                                                <Text style={styles.listTitle}>Week {item.week_number}, {item.year}</Text>
-                                                <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                            </View>
-                                            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                        </View>
-                                    ))
-                                )}
+                                <Text style={styles.sectionTitle}>Voice Journal Summary</Text>
+                                <SummaryCard
+                                    icon="mic"
+                                    title="Weekly Whispers"
+                                    count={weeklyData.length}
+                                    latestLabel={weeklyData[0] ? `Week ${weeklyData[0].week_number}, ${weeklyData[0].year}` : undefined}
+                                    latestDate={weeklyData[0] ? formatDateTime(weeklyData[0].created_at) : undefined}
+                                />
                             </View>
                         )}
 
                         {/* Questionnaire Tab */}
                         {activeTab === 'questionnaire' && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Questionnaire History</Text>
-
-                                {/* PSS-10 */}
-                                <View style={styles.researchGroup}>
-                                    <Text style={styles.groupHeader}>Perceived Stress Scale (PSS-10)</Text>
-                                    {pss10Data.length === 0 ? <Text style={styles.noDataText}>No submissions</Text> :
-                                        pss10Data.map((item, i) => (
-                                            <View key={item.id} style={styles.listItem}>
-                                                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                    <Ionicons name="document-text" size={18} color={Colors.primary} />
-                                                </View>
-                                                <View style={styles.listContent}>
-                                                    <Text style={styles.listTitle}>PSS-10 Submission #{pss10Data.length - i}</Text>
-                                                    <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                                </View>
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                            </View>
-                                        ))
-                                    }
-                                </View>
-
-                                {/* FFMQ-15 */}
-                                <View style={styles.researchGroup}>
-                                    <Text style={styles.groupHeader}>Five Facet Mindfulness (FFMQ-15)</Text>
-                                    {ffmq15Data.length === 0 ? <Text style={styles.noDataText}>No submissions</Text> :
-                                        ffmq15Data.map((item, i) => (
-                                            <View key={item.id} style={styles.listItem}>
-                                                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                    <Ionicons name="document-text" size={18} color={Colors.primary} />
-                                                </View>
-                                                <View style={styles.listContent}>
-                                                    <Text style={styles.listTitle}>FFMQ-15 Submission #{ffmq15Data.length - i}</Text>
-                                                    <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                                </View>
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                            </View>
-                                        ))
-                                    }
-                                </View>
-
-                                {/* WEMWBS-14 */}
-                                <View style={styles.researchGroup}>
-                                    <Text style={styles.groupHeader}>Mental Wellbeing (WEMWBS-14)</Text>
-                                    {wemwbs14Data.length === 0 ? <Text style={styles.noDataText}>No submissions</Text> :
-                                        wemwbs14Data.map((item, i) => (
-                                            <View key={item.id} style={styles.listItem}>
-                                                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                    <Ionicons name="document-text" size={18} color={Colors.primary} />
-                                                </View>
-                                                <View style={styles.listContent}>
-                                                    <Text style={styles.listTitle}>WEMWBS-14 Submission #{wemwbs14Data.length - i}</Text>
-                                                    <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                                </View>
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                            </View>
-                                        ))
-                                    }
-                                </View>
-
+                                <Text style={styles.sectionTitle}>Questionnaire Summary</Text>
+                                <SummaryCard
+                                    icon="document-text"
+                                    title="Perceived Stress Scale (PSS-10)"
+                                    count={pss10Data.length}
+                                    latestDate={pss10Data[0] ? formatDateTime(pss10Data[0].created_at) : undefined}
+                                />
+                                <SummaryCard
+                                    icon="document-text"
+                                    title="Five Facet Mindfulness (FFMQ-15)"
+                                    count={ffmq15Data.length}
+                                    latestDate={ffmq15Data[0] ? formatDateTime(ffmq15Data[0].created_at) : undefined}
+                                />
+                                <SummaryCard
+                                    icon="document-text"
+                                    title="Mental Wellbeing (WEMWBS-14)"
+                                    count={wemwbs14Data.length}
+                                    latestDate={wemwbs14Data[0] ? formatDateTime(wemwbs14Data[0].created_at) : undefined}
+                                />
                             </View>
                         )}
                     </View>
@@ -490,15 +466,10 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontWeight: '500',
     },
-    researchGroup: {
-        marginBottom: 24,
-    },
-    groupHeader: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: '#94A3B8',
-        marginBottom: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
+    summaryCount: {
+        fontSize: 13,
+        color: Colors.primary,
+        fontWeight: '700',
+        marginTop: 2,
     },
 });

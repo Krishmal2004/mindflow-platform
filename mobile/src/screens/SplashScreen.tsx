@@ -9,6 +9,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, withDel
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
 import { API_URL } from '../config/api';
+import { getPostAuthRoute } from '../lib/postAuthRoute';
 
 
 const MeditationSplash = require('../../assets/app-icon.png');
@@ -44,7 +45,8 @@ export default function SplashScreen() {
                         });
 
                         if (response.ok) {
-                            navigation.replace('MainTabs' as any);
+                            const route = await getPostAuthRoute();
+                            navigation.replace(route);
                         } else {
                             console.log("Session expired, directing to login");
                             await AsyncStorage.multiRemove(['isLoggedIn', 'authToken', 'user']);

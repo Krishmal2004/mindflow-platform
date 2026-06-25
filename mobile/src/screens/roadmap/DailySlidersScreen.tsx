@@ -31,46 +31,26 @@ import { LeavesDecoration } from '../../components/LeavesDecoration';
 
 const { width } = Dimensions.get('window');
 
-const PRACTICE_TYPES = [
-    'Breathing Exercise',
+export const PRACTICE_TYPES = [
+    'Physical Session',
     'Other'
 ];
 
-const INFLUENCING_FACTORS = [
+export const INFLUENCING_FACTORS = [
     {
-        label: "Academics",
+        label: "Education",
         covers: "Exams, deadlines, lectures, grades, studying.",
         theory: "Performance-related affect."
     },
     {
-        label: "Social Interactions",
-        covers: "Friends, romantic partners, family, loneliness, arguments.",
-        theory: "Interpersonal belonging/conflict."
-    },
-    {
-        label: "Work/Career",
-        covers: "Job tasks, coworkers, boss, workload, career goals.",
-        theory: "Occupational stress/accomplishment."
-    },
-    {
-        label: "Health & Vitality",
-        covers: "Exercise, diet, sickness, pain, energy level, physical activity.",
-        theory: "Somatic state impact."
+        label: "Personal",
+        covers: "Friends, family, romantic partners, job/work, health, energy level, hobbies, self-care, or unexplained mood.",
+        theory: "Interpersonal, occupational, and self-related affect."
     },
     {
         label: "Environment",
         covers: "Weather, noise, living space, commute, crowding, safety.",
         theory: "Contextual stressor impact."
-    },
-    {
-        label: "Personal Care",
-        covers: "Hobbies, relaxation, screen time, self-care, hygiene.",
-        theory: "Restorative/leisure impact."
-    },
-    {
-        label: "Nothing Specific",
-        covers: "Hormonal shifts, unexplained mood, general disposition.",
-        theory: "Endogenous mood."
     }
 ];
 
@@ -108,7 +88,6 @@ export default function DailySlidersScreen() {
 
     // UI state
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [alreadySubmitted, setAlreadySubmitted] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // Popup Modal state
@@ -169,11 +148,10 @@ export default function DailySlidersScreen() {
             if (response.ok) {
                 const data = await response.json();
                 if (data.completed) {
-                    setAlreadySubmitted(true);
                     navigation.replace('CompleteTask', {
                         title: 'Great Job Today!',
                         message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                        historyData: data.history
+                        isDaily: true
                     });
                 }
             }
@@ -290,13 +268,11 @@ export default function DailySlidersScreen() {
                 throw new Error(error.error || 'Submission failed');
             }
 
-            const data = await response.json();
-
             showPopup('success', 'Great Job Today!', 'You have successfully done the Daily Task. See you tomorrow again!', () => {
                 navigation.replace('CompleteTask', {
                     title: 'Great Job Today!',
                     message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                    historyData: data.history
+                    isDaily: true
                 });
             });
 
