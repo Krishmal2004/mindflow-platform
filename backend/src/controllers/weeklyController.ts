@@ -41,17 +41,6 @@ export const submitWeeklyEntry = async (req: AuthenticatedRequest, res: Response
     }
 };
 
-export const getUploadUrl = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
-        const result = await weeklyService.getUploadUrl(req.user.id);
-        res.json(result);
-    } catch (error: any) {
-        console.error('getUploadUrl:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
-    }
-};
-
 export const uploadAudio = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
@@ -72,7 +61,7 @@ export const uploadAudio = async (req: AuthenticatedRequest, res: Response): Pro
 export const getWeeklyVideo = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
-        const result = await weeklyService.getWeeklyVideo();
+        const result = await weeklyService.getWeeklyVideo(req.user.id);
         res.json(result);
     } catch (error: any) {
         console.error('getWeeklyVideo:', error);

@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     Dimensions,
-    Alert,
     TouchableOpacity,
     RefreshControl,
     ActivityIndicator,
@@ -13,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch, clearApiCache } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,12 +26,6 @@ interface DailySliderData {
     stress_level: number;
     sleep_quality: number;
     relaxation_level: number;
-    created_at: string;
-}
-
-interface VoiceRecordingData {
-    week_number: number;
-    year: number;
     created_at: string;
 }
 
@@ -58,32 +50,86 @@ const formatDateTime = (dateString: string) => {
     });
 };
 
-const getWeekNumber = (d: Date): [number, number] => {
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1) / 7);
-    return [d.getUTCFullYear(), weekNo];
+// --- Summary Card (replaces long per-entry lists) ---
+interface SummaryCardEntry {
+    label?: string;
+    date: string;
+}
+
+interface SummaryCardProps {
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    count: number;
+    latestLabel?: string;
+    latestDate?: string;
+    /** All submission dates; when provided, the card becomes tappable to reveal the full list. */
+    entries?: SummaryCardEntry[];
+}
+
+const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: SummaryCardProps) => {
+    const [expanded, setExpanded] = useState(false);
+    const isExpandable = !!entries?.length;
+
+    return (
+        <TouchableOpacity
+            style={styles.listItem}
+            activeOpacity={isExpandable ? 0.7 : 1}
+            disabled={!isExpandable}
+            onPress={() => setExpanded(prev => !prev)}
+        >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
+                    <Ionicons name={icon} size={20} color={Colors.primary} />
+                </View>
+                <View style={styles.listContent}>
+                    <Text style={styles.listTitle}>{title}</Text>
+                    {count === 0 ? (
+                        <Text style={styles.noDataText}>No submissions yet</Text>
+                    ) : (
+                        <>
+                            <Text style={styles.summaryCount}>{count} {count === 1 ? 'submission' : 'submissions'}</Text>
+                            {latestDate && (
+                                <Text style={styles.listTime}>Latest: {latestLabel ? `${latestLabel} — ` : ''}{latestDate}</Text>
+                            )}
+                        </>
+                    )}
+                </View>
+                {isExpandable && (
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#94A3B8" />
+                )}
+            </View>
+            {isExpandable && expanded && (
+                <View style={styles.entryList}>
+                    {entries!.map((entry, index) => (
+                        <View key={index} style={styles.entryRow}>
+                            <Ionicons name="ellipse" size={6} color={Colors.primary} style={{ marginRight: 8 }} />
+                            <Text style={styles.entryText}>
+                                {entry.label ? `${entry.label} — ` : ''}{entry.date}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            )}
+        </TouchableOpacity>
+    );
 };
 
 export default function JourneyScreen() {
     const [dailyData, setDailyData] = useState<DailySliderData[]>([]);
-    const [weeklyData, setWeeklyData] = useState<VoiceRecordingData[]>([]);
+    const [weeklyData, setWeeklyData] = useState<QuestionnaireResponse[]>([]);
     const [pss10Data, setPss10Data] = useState<QuestionnaireResponse[]>([]);
     const [ffmq15Data, setFfmq15Data] = useState<QuestionnaireResponse[]>([]);
     const [wemwbs14Data, setWemwbs14Data] = useState<QuestionnaireResponse[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'questionnaire'>('daily');
-
-    const scrollViewRef = useRef<ScrollView>(null);
+    const [activeTab, setActiveTab] = useState<'daily' | 'questionnaire'>('daily');
 
     const fetchData = async (force = false) => {
         try {
             const { ok, data } = await apiFetch<{
                 daily?: DailySliderData[];
-                weekly?: VoiceRecordingData[];
+                weekly?: QuestionnaireResponse[];
                 research?: { pss10?: QuestionnaireResponse[]; ffmq15?: QuestionnaireResponse[]; wemwbs14?: QuestionnaireResponse[] };
             }>('/api/journey?limit=90', { force });
 
@@ -123,11 +169,6 @@ export default function JourneyScreen() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
         return Math.min(100, Math.round((dailyData.length / diffDays) * 100));
     }, [dailyData]);
-
-    const weeklyCompletion = useMemo(() => {
-        if (weeklyData.length === 0) return 0;
-        return Math.min(100, Math.round((weeklyData.length / getWeekNumber(new Date())[1]) * 100));
-    }, [weeklyData]);
 
     const researchCompletion = useMemo(() => {
         const total = pss10Data.length + ffmq15Data.length + wemwbs14Data.length;
@@ -188,7 +229,6 @@ export default function JourneyScreen() {
             </SafeAreaView>
 
             <ScrollView
-                ref={scrollViewRef}
                 style={styles.content}
                 contentContainerStyle={{ paddingBottom: 120 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -201,10 +241,6 @@ export default function JourneyScreen() {
                         <Text style={styles.statLabel}>Daily</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={styles.statValue}>{weeklyCompletion}%</Text>
-                        <Text style={styles.statLabel}>Weekly</Text>
-                    </View>
-                    <View style={styles.statCard}>
                         <Text style={styles.statValue}>{researchCompletion}%</Text>
                         <Text style={styles.statLabel}>Questionnaires</Text>
                     </View>
@@ -212,9 +248,10 @@ export default function JourneyScreen() {
 
                 {/* Tab selector */}
                 <View style={styles.tabContainer}>
-                    {['daily', 'weekly', 'questionnaire'].map((tab) => (
+                    {['daily', 'questionnaire'].map((tab) => (
                         <TouchableOpacity
                             key={tab}
+                            testID={`journey-tab-${tab}`}
                             style={[styles.tab, activeTab === tab && styles.activeTab]}
                             onPress={() => setActiveTab(tab as any)}
                         >
@@ -251,91 +288,36 @@ export default function JourneyScreen() {
                             </View>
                         )}
 
-                        {/* Weekly Tab */}
-                        {activeTab === 'weekly' && (
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Voice Journal Entries</Text>
-                                {weeklyData.length === 0 ? (
-                                    <Text style={styles.noDataText}>No voice journals recorded yet.</Text>
-                                ) : (
-                                    weeklyData.map((item, index) => (
-                                        <View key={index} style={styles.listItem}>
-                                            <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                <Ionicons name="mic" size={20} color={Colors.primary} />
-                                            </View>
-                                            <View style={styles.listContent}>
-                                                <Text style={styles.listTitle}>Week {item.week_number}, {item.year}</Text>
-                                                <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                            </View>
-                                            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                        </View>
-                                    ))
-                                )}
-                            </View>
-                        )}
-
                         {/* Questionnaire Tab */}
                         {activeTab === 'questionnaire' && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Questionnaire History</Text>
+                                <Text style={styles.sectionTitle}>Weekly Recording Summary</Text>
+                                <SummaryCard
+                                    icon="mic"
+                                    title="Weekly Whispers"
+                                    count={weeklyData.length}
+                                    latestDate={weeklyData[0] ? formatDateTime(weeklyData[0].created_at) : undefined}
+                                />
 
-                                {/* PSS-10 */}
-                                <View style={styles.researchGroup}>
-                                    <Text style={styles.groupHeader}>Perceived Stress Scale (PSS-10)</Text>
-                                    {pss10Data.length === 0 ? <Text style={styles.noDataText}>No submissions</Text> :
-                                        pss10Data.map((item, i) => (
-                                            <View key={item.id} style={styles.listItem}>
-                                                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                    <Ionicons name="document-text" size={18} color={Colors.primary} />
-                                                </View>
-                                                <View style={styles.listContent}>
-                                                    <Text style={styles.listTitle}>PSS-10 Submission #{pss10Data.length - i}</Text>
-                                                    <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                                </View>
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                            </View>
-                                        ))
-                                    }
-                                </View>
-
-                                {/* FFMQ-15 */}
-                                <View style={styles.researchGroup}>
-                                    <Text style={styles.groupHeader}>Five Facet Mindfulness (FFMQ-15)</Text>
-                                    {ffmq15Data.length === 0 ? <Text style={styles.noDataText}>No submissions</Text> :
-                                        ffmq15Data.map((item, i) => (
-                                            <View key={item.id} style={styles.listItem}>
-                                                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                    <Ionicons name="document-text" size={18} color={Colors.primary} />
-                                                </View>
-                                                <View style={styles.listContent}>
-                                                    <Text style={styles.listTitle}>FFMQ-15 Submission #{ffmq15Data.length - i}</Text>
-                                                    <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                                </View>
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                            </View>
-                                        ))
-                                    }
-                                </View>
-
-                                {/* WEMWBS-14 */}
-                                <View style={styles.researchGroup}>
-                                    <Text style={styles.groupHeader}>Mental Wellbeing (WEMWBS-14)</Text>
-                                    {wemwbs14Data.length === 0 ? <Text style={styles.noDataText}>No submissions</Text> :
-                                        wemwbs14Data.map((item, i) => (
-                                            <View key={item.id} style={styles.listItem}>
-                                                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
-                                                    <Ionicons name="document-text" size={18} color={Colors.primary} />
-                                                </View>
-                                                <View style={styles.listContent}>
-                                                    <Text style={styles.listTitle}>WEMWBS-14 Submission #{wemwbs14Data.length - i}</Text>
-                                                    <Text style={styles.listTime}>{formatDateTime(item.created_at)}</Text>
-                                                </View>
-                                                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-                                            </View>
-                                        ))
-                                    }
-                                </View>
-
+                                <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Questionnaire Summary</Text>
+                                <SummaryCard
+                                    icon="document-text"
+                                    title="Perceived Stress Scale (PSS-10)"
+                                    count={pss10Data.length}
+                                    latestDate={pss10Data[0] ? formatDateTime(pss10Data[0].created_at) : undefined}
+                                />
+                                <SummaryCard
+                                    icon="document-text"
+                                    title="Five Facet Mindfulness (FFMQ-15)"
+                                    count={ffmq15Data.length}
+                                    latestDate={ffmq15Data[0] ? formatDateTime(ffmq15Data[0].created_at) : undefined}
+                                />
+                                <SummaryCard
+                                    icon="document-text"
+                                    title="Mental Wellbeing (WEMWBS-14)"
+                                    count={wemwbs14Data.length}
+                                    latestDate={wemwbs14Data[0] ? formatDateTime(wemwbs14Data[0].created_at) : undefined}
+                                />
                             </View>
                         )}
                     </View>
@@ -490,15 +472,26 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontWeight: '500',
     },
-    researchGroup: {
-        marginBottom: 24,
+    summaryCount: {
+        fontSize: 13,
+        color: Colors.primary,
+        fontWeight: '700',
+        marginTop: 2,
     },
-    groupHeader: {
+    entryList: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    entryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    entryText: {
         fontSize: 12,
-        fontWeight: '800',
-        color: '#94A3B8',
-        marginBottom: 12,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
+        color: '#636E72',
+        fontWeight: '500',
     },
 });

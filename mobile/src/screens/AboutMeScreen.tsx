@@ -586,7 +586,11 @@ export default function AboutMeScreen() {
                     buttonText="Continue"
                     onClose={() => {
                         setShowSuccessModal(false);
-                        navigation.goBack();
+                        if (navigation.canGoBack()) {
+                            navigation.goBack();
+                        } else {
+                            navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                        }
                     }}
                 />
 

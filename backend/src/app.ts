@@ -46,6 +46,7 @@ import authRoutes from './routes/authRoutes';
 import profileRoutes from './routes/profileRoutes';
 import calendarRoutes from './routes/calendarRoutes';
 import journeyRoutes from './routes/journeyRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 // Routes
 app.use('/api/auth', authLimiter, authRoutes);
@@ -54,6 +55,7 @@ app.use('/api/roadmap', apiLimiter, roadmapRoutes);
 app.use('/api/profile', apiLimiter, profileRoutes);
 app.use('/api/calendar', apiLimiter, calendarRoutes);
 app.use('/api/journey', apiLimiter, journeyRoutes);
+app.use('/api/notifications', apiLimiter, notificationRoutes);
 
 // Health Check (no rate limit — used by load balancers)
 app.get('/health', (_req, res) => {
@@ -66,7 +68,6 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Global error handler — prevents raw stack traces leaking to clients
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('[Unhandled Error]', err.stack ?? err.message);
     const isMulter = err.message?.includes('audio files');

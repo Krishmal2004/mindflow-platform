@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Image, Keyboard } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
 import { MeditationIllustration } from '../../components/MeditationIllustration';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { Notification, NotificationType } from '../../components/Notification';
-
-const { width, height } = Dimensions.get('window');
+import { getPostAuthRoute } from '../../lib/postAuthRoute';
 
 import { AUTH_ENDPOINTS } from '../../config/api';
+
+const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -99,7 +100,8 @@ export default function LoginScreen() {
 
             setLoading(false);
             showNotification('success', 'Welcome back!');
-            setTimeout(() => navigation.replace('MainTabs' as any), 1000);
+            const route = await getPostAuthRoute();
+            setTimeout(() => navigation.replace(route), 1000);
 
         } catch (error: any) {
             console.error('Login Error:', error.message);

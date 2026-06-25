@@ -5,13 +5,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { Notification, NotificationType } from '../../components/Notification';
+import { getPostAuthRoute } from '../../lib/postAuthRoute';
 
 const { width, height } = Dimensions.get('window');
 
@@ -86,11 +87,12 @@ export default function OtpVerificationScreen() {
                 await AsyncStorage.setItem('userName', result.user.user_metadata.full_name);
             }
 
-            // Navigate to Main App
+            // Navigate to Main App (or About Me if onboarding isn't complete)
+            const route = await getPostAuthRoute();
             setTimeout(() => {
                 navigation.reset({
                     index: 0,
-                    routes: [{ name: 'MainTabs' }],
+                    routes: [{ name: route }],
                 });
             }, 1000);
 

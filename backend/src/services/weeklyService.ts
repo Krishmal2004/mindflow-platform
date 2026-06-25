@@ -1,8 +1,8 @@
 import { supabase } from '../config/supabase';
 import { r2, BUCKET_NAME, PUBLIC_URL_BASE } from '../config/r2';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getISOWeekNumber } from '../utils/date';
+import { deriveResearchGroup } from '../utils/researchGroup';
 
 export class WeeklyService {
     /** Check if user has submitted a recording this ISO week. */
@@ -28,21 +28,6 @@ export class WeeklyService {
         return { completed: !!(data?.length), week, year, nextReset };
     }
 
-    /** Generate a presigned upload URL for direct client upload. */
-    public async getUploadUrl(userId: string) {
-        const [year, week] = getISOWeekNumber(new Date());
-        const fileKey = `WeeklyVoice/weekly-${year}-W${week.toString().padStart(2, '0')}-${userId}.wav`;
-
-        const command = new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: fileKey,
-            ContentType: 'audio/wav',
-        });
-
-        const url = await getSignedUrl(r2, command, { expiresIn: 300 });
-        return { url, fileKey, fileUrl: `${PUBLIC_URL_BASE}/${fileKey}` };
-    }
-
     /** Proxy upload: receives buffer from multer and uploads to R2. */
     public async uploadAudio(userId: string, fileBuffer: Buffer, mimeType: string) {
         const [year, week] = getISOWeekNumber(new Date());
@@ -58,21 +43,31 @@ export class WeeklyService {
         return { fileKey, fileUrl: `${PUBLIC_URL_BASE}/${fileKey}` };
     }
 
-    /** Fetch the admin-published weekly video for this week. */
-    public async getWeeklyVideo() {
+    /** Fetch this week's video for the user's research group, falling back to a group-agnostic one. */
+    public async getWeeklyVideo(userId: string) {
         const [, week] = getISOWeekNumber(new Date());
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('research_id')
+            .eq('id', userId)
+            .single();
+
+        const group = deriveResearchGroup(profile?.research_id);
 
         const { data, error } = await supabase
             .from('weekly_recordings')
             .select('*')
             .eq('week_no', week)
-            .order('published_at', { ascending: false })
-            .limit(1)
-            .single();
+            .order('published_at', { ascending: false });
 
-        // PGRST116 = "not found" — expected when no video published
-        if (error && error.code !== 'PGRST116') throw error;
-        return data || null;
+        if (error) throw error;
+        const rows: any[] = data || [];
+
+        const groupMatch = group ? rows.find((r) => r.target_group === group) : undefined;
+        const globalMatch = rows.find((r) => !r.target_group);
+
+        return groupMatch || globalMatch || null;
     }
 
     /** Save recording metadata after successful upload. */

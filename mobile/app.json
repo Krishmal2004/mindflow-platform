@@ -4,11 +4,11 @@
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/app-icon.png",
+      "image": "./assets/app-intro.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -26,13 +26,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "apiUrl": "${EXPO_PUBLIC_API_URL}"
-    },
     "plugins": [
       "expo-asset",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications"
     ]
   }
 }

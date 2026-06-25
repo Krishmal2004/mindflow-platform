@@ -25,9 +25,12 @@ export const signup = async (req: Request, res: Response) => {
 
         if (error) throw error;
 
-        // Sync profile table with display name
-        if (data.user && full_name) {
-            await supabase.from('profiles').upsert({ id: data.user.id, username: full_name });
+        // Sync profile table with display name (always create the row, even without a full_name)
+        if (data.user) {
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({ id: data.user.id, username: getDisplayName(email, full_name) });
+            if (profileError) console.error('Signup profile upsert error:', profileError.message);
         }
 
         return res.status(201).json({ message: 'Signup successful', user: data.user });

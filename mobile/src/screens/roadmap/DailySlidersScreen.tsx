@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -16,67 +16,50 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
 
 import { Colors as GlobalColors } from '../../constants/colors';
+import { API_URL } from '../../config/api';
+import { StressIcons, MoodIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
+import { PopupModal } from '../../components/PopupModal';
+import { LeavesDecoration } from '../../components/LeavesDecoration';
 const Colors = {
     ...GlobalColors,
     primary: '#D97706',
 };
 const THEME_BG = '#FFFBEB';
-import { API_URL } from '../../config/api';
-import { StressIcons, MoodIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
-import { PopupModal } from '../../components/PopupModal';
-import { LeavesDecoration } from '../../components/LeavesDecoration';
 
 const { width } = Dimensions.get('window');
 
-const PRACTICE_TYPES = [
-    'Breathing Exercise',
+export const PRACTICE_TYPES = [
+    'Physical Session',
     'Other'
 ];
 
-const INFLUENCING_FACTORS = [
+export const INFLUENCING_FACTORS = [
     {
-        label: "Academics",
+        label: "Education",
         covers: "Exams, deadlines, lectures, grades, studying.",
         theory: "Performance-related affect."
     },
     {
-        label: "Social Interactions",
-        covers: "Friends, romantic partners, family, loneliness, arguments.",
-        theory: "Interpersonal belonging/conflict."
-    },
-    {
-        label: "Work/Career",
-        covers: "Job tasks, coworkers, boss, workload, career goals.",
-        theory: "Occupational stress/accomplishment."
-    },
-    {
-        label: "Health & Vitality",
-        covers: "Exercise, diet, sickness, pain, energy level, physical activity.",
-        theory: "Somatic state impact."
+        label: "Personal",
+        covers: "Friends, family, romantic partners, job/work, health, energy level, hobbies, self-care, or unexplained mood.",
+        theory: "Interpersonal, occupational, and self-related affect."
     },
     {
         label: "Environment",
         covers: "Weather, noise, living space, commute, crowding, safety.",
         theory: "Contextual stressor impact."
-    },
-    {
-        label: "Personal Care",
-        covers: "Hobbies, relaxation, screen time, self-care, hygiene.",
-        theory: "Restorative/leisure impact."
-    },
-    {
-        label: "Nothing Specific",
-        covers: "Hormonal shifts, unexplained mood, general disposition.",
-        theory: "Endogenous mood."
     }
 ];
 
 const SLEEP_TIMES = [
     '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM'
 ];
+
+const MIN_WATCH_SECONDS = 60;
+const WATCH_SYNC_INTERVAL_SECONDS = 5;
 
 const WAKE_TIMES = [
     '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM'
@@ -96,6 +79,9 @@ export default function DailySlidersScreen() {
 
     // Video state
     const [weeklyVideoId, setWeeklyVideoId] = useState<string | null>(null);
+    const [watchedSeconds, setWatchedSeconds] = useState(0);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const unsyncedSecondsRef = useRef(0);
 
     // Form state
     const [stressLevel, setStressLevel] = useState<number | null>(null);
@@ -108,7 +94,6 @@ export default function DailySlidersScreen() {
 
     // UI state
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [alreadySubmitted, setAlreadySubmitted] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // Popup Modal state
@@ -169,19 +154,72 @@ export default function DailySlidersScreen() {
             if (response.ok) {
                 const data = await response.json();
                 if (data.completed) {
-                    setAlreadySubmitted(true);
                     navigation.replace('CompleteTask', {
                         title: 'Great Job Today!',
                         message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                        historyData: data.history
+                        isDaily: true
                     });
                 }
             }
-        } catch (error) {
+        } catch {
             console.log('Status check failed, proceeding with form');
         } finally {
             setLoading(false);
         }
+    };
+
+    const flushWatchProgress = async (seconds: number) => {
+        if (seconds <= 0) return;
+        try {
+            const token = await getAuthToken();
+            if (!token) return;
+            await fetch(`${API_URL}/api/roadmap/daily/video-progress`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ seconds })
+            });
+        } catch (error) {
+            console.log('Failed to sync video progress', error);
+        }
+    };
+
+    // Tracks watch time only while the video step is on screen AND the video is actually
+    // playing (not just loaded/paused); flushes to the backend every few seconds (and on
+    // cleanup) so a closed app doesn't lose more than a few seconds of progress.
+    useEffect(() => {
+        if (currentStep !== 0 || !weeklyVideoId || !isVideoPlaying) return;
+
+        const interval = setInterval(() => {
+            setWatchedSeconds(prev => prev + 1);
+            unsyncedSecondsRef.current += 1;
+            if (unsyncedSecondsRef.current >= WATCH_SYNC_INTERVAL_SECONDS) {
+                const toSync = unsyncedSecondsRef.current;
+                unsyncedSecondsRef.current = 0;
+                flushWatchProgress(toSync);
+            }
+        }, 1000);
+
+        return () => {
+            clearInterval(interval);
+            if (unsyncedSecondsRef.current > 0) {
+                const toSync = unsyncedSecondsRef.current;
+                unsyncedSecondsRef.current = 0;
+                flushWatchProgress(toSync);
+            }
+        };
+    }, [currentStep, weeklyVideoId, isVideoPlaying]);
+
+    const handleVideoStateChange = (state: string) => {
+        setIsVideoPlaying(state === 'playing');
+    };
+
+    const handleVideoError = (error: string) => {
+        setIsVideoPlaying(false);
+        console.log('YouTube player error', error);
+        showPopup('error', 'Video Unavailable', "This guided session video can't be played right now. You can skip ahead to the sliders.");
     };
 
     const toggleFactor = (factor: string) => {
@@ -200,7 +238,8 @@ export default function DailySlidersScreen() {
     const isStepValid = () => {
         switch (currentStep) {
             case 0:
-                return true; // Video step is always optional/skippable
+                // Skippable when there's no guided session today; otherwise requires the minimum watch time.
+                return !weeklyVideoId || watchedSeconds >= MIN_WATCH_SECONDS;
             case 1:
                 return relaxationLevel !== null && stressLevel !== null;
             case 2:
@@ -290,13 +329,11 @@ export default function DailySlidersScreen() {
                 throw new Error(error.error || 'Submission failed');
             }
 
-            const data = await response.json();
-
             showPopup('success', 'Great Job Today!', 'You have successfully done the Daily Task. See you tomorrow again!', () => {
                 navigation.replace('CompleteTask', {
                     title: 'Great Job Today!',
                     message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                    historyData: data.history
+                    isDaily: true
                 });
             });
 
@@ -376,17 +413,22 @@ export default function DailySlidersScreen() {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.sectionTitle}>Guided Session</Text>
-                                    <Text style={styles.sectionSubtitle}>Take a moment to listen to today's audio guide</Text>
+                                    <Text style={styles.sectionSubtitle}>Take a moment to listen to today&apos;s audio guide</Text>
                                 </View>
                             </View>
 
                             {weeklyVideoId ? (
                                 <View style={styles.videoWrapper}>
-                                    <WebView
-                                        style={{ flex: 1 }}
-                                        javaScriptEnabled={true}
-                                        domStorageEnabled={true}
-                                        source={{ uri: `https://www.youtube.com/embed/${weeklyVideoId}` }}
+                                    <YoutubePlayer
+                                        height={200}
+                                        videoId={weeklyVideoId}
+                                        play={isVideoPlaying}
+                                        onChangeState={handleVideoStateChange}
+                                        onError={handleVideoError}
+                                        webViewProps={{
+                                            allowsInlineMediaPlayback: true,
+                                            mediaPlaybackRequiresUserAction: false,
+                                        }}
                                     />
                                 </View>
                             ) : (
@@ -399,6 +441,15 @@ export default function DailySlidersScreen() {
                                         <Text style={styles.recordingDuration}>You can skip directly to sliders</Text>
                                     </View>
                                 </View>
+                            )}
+                            {weeklyVideoId && (
+                                <Text style={styles.watchProgressText}>
+                                    {watchedSeconds >= MIN_WATCH_SECONDS
+                                        ? '✓ Minimum watch time reached — you can continue'
+                                        : watchedSeconds === 0 && !isVideoPlaying
+                                            ? `Press play above to start — watch at least ${MIN_WATCH_SECONDS}s to continue`
+                                            : `Watch at least ${MIN_WATCH_SECONDS}s to continue — ${watchedSeconds}s watched`}
+                                </Text>
                             )}
                             <Text style={styles.stepTip}>Tip: You can watch the session video first, then swipe or tap next to record your sliders.</Text>
                         </View>
@@ -1133,6 +1184,13 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#64748B',
         marginTop: 2,
+    },
+    watchProgressText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.primary,
+        textAlign: 'center',
+        marginBottom: 8,
     },
     stepTip: {
         fontSize: 11,

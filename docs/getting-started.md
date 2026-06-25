@@ -1,82 +1,62 @@
-# Getting Started Guide (V2)
+# Getting Started
 
-This guide explains how to set up and run the current **MindFlow** application components: the **Mobile App (V2)** and the **Backend Server**.
-
-> **Note**: The `app/` directory contains the deprecated V1 prototype and should be ignored.
+How to set up and run all four MindFlow projects locally. Each has its own `package.json`/`node_modules`/`.env` — commands run from inside that project's directory, not the repo root.
 
 ## Prerequisites
-- **Node.js**: v20.x (LTS)
-- **npm** or **Yarn**
-- **Git**
-- **PostgreSQL**: A running instance (local or hosted) created with the schema in `project_db.sql`.
-- **Expo CLI**: `npm install -g expo-cli` (optional, can use npx)
-- **Mobile Environment**:
-    - **Android**: Android Studio (Emulator) or a physical device.
-    - **iOS**: Xcode (Simulator) - macOS only.
+- **Node.js** v20.x (LTS), npm, Git.
+- A **Supabase** project (free tier is fine) — this is the database; there's no local-Postgres option since the backend talks to it via the Supabase client, not a raw connection string.
+- **Expo Go** app (for mobile, local dev only) or Android Studio / Xcode if you want an emulator/simulator.
 
----
+## 0. Database
 
-## 1. Backend Setup (`/backend`)
+In your Supabase project's SQL editor, run [`database/project_db.sql`](../database/project_db.sql). It's idempotent, so re-running it after a future schema change is safe.
 
-The backend is a Node.js/Express server that manages data and business logic.
+Grab from the Supabase dashboard (Project Settings → API): the project URL, the `anon` key, and the `service_role` key — you'll need these for `backend/.env` and the web projects' `.env`.
 
-1.  **Navigate to the backend directory**:
-    ```bash
-    cd backend
-    ```
+## 1. Backend (`backend/`)
 
-2.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
+```bash
+cd backend
+npm install
+cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, R2_* (Cloudflare R2, for voice-recording uploads)
+npm run dev             # nodemon + ts-node, http://localhost:3000
+```
+`npm test` runs the Jest suite (mocked Supabase client, no real network/DB needed). `npm run seed` seeds sample data, including `.ex`/`.cg`-tagged research accounts.
 
-3.  **Environment Configuration**:
-    Create a `.env` file in `backend/` based on `.env.example`. Ensure you start your PostgreSQL database and provide the connection string:
-    ```env
-    DATABASE_URL=postgresql://user:password@localhost:5432/mindflow_db
-    PORT=3000
-    ```
+## 2. Mobile (`mobile/`)
 
-4.  **Start the Server**:
-    ```bash
-    npm run dev
-    ```
-    The server typically runs on `http://localhost:3000`.
+```bash
+cd mobile
+npm install
+cp .env.example .env    # only needed for a physical device or non-default host — see the comments in .env.example
+npm start                # or: npx expo start -c to clear the Metro cache
+```
+Press `a`/`i` for an emulator/simulator, or scan the QR code with **Expo Go**. `npx tsc --noEmit` type-checks; `npm test` runs Jest (`jest-expo`).
 
----
+> Push notifications (8 AM / 7 PM reminders) need an EAS project, which isn't configured yet — see `mobile/README.md` before relying on them.
 
-## 2. Mobile App Setup (`/mobile`)
+## 3. Web Admin (`web-admin/`)
 
-The mobile app is built with React Native and Expo.
+```bash
+cd web-admin
+npm install
+cp .env.example .env    # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+npm run dev              # http://localhost:5173
+```
 
-1.  **Navigate to the mobile directory**:
-    ```bash
-    cd mobile
-    ```
+## 4. Web App (`web-app/`)
 
-2.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
-
-3.  **Start the Development Server**:
-    We recommend starting with the clear cache flag to avoid Metro bundler issues.
-    ```bash
-    npx expo start -c
-    ```
-
-4.  **Run on Device/Emulator**:
-    - **Android**: Press `a` in the terminal (ensure Emulator is running or USB debugging is on).
-    - **iOS**: Press `i` in the terminal (ensure Simulator is running).
-    - **QR Code**: Scan the QR code with the **Expo Go** app on your physical device (requires being on the same Wi-Fi network).
+```bash
+cd web-app
+npm install
+cp .env.example .env    # same shape as web-admin
+npm run dev              # http://localhost:5174 (deliberately different port, so it can run alongside web-admin)
+```
 
 ---
 
 ## Troubleshooting
 
-### Common Mobile Issues
-- **Network Error**: Ensure your phone/emulator can reach the backend. If running locally, you may need to use your computer's local IP (e.g., `192.168.1.x`) instead of `localhost` in the mobile app's API configuration.
-- **Cache Issues**: Always try `npx expo start -c` if you see strange errors after adding new assets or packages.
-
-### Common Backend Issues
-- **Database Connection**: Verify your PostgreSQL credentials and ensure the service is running. Use `psql` to test the connection manually.
+- **Mobile can't reach the backend**: `localhost` doesn't resolve from a device/emulator the way it does on your machine. `mobile/src/config/api.ts` already special-cases the Android emulator (`10.0.2.2`); for a physical device, set `EXPO_PUBLIC_API_URL` in `mobile/.env` to your machine's LAN IP.
+- **Backend throws on startup**: it throws immediately if `SUPABASE_URL` isn't set — that's intentional, not a bug to work around.
+- **Metro/bundler acting up after adding a package or asset**: `npx expo start -c`.

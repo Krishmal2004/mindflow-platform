@@ -24,13 +24,7 @@ export const getDailyStatus = async (req: AuthenticatedRequest, res: Response): 
         if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
         const status = await dailyService.getDailyStatus(req.user.id);
-
-        if (status.completed) {
-            const history = await dailyService.getRecentHistory(req.user.id);
-            res.json({ ...status, history });
-        } else {
-            res.json(status);
-        }
+        res.json(status);
     } catch (error: any) {
         console.error('getDailyStatus:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
@@ -48,8 +42,7 @@ export const submitDailyEntry = async (req: AuthenticatedRequest, res: Response)
         }
 
         const result = await dailyService.submitDailyEntry(req.user.id, validation.data);
-        const history = await dailyService.getRecentHistory(req.user.id);
-        res.json({ ...result, history });
+        res.json(result);
     } catch (error: any) {
         console.error('submitDailyEntry:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });

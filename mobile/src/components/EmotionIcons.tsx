@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Circle, Path, G, Ellipse } from 'react-native-svg';
+import Svg, { Circle, Path, Ellipse } from 'react-native-svg';
 
 interface EmotionIconProps {
     size?: number;

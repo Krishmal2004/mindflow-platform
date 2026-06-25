@@ -1,124 +1,91 @@
-# MindFlow (Mindfulness Research App) - V2
+# MindFlow
 
-MindFlow is a comprehensive, secure system designed to support longitudinal academic mindfulness research. The platform consists of a mobile client for study participants, an administration portal for researchers, and a robust Node.js API backend linked to a PostgreSQL database.
+[![CI](https://github.com/BrAINLabs-Inc/mindflow-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/BrAINLabs-Inc/mindflow-platform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 
-## System Architecture
+MindFlow is a longitudinal mindfulness research platform built by **BrainLabs Inc.** Study participants check in daily through a mobile app (and a web counterpart), logging mood, stress, sleep, and a weekly voice journal, alongside three standardized clinical scales (PSS-10, WEMWBS-14, FFMQ-15). Researchers monitor participation and aggregate results through a web admin portal. The study runs a control/experimental design — participants are split into two arms (`.cg` / `.ex`) that see slightly different in-app content, with the underlying check-ins identical across both.
 
-The project is structured into three decoupled sub-applications:
+## Project Structure
 
-*   **backend/**: A TypeScript Node.js & Express server handling endpoints, authentication, relational business logic, database connections, and validation checks.
-*   **mobile/**: The client-side React Native (Expo) app providing a gamified roadmap with daily check-ins, voice diaries, and clinical assessments (PSS-10, FFMQ-15, WEMWBS-14) for participants.
-*   **web-admin/**: A React + Vite + Tailwind CSS admin portal for study administrators to monitor participation rates, view clinical scores, and manage researcher tasks.
+| Project | What it is |
+|---|---|
+| [`mobile/`](mobile/) | Expo (React Native) client for study participants |
+| [`web-app/`](web-app/) | React + Vite web counterpart of the participant experience |
+| [`web-admin/`](web-admin/) | React + Vite + Tailwind portal for researchers/admins |
+| [`backend/`](backend/) | Express/TypeScript API — the only project with Supabase service-role access |
+| [`database/`](database/) | `project_db.sql` — single source of truth for the schema (no ORM/migrations) |
+| [`docs/`](docs/) | Architecture, database, features, and research-methodology guides |
 
----
+Each project has its own `package.json`/`node_modules`/`.env` — there's no monorepo tooling, and commands run from inside each project's directory. For how the pieces fit together, see [`docs/architecture.md`](docs/architecture.md) (deeper than this README goes on purpose).
 
-## Key Features
+## Versions
 
-### 1. Unified Mindfulness Journey (Roadmap Dashboard)
-A visual roadmap guiding users through successive locked/unlocked stages:
-*   **Daily Sliders**: 24h cycle check-ins assessing Mood, Stress, Sleep, and Relaxation.
-*   **Weekly Whispers**: Audio log responses to prompt variables.
-*   **Scale Assessments**: Clinical scales containing PSS-10 (Stress Snapshot), WEMWBS-14 (Thrive Tracker), and FFMQ-15 (Mindful Mirror) mapping user progress over monthly/fortnightly frequencies.
+| Project | Version |
+|---|---|
+| `backend` | 1.0.0 |
+| `mobile` | 1.0.0 |
+| `web-admin` | 1.0.0 |
+| `web-app` | 0.0.0 |
 
-### 2. Audio Vocal Biomarkers & Diaries
-Secure audio recording using expo-av (translating to Android mic inputs) with automated file uploads to cloud object storage (AWS S3-compatible bucket) via secure pre-signed URLs.
-
-### 3. Comprehensive Admin Dashboard
-*   **Live Analytics**: Interactive charting of user scores and daily submission streaks.
-*   **Participant Management**: Research ID allocations, password recovery, profile editing, and logs monitoring.
-
----
+These are independent per-project `package.json` versions, not a single app version — there's no shared release/versioning scheme across the four projects yet.
 
 ## Tech Stack
 
-| Module | Core Framework / Runtime | Language | Primary Ecosystem |
-| :--- | :--- | :--- | :--- |
-| **Backend** | Node.js v20.x, Express.js | TypeScript | Supabase Client (PostgreSQL), Zod, Express Rate Limit, Helmet |
-| **Mobile** | Expo SDK, React Native | TypeScript | React Navigation (Bottom Tabs & Stack), Reanimated, Async Storage, Expo AV |
-| **Web Admin** | React v19.x, Vite, Tailwind CSS | TypeScript | Recharts, Radix UI primitives, React Router, Supabase-JS, AWS S3 Client |
-
----
+| Project | Core | Language | Notable dependencies |
+|---|---|---|---|
+| **backend** | Node.js, Express | TypeScript | Supabase JS, Zod, node-cron, expo-server-sdk, Cloudflare R2 (`@aws-sdk/client-s3`) |
+| **mobile** | Expo SDK, React Native | TypeScript | React Navigation, Reanimated, expo-notifications, react-native-youtube-iframe |
+| **web-admin** | React, Vite | TypeScript | Tailwind CSS, Radix UI, Recharts, Supabase JS |
+| **web-app** | React, Vite | TypeScript | React Router, React Hook Form, Radix UI, Recharts |
 
 ## Getting Started
 
-### Prerequisites
-*   **Node.js**: v20.x (LTS) or higher
-*   **PostgreSQL**: A local or hosted PostgreSQL instance. Run the schema migrations inside project_db.sql before booting the backend.
+Full setup (database, all four projects, env vars) is in [`docs/getting-started.md`](docs/getting-started.md). Short version:
 
----
-
-### 1. Database Setup
-Create your PostgreSQL database (e.g., mindflow_db) and apply the tables and seed configuration:
 ```bash
-psql -h localhost -U postgres -d mindflow_db -f project_db.sql
+# 1. Apply database/project_db.sql in your Supabase project's SQL editor, then:
+cd backend && npm install && cp .env.example .env && npm run dev
+cd mobile  && npm install && npm start
+cd web-admin && npm install && cp .env.example .env && npm run dev
+cd web-app && npm install && cp .env.example .env && npm run dev
 ```
 
----
+## Building for Production
 
-### 2. Backend Setup
-1. Navigate to the backend directory and install dependencies:
-   ```bash
-   cd backend
-   npm install
-   ```
-2. Create a .env file based on .env.example:
-   ```env
-   PORT=3000
-   DATABASE_URL=postgresql://username:password@localhost:5432/mindflow_db
-   SUPABASE_URL=https://your-supabase-url.supabase.co
-   SUPABASE_KEY=your-supabase-anon-key
-   AWS_S3_BUCKET=your-bucket-name
-   AWS_ACCESS_KEY_ID=your-s3-key-id
-   AWS_SECRET_ACCESS_KEY=your-s3-secret-key
-   ```
-3. Boot the API server in development mode:
-   ```bash
-   npm run dev
-   ```
+- **backend**: `npm run build` (→ `dist/`) then `npm start`. Deployable to any Node-compatible host.
+- **web-admin** / **web-app**: `npm run build` (→ `dist/`), deployable to any static host.
+- **mobile (installable APK)**: requires an EAS (Expo Application Services) account and project — see [`mobile/README.md`](mobile/README.md#building-an-installable-apk-eas) for the full walkthrough. Short version once you have an EAS project linked:
+  ```bash
+  cd mobile
+  eas build --platform android --profile preview
+  ```
 
----
+## Documentation
 
-### 3. Mobile Client Setup
-1. Navigate to the mobile directory and install dependencies:
-   ```bash
-   cd mobile
-   npm install
-   ```
-2. Configure .env with your development server local IP address:
-   ```env
-   EXPO_PUBLIC_API_URL=http://<YOUR_LOCAL_IP>:3000
-   ```
-3. Launch Metro:
-   ```bash
-   npx expo start -c
-   ```
-4. Run on a virtual device (press a for Android, i for iOS) or scan the QR code using the Expo Go application.
+- [`docs/architecture.md`](docs/architecture.md) — how the four projects fit together
+- [`docs/database.md`](docs/database.md) — schema, RLS, and table-by-table purpose
+- [`docs/features.md`](docs/features.md) — what the app actually does, screen by screen
+- [`docs/getting-started.md`](docs/getting-started.md) — full local setup for all four projects
+- [`docs/research-methodology.md`](docs/research-methodology.md) — the clinical scales and study design
 
----
+## Issues
 
-### 4. Admin Web Portal Setup
-1. Navigate to the web admin directory:
-   ```bash
-   cd web-admin
-   npm install
-   ```
-2. Configure environment variables in .env:
-   ```env
-   VITE_API_URL=http://localhost:3000
-   VITE_SUPABASE_URL=https://your-supabase-url.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-   ```
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-4. Access the web app in your browser at http://localhost:5173.
+Bug reports and feature requests: [github.com/BrAINLabs-Inc/mindflow-platform/issues](https://github.com/BrAINLabs-Inc/mindflow-platform/issues).
 
----
+## Recent Changes
 
-## Documentation Directory
+See the [commit history](https://github.com/BrAINLabs-Inc/mindflow-platform/commits/main) for the full log. Latest at the time of writing:
 
-Additional specialized technical guides can be found in the docs/ folder:
-*   [Technical Architecture](docs/architecture.md) — Structural layout, data flow, and file layout descriptions.
-*   [Database Schema](docs/database.md) — Table schemas, relations, and data fields details.
-*   [Research Methodology](docs/research-methodology.md) — Details on the clinical scales (PSS-10, FFMQ-15, WEMWBS) and frequency lockout intervals.
+- `feat:` add notifications, group-aware experiences, and journey screen improvements
+- `feat:` finalize dashboard, onboarding, and survey flow improvements
+- `feat:` dependencies update
+- Merge pull request #1 from `HasithaErandika/release/v2.0`
+- `docs:` add GitHub Pull Request template
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Code ownership is defined in [`.github/CODEOWNERS`](.github/CODEOWNERS).
+
+## License
+
+[MIT](LICENSE.md) © BrainLabs Inc.

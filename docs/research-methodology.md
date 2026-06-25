@@ -1,9 +1,9 @@
 # Research Methodology
 
 ## Data Collection Process
-1. **Daily Engagement**: Participants complete daily slider assessments.
-2. **Weekly Reflection**: Participants answer weekly thought-provoking questions.
-3. **Periodic Assessment**: Participants complete comprehensive questionnaires.
+1. **Daily Engagement**: Participants complete daily slider assessments (mood, stress, sleep, relaxation, mindfulness practice).
+2. **Weekly Vocal Biomarker Capture**: Participants read a fixed passage aloud once a week ("Weekly Whispers") — see Vocal Biomarker Analysis below.
+3. **Periodic Assessment**: Participants complete the three clinical scales below, each on its own cadence.
 4. **Behavioral Tracking**: App tracks engagement patterns and consistency.
 
 ---
@@ -51,10 +51,10 @@ As part of the research methodology, vocal biomarkers are collected to:
 
 ### Data Collection Protocol
 1. Participants read a standardized passage aloud.
-2. Audio is recorded in WAV format with quality settings ensuring research-grade audio.
+2. Audio is recorded at high quality (WAV or M4A, depending on platform).
 3. Recordings are between 15-45 seconds in duration.
-4. Files are securely uploaded to AWS S3-compatible cloud storage.
-5. Metadata is stored in the database linking recordings to questionnaire responses.
+4. Files are securely uploaded to Cloudflare R2 (S3-compatible object storage).
+5. Metadata (`voice_recordings`) links each recording to the participant and study week — not to a specific questionnaire response.
 
 ### Analysis Framework
 Vocal biomarker analysis includes examination of:

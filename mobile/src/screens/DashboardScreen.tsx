@@ -6,19 +6,16 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
 import { apiFetch } from '../lib/apiClient';
+import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { LeavesDecoration } from '../components/LeavesDecoration';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
-import {
-    YogaSmall,
-    QuoteIcon,
-    BreathingCircles,
-} from '../components/DashboardIllustrations';
+import { QuoteIcon } from '../components/DashboardIllustrations';
 
 const { width } = Dimensions.get('window');
 
@@ -33,6 +30,44 @@ const MINDFULNESS_QUOTES = [
     { text: "The greatest weapon against stress is our ability to choose one thought over another.", author: "William James" },
     { text: "Be where you are, not where you think you should be.", author: "Unknown" },
     { text: "In today's rush, we all think too much, seek too much, want too much, and forget about the joy of just being.", author: "Eckhart Tolle" },
+    { text: "You can't stop the waves, but you can learn to surf.", author: "Jon Kabat-Zinn" },
+    { text: "Feelings come and go like clouds in a windy sky. Conscious breathing is my anchor.", author: "Thich Nhat Hanh" },
+    { text: "Wherever you are, be there totally.", author: "Eckhart Tolle" },
+    { text: "Smile, breathe, and go slowly.", author: "Thich Nhat Hanh" },
+    { text: "Quiet the mind, and the soul will speak.", author: "Ma Jaya Sati Bhagavati" },
+    { text: "Mindfulness isn't difficult, we just need to remember to do it.", author: "Sharon Salzberg" },
+    { text: "The little things? The little moments? They aren't little.", author: "Jon Kabat-Zinn" },
+    { text: "Each morning we are born again. What we do today is what matters most.", author: "Buddha" },
+    { text: "Within you, there is a stillness and a sanctuary to which you can retreat at any time.", author: "Hermann Hesse" },
+    { text: "Nothing ever exists entirely alone; everything is in relation to everything else.", author: "Buddha" },
+    { text: "Your breath is your anchor to the present moment.", author: "Unknown" },
+    { text: "Letting go gives us freedom, and freedom is the only condition for happiness.", author: "Thich Nhat Hanh" },
+    { text: "Self-compassion is simply giving the same kindness to ourselves that we would give to others.", author: "Christopher Germer" },
+];
+
+// Non-mindfulness trivia for the control group (.cg) — kept separate from MINDFULNESS_QUOTES
+// since that group's dashboard must not show mindfulness-themed content.
+const FUN_FACTS = [
+    { text: "Honey never spoils — archaeologists have found 3,000-year-old honey in Egyptian tombs that's still edible.", author: "Fun Fact" },
+    { text: "Octopuses have three hearts and blue blood.", author: "Fun Fact" },
+    { text: "A bolt of lightning is about five times hotter than the surface of the sun.", author: "Fun Fact" },
+    { text: "Bananas are berries, but strawberries technically aren't.", author: "Fun Fact" },
+    { text: "The Eiffel Tower can grow more than 6 inches taller in summer due to heat expansion.", author: "Fun Fact" },
+    { text: "There are more stars in the universe than grains of sand on every beach on Earth.", author: "Fun Fact" },
+    { text: "A group of flamingos is called a 'flamboyance'.", author: "Fun Fact" },
+    { text: "The shortest war in history lasted just 38 minutes.", author: "Fun Fact" },
+    { text: "Sharks are older than trees — they've been around for roughly 400 million years.", author: "Fun Fact" },
+    { text: "Wombat poop is cube-shaped.", author: "Fun Fact" },
+    { text: "The Great Wall of China isn't actually visible from space with the naked eye.", author: "Fun Fact" },
+    { text: "A single fluffy cloud can weigh more than a million pounds.", author: "Fun Fact" },
+    { text: "Sea otters hold hands while sleeping so they don't drift apart.", author: "Fun Fact" },
+    { text: "One species of jellyfish can effectively live forever.", author: "Fun Fact" },
+    { text: "Venus is the only planet in our solar system that spins clockwise.", author: "Fun Fact" },
+    { text: "A day on Venus is longer than its entire year.", author: "Fun Fact" },
+    { text: "Cows form close friendships and get stressed when separated from their best friend.", author: "Fun Fact" },
+    { text: "The unicorn is Scotland's national animal.", author: "Fun Fact" },
+    { text: "Butterflies can taste with their wings.", author: "Fun Fact" },
+    { text: "Most of a cat's day — about 70% of its life — is spent sleeping.", author: "Fun Fact" },
 ];
 
 // Roadmap steps configuration
@@ -206,10 +241,11 @@ const RoadmapNode = ({
 };
 
 export default function DashboardScreen() {
-    const navigation = useNavigation<DashboardNavProp>();
     const [userName, setUserName] = useState('User');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
+    const [currentFactIndex, setCurrentFactIndex] = useState(0);
     const [statuses, setStatuses] = useState<any>({});
+    const [researchGroup, setResearchGroup] = useState('');
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -295,8 +331,12 @@ export default function DashboardScreen() {
         useCallback(() => {
             const checkStatuses = async () => {
                 try {
-                    const { ok, data } = await apiFetch<Record<string, { completed: boolean; nextReset?: string }>>('/api/journey/status');
-                    if (ok && data) setStatuses(data);
+                    const [statusRes, summaryRes] = await Promise.all([
+                        apiFetch<Record<string, { completed: boolean; nextReset?: string }>>('/api/journey/status'),
+                        apiFetch<{ group: string }>('/api/dashboard/summary'),
+                    ]);
+                    if (statusRes.ok && statusRes.data) setStatuses(statusRes.data);
+                    if (summaryRes.ok && summaryRes.data) setResearchGroup(summaryRes.data.group || '');
                 } catch (error) {
                     console.log('Dashboard status check failed:', error);
                 }
@@ -312,11 +352,12 @@ export default function DashboardScreen() {
                 if (storedName) {
                     setUserName(storedName);
                 }
-            } catch (e) {
+            } catch {
                 // ignore
             }
         };
         loadUser();
+        registerForPushNotificationsAsync();
     }, []);
 
     // Pulsing active node ring
@@ -337,7 +378,7 @@ export default function DashboardScreen() {
         ).start();
     }, []);
 
-    // Rotate quotes every 20 seconds
+    // Rotate quotes/facts every 20 seconds (whichever card is showing for this group)
     useEffect(() => {
         const interval = setInterval(() => {
             Animated.timing(fadeAnim, {
@@ -346,6 +387,7 @@ export default function DashboardScreen() {
                 useNativeDriver: true,
             }).start(() => {
                 setCurrentQuoteIndex((prev) => (prev + 1) % MINDFULNESS_QUOTES.length);
+                setCurrentFactIndex((prev) => (prev + 1) % FUN_FACTS.length);
                 Animated.timing(fadeAnim, {
                     toValue: 1,
                     duration: 500,
@@ -369,6 +411,8 @@ export default function DashboardScreen() {
     };
 
     const currentQuote = MINDFULNESS_QUOTES[currentQuoteIndex];
+    const currentFact = FUN_FACTS[currentFactIndex];
+    const isControlGroup = researchGroup === 'cg';
     const mapWidth = width - 48;
     const mapHeight = 520;
     const activeStepId = getActiveStepId();
@@ -414,83 +458,71 @@ export default function DashboardScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.greetingText}>HELLO, {userName.toUpperCase()} !</Text>
-                    <Text style={styles.questionText}>WHAT WOULD YOU{'\n'}LIKE TO DO?</Text>
+                    <Text style={styles.questionText}>
+                        {isControlGroup ? <>WHAT WOULD YOU{'\n'}LIKE TO DO?</> : <>READY FOR YOUR{'\n'}MINDFUL MOMENT?</>}
+                    </Text>
                 </View>
 
-                {/* Daily Mindfulness Thoughts */}
-                <View style={styles.thoughtsCard}>
-                    <LinearGradient
-                        colors={['#94BCA1', '#749F82']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.thoughtsGradient}
-                    >
-                        <View style={styles.quoteIconContainer}>
-                            <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
-                        </View>
-                        <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
-                            <Text style={styles.thoughtsText}>"{currentQuote.text}"</Text>
-                            <Text style={styles.thoughtsAuthor}>— {currentQuote.author}</Text>
-                        </Animated.View>
-                        <View style={styles.thoughtsIndicator}>
-                            {MINDFULNESS_QUOTES.map((_, index) => (
-                                <View
-                                    key={index}
-                                    style={[
-                                        styles.dot,
-                                        index === currentQuoteIndex && styles.dotActive
-                                    ]}
-                                />
-                            ))}
-                        </View>
-                    </LinearGradient>
-                </View>
-
-                {/* Mindfulness Sessions */}
-                <View style={styles.sectionHeader}>
-                    <View style={styles.pill}>
-                        <Text style={styles.pillText}>MINDFULNESS SESSIONS</Text>
+                {/* Daily Thoughts card: mindfulness quotes for the experimental group,
+                    non-mindfulness fun facts (in orange) for the control group (.cg) — this
+                    group must not see mindfulness-themed content. */}
+                {isControlGroup ? (
+                    <View style={styles.thoughtsCard}>
+                        <LinearGradient
+                            colors={['#D9A675', '#C2875A']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.thoughtsGradient}
+                        >
+                            <View style={styles.quoteIconContainer}>
+                                <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
+                            </View>
+                            <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
+                                <Text style={styles.thoughtsText}>{currentFact.text}</Text>
+                                <Text style={styles.thoughtsAuthor}>— {currentFact.author}</Text>
+                            </Animated.View>
+                            <View style={styles.thoughtsIndicator}>
+                                {FUN_FACTS.map((_, index) => (
+                                    <View
+                                        key={index}
+                                        style={[
+                                            styles.dot,
+                                            index === currentFactIndex && styles.dotActive
+                                        ]}
+                                    />
+                                ))}
+                            </View>
+                        </LinearGradient>
                     </View>
-                </View>
-
-                {/* Large Cards */}
-                <View style={styles.largeCardsContainer}>
-                    {/* Meditation Card */}
-                    <TouchableOpacity
-                        style={[styles.largeCard, { backgroundColor: '#E8F5E9', borderColor: '#C2E7CD', borderWidth: 1 }]}
-                        onPress={() => navigation.navigate('BreathingInhaler' as any)}
-                    >
-                        <View style={styles.cardTextContainer}>
-                            <Text style={styles.cardTitle}>MEDITATION</Text>
-                            <Text style={styles.cardSubtitle}>Breathing Exercises</Text>
-                            <Text style={styles.cardDescription}>
-                                Focus on your breath. Calm your mind. Find inner peace through guided breathing.
-                            </Text>
-                            <Text style={[styles.cardMeta, { color: Colors.primary }]}>5 exercises | 5-10 min</Text>
-                        </View>
-                        <View style={styles.cardImageContainer}>
-                            <BreathingCircles size={90} />
-                        </View>
-                    </TouchableOpacity>
-
-                    {/* Yoga Card */}
-                    <TouchableOpacity
-                        style={[styles.largeCard, { backgroundColor: '#FFF4E5', borderColor: '#FFE0B2', borderWidth: 1 }]}
-                        onPress={() => navigation.navigate('YogaRoute' as any)}
-                    >
-                        <View style={styles.cardImageContainer}>
-                            <YogaSmall width={90} height={90} />
-                        </View>
-                        <View style={[styles.cardTextContainer, { alignItems: 'flex-end' }]}>
-                            <Text style={styles.cardTitle}>YOGA</Text>
-                            <Text style={styles.cardSubtitle}>Daily Motivation</Text>
-                            <Text style={[styles.cardDescription, { textAlign: 'right' }]}>
-                                Stretch your body. Energize your mind. Start the day refreshed.
-                            </Text>
-                            <Text style={[styles.cardMeta, { color: '#C87A53' }]}>Daily yoga routines</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+                ) : (
+                    <View style={styles.thoughtsCard}>
+                        <LinearGradient
+                            colors={['#94BCA1', '#749F82']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.thoughtsGradient}
+                        >
+                            <View style={styles.quoteIconContainer}>
+                                <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
+                            </View>
+                            <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
+                                <Text style={styles.thoughtsText}>&quot;{currentQuote.text}&quot;</Text>
+                                <Text style={styles.thoughtsAuthor}>— {currentQuote.author}</Text>
+                            </Animated.View>
+                            <View style={styles.thoughtsIndicator}>
+                                {MINDFULNESS_QUOTES.map((_, index) => (
+                                    <View
+                                        key={index}
+                                        style={[
+                                            styles.dot,
+                                            index === currentQuoteIndex && styles.dotActive
+                                        ]}
+                                    />
+                                ))}
+                            </View>
+                        </LinearGradient>
+                    </View>
+                )}
 
                 {/* Journey Roadmap Section - Vertical Curved Map */}
                 <View style={styles.roadmapSection}>
@@ -645,72 +677,6 @@ const styles = StyleSheet.create({
     dotActive: {
         backgroundColor: '#FFFFFF',
         width: 18,
-    },
-    // Section Header
-    sectionHeader: {
-        marginBottom: 20,
-        alignItems: 'flex-start',
-    },
-    pill: {
-        backgroundColor: Colors.primary,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    pillText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-        fontSize: 12,
-        letterSpacing: 1,
-    },
-    // Large Cards
-    largeCardsContainer: {
-        marginBottom: 30,
-        gap: 20,
-    },
-    largeCard: {
-        flexDirection: 'row',
-        borderRadius: 20,
-        padding: 24,
-        minHeight: 160,
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    cardTextContainer: {
-        flex: 1,
-    },
-    cardImageContainer: {
-        width: 100,
-        height: 100,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    cardTitle: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: '#5F856B',
-        marginBottom: 4,
-        letterSpacing: 1,
-    },
-    cardSubtitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#2D3436',
-        marginBottom: 8,
-    },
-    cardDescription: {
-        fontSize: 12,
-        color: '#636E72',
-        marginBottom: 12,
-        lineHeight: 18,
-    },
-    cardMeta: {
-        fontSize: 11,
-        fontWeight: '700',
     },
     // Roadmap Section
     roadmapSection: {

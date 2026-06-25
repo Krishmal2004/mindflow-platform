@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
     ScrollView,
-    Alert,
     RefreshControl,
     ActivityIndicator,
     Modal,
@@ -17,7 +16,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Svg, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { LeavesDecoration } from '../components/LeavesDecoration';
