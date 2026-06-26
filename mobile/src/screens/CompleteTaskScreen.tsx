@@ -18,7 +18,7 @@ export default function CompleteTaskScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<CompleteTaskRouteProp>();
 
-    const { title, message, buttonText = "Back to Journey", isDaily } = route.params;
+    const { title, message, buttonText = "Back to Journey", isDaily, themeColor: paramThemeColor, themeBgGrad: paramThemeBgGrad } = route.params;
 
     // Entrance Animations
     const fadeAnim = useSharedValue(0);
@@ -42,14 +42,14 @@ export default function CompleteTaskScreen() {
     }));
 
     // Choose theme colors dynamically
-    const themeColor = isDaily ? '#D97706' : Colors.primary;
-    const themeBgGrad = isDaily
+    const themeColor = paramThemeColor || (isDaily ? '#D97706' : Colors.primary);
+    const themeBgGrad = paramThemeBgGrad || (isDaily
         ? ['#FFFBEB', '#FFF9F0', '#FFFFFF'] as const
-        : ['#E6F4EA', '#F1F7F3', '#FFFFFF'] as const;
+        : ['#E6F4EA', '#F1F7F3', '#FFFFFF'] as const);
 
     return (
         <LinearGradient
-            colors={themeBgGrad}
+            colors={themeBgGrad as [string, string, ...string[]]}
             style={styles.container}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}

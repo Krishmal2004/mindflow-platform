@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -242,6 +243,14 @@ const RoadmapNode = ({
 
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
+    const insets = useSafeAreaInsets();
+
+    const getFormattedDate = () => {
+        const today = new Date();
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return `${days[today.getDay()]}, ${months[today.getMonth()]} ${today.getDate()}`;
+    };
     const [userName, setUserName] = useState('User');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
     const [currentFactIndex, setCurrentFactIndex] = useState(0);
@@ -480,11 +489,23 @@ export default function DashboardScreen() {
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                contentContainerStyle={[
+                    styles.scrollContent, 
+                    { paddingTop: insets.top > 0 ? insets.top + 24 : 80 }
+                ]} 
+                showsVerticalScrollIndicator={false}
+            >
 
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.greetingText}>HELLO, {userName.toUpperCase()} !</Text>
+                    <View style={styles.headerRow}>
+                        <Text style={styles.greetingText}>HELLO, {userName.toUpperCase()} !</Text>
+                        <View style={styles.dateContainer}>
+                            <Ionicons name="calendar-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
+                            <Text style={styles.dateText}>{getFormattedDate()}</Text>
+                        </View>
+                    </View>
                     <Text style={styles.questionText}>
                         {isControlGroup ? <>WHAT WOULD YOU{'\n'}LIKE TO DO?</> : <>READY FOR YOUR{'\n'}MINDFUL MOMENT?</>}
                     </Text>
@@ -663,12 +684,32 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         zIndex: 1,
     },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
     greetingText: {
         fontSize: 14,
         fontWeight: '600',
         color: Colors.textSecondary,
         letterSpacing: 1,
-        marginBottom: 8,
+    },
+    dateContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(116, 159, 130, 0.08)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    dateText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: Colors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     questionText: {
         fontSize: 24,

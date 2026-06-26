@@ -68,7 +68,53 @@
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
   }
-  /* Hide scrollbar for horizontal scroll areas */
+
+  /* ── Prevent iOS auto-zoom on input focus ── */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* ── Keyboard-safe full-height ── */
+  /* dvh = dynamic viewport height (shrinks when keyboard opens on mobile) */
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .h-screen-safe {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* ── Smooth input focus ring in MindFlow style ── */
+  .mf-input:focus-within {
+    box-shadow: 0 0 0 2px rgba(116, 159, 130, 0.35), 0 2px 8px rgba(0,0,0,0.06);
+    border-color: rgba(116, 159, 130, 0.6);
+  }
+
+  /* ── Animated scale-in for modals ── */
+  @keyframes scaleIn {
+    from { transform: scale(0.88); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  .animate-scale-in { animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+  /* ── Shake animation for error states ── */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-6px); }
+    45% { transform: translateX(6px); }
+    75% { transform: translateX(-4px); }
+  }
+  .animate-shake { animation: shake 0.4s ease-in-out; }
+
+  /* ── Fade in ── */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in { animation: fadeIn 0.3s ease forwards; }
+
+  /* ── Hide scrollbar for horizontal scroll areas ── */
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }

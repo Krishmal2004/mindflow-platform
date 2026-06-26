@@ -2,10 +2,10 @@ import { supabase } from '../config/supabase';
 
 /** Allowed fields for about_me_profiles upsert (matches DB schema). */
 const ABOUT_ME_FIELDS = [
-    'university_id', 'education_level', 'major_field_of_study', 'age',
+    'university_id', 'education_level', 'faculty', 'major_field_of_study', 'age',
     'living_situation', 'family_background', 'cultural_background',
     'hobbies_interests', 'personal_goals', 'why_mindflow',
-    'completion_percentage', 'is_completed',
+    'is_completed',
 ] as const;
 
 export class ProfileService {

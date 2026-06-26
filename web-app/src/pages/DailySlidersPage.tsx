@@ -11,8 +11,8 @@ const INFLUENCING_FACTORS = [
   { label: 'Environment', covers: 'Weather, noise, living space, commute, crowding, safety.' },
 ];
 
-const SLEEP_TIMES = ['8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM','12:00 AM','12:30 AM','1:00 AM','1:30 AM','2:00 AM'];
-const WAKE_TIMES = ['4:00 AM','4:30 AM','5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM'];
+const SLEEP_TIMES = ['6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM','12:00 AM','12:30 AM','1:00 AM','1:30 AM','2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM'];
+const WAKE_TIMES = ['2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM','4:30 AM','5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM'];
 
 const STEP_NAMES = ['Guided Session', 'Relaxation & Stress', 'Mindfulness', 'Mood & Feeling', 'Sleep'];
 const MIN_WATCH_SECONDS = 60;
@@ -143,7 +143,7 @@ export default function DailySlidersPage() {
       case 2: {
         if (mindfulnessPractice === null) return false;
         if (mindfulnessPractice === 'yes') {
-          if (!practiceDuration.trim() || selectedPractices.length === 0) return false;
+          if (!practiceDuration.trim() || parseInt(practiceDuration) < 5 || selectedPractices.length === 0) return false;
           if (selectedPractices.includes('Other') && !otherPracticeText.trim()) return false;
         }
         return true;
@@ -337,9 +337,12 @@ export default function DailySlidersPage() {
                     value={practiceDuration}
                     onChange={e => setPracticeDuration(e.target.value)}
                     type="number"
-                    placeholder="e.g., 15"
-                    style={{ width: 120, padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 15, outline: 'none', background: '#F6F8F9' }}
+                    min="5"
+                    inputMode="numeric"
+                    placeholder="Min. 5 minutes"
+                    style={{ width: 140, padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 16, outline: 'none', background: '#F6F8F9' }}
                   />
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Minimum 5 minutes</p>
                 </div>
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#636E72', display: 'block', marginBottom: 6 }}>Practice Type</label>

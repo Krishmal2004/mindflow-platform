@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS about_me_profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
     university_id TEXT,
     education_level TEXT,
+    faculty TEXT,
     major_field_of_study TEXT,
     age INTEGER,
     living_situation TEXT,
@@ -120,7 +121,6 @@ CREATE TABLE IF NOT EXISTS about_me_profiles (
     hobbies_interests TEXT,
     personal_goals TEXT,
     why_mindflow TEXT,
-    completion_percentage INTEGER DEFAULT 0,
     is_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

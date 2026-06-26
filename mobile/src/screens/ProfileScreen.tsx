@@ -497,7 +497,7 @@ export default function ProfileScreen() {
                                             editable={!submitting}
                                         />
                                         <TouchableOpacity onPress={() => setShowNew(p => !p)} style={styles.eyeBtn}>
-                                            <Text style={styles.eyeText}>{showNew ? 'Hide' : 'Show'}</Text>
+                                            <Ionicons name={showNew ? "eye-off-outline" : "eye-outline"} size={22} color="#90A4AE" />
                                         </TouchableOpacity>
                                     </View>
 
@@ -530,7 +530,7 @@ export default function ProfileScreen() {
                                             editable={!submitting}
                                         />
                                         <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={styles.eyeBtn}>
-                                            <Text style={styles.eyeText}>{showConfirm ? 'Hide' : 'Show'}</Text>
+                                            <Ionicons name={showConfirm ? "eye-off-outline" : "eye-outline"} size={22} color="#90A4AE" />
                                         </TouchableOpacity>
                                     </View>
                                     {confirmPassword.length > 0 && (
