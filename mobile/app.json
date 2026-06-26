@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "MindFlow",
+    "slug": "mindflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/app-icon.png",
@@ -35,7 +35,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "7ad97140-cfa9-4a5a-8d9a-ab79a993ae0b"
+        "projectId": "72b9a014-e5e6-426a-94cc-59afd6397133"
       }
     }
   }
