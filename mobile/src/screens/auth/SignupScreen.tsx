@@ -10,10 +10,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
-import { MeditationIllustration } from '../../components/MeditationIllustration';
+import { SignupIllustration } from '../../components/SignupIllustration';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { Notification, NotificationType } from '../../components/Notification';
@@ -35,21 +36,26 @@ function getStrength(pwd: string): StrengthLevel {
     return Math.min(score, 4) as StrengthLevel;
 }
 
-const STRENGTH_LABEL: Record<StrengthLevel, string> = {
-    0: '',
-    1: 'Weak',
-    2: 'Fair',
-    3: 'Good',
-    4: 'Strong',
-};
+const STRENGTH_LABEL: Record<StrengthLevel, string> = { 0: '', 1: 'Weak', 2: 'Fair', 3: 'Good', 4: 'Strong' };
+const STRENGTH_COLOR: Record<StrengthLevel, string> = { 0: '#E0E6ED', 1: '#EF5350', 2: '#FFA726', 3: '#66BB6A', 4: '#2E7D32' };
 
-const STRENGTH_COLOR: Record<StrengthLevel, string> = {
-    0: '#E0E6ED',
-    1: '#EF5350',
-    2: '#FFA726',
-    3: '#66BB6A',
-    4: '#2E7D32',
-};
+// ── Bottom wave that sits inside the panel ─────────────────────────────────────
+function PanelWave() {
+    const h = 90; const w = width;
+    return (
+        <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', bottom: 0, left: 0 }} pointerEvents="none">
+            <Defs>
+                <SvgGradient id="swg" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0"   stopColor="#A7D7C5" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#7FD9D1" stopOpacity="1" />
+                    <Stop offset="1"   stopColor="#63C9D9" stopOpacity="1" />
+                </SvgGradient>
+            </Defs>
+            <Path d={`M0 ${h*0.4} C${w*0.25} ${h*0.1} ${w*0.5} ${h*0.7} ${w*0.75} ${h*0.3} C${w*0.88} ${h*0.1} ${w} ${h*0.4} ${w} ${h*0.4} L${w} ${h} L0 ${h} Z`} fill="url(#swg)" opacity={0.22} />
+            <Path d={`M0 ${h*0.6} C${w*0.22} ${h*0.35} ${w*0.5} ${h*0.82} ${w*0.72} ${h*0.5} C${w*0.86} ${h*0.3} ${w} ${h*0.58} ${w} ${h*0.58} L${w} ${h} L0 ${h} Z`} fill="url(#swg)" opacity={0.14} />
+        </Svg>
+    );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SignupScreen() {
@@ -65,16 +71,13 @@ export default function SignupScreen() {
     const [loading, setLoading] = useState(false);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-    // Per-field errors (shown on blur or on submit attempt)
     const [touched, setTouched] = useState({ name: false, email: false, password: false, confirm: false });
     const [errors, setErrors] = useState({ name: '', email: '', password: '', confirm: '' });
 
-    // Notification
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
 
-    // Animations
     const fadeAnim = useSharedValue(0);
     const scaleAnim = useSharedValue(0.9);
 
@@ -93,9 +96,7 @@ export default function SignupScreen() {
     const validate = (field: keyof typeof errors, value: string, confirmVal?: string) => {
         let msg = '';
         switch (field) {
-            case 'name':
-                if (!value.trim()) msg = 'Full name is required';
-                break;
+            case 'name':    if (!value.trim()) msg = 'Full name is required'; break;
             case 'email':
                 if (!value.trim()) msg = 'Email is required';
                 else if (!EMAIL_RE.test(value)) msg = 'Enter a valid email address';
@@ -131,7 +132,6 @@ export default function SignupScreen() {
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSignup = async () => {
         if (!allValid()) return;
-
         setLoading(true);
         try {
             const response = await fetch(AUTH_ENDPOINTS.SIGNUP, {
@@ -139,17 +139,13 @@ export default function SignupScreen() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, full_name: name }),
             });
-
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Signup failed');
-
             await AsyncStorage.setItem('userName', name);
             setLoading(false);
-
             setNotificationType('success');
             setNotificationMessage('Account created! Please verify your email.');
             setNotificationVisible(true);
-
             setTimeout(() => navigation.navigate('OtpVerification', { email }), 1000);
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : 'Signup failed';
@@ -161,17 +157,10 @@ export default function SignupScreen() {
     };
 
     // ── Animated styles ───────────────────────────────────────────────────────
-    const headerStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ scale: scaleAnim.value }],
-    }));
-    const illustrationStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ scale: scaleAnim.value }],
-    }));
+    const headerStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value, transform: [{ scale: scaleAnim.value }] }));
+    const illustrationStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value, transform: [{ scale: scaleAnim.value }] }));
     const panelStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value }));
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
     const inputBorder = (field: keyof typeof errors) =>
         touched[field] && errors[field] ? styles.inputError : {};
 
@@ -189,16 +178,25 @@ export default function SignupScreen() {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Animated.View style={headerStyle}>
-                        <Text style={styles.headerText}>MindFlow</Text>
+                    <Animated.View style={[styles.logoBlock, headerStyle]}>
+                        <View style={styles.logoRow}>
+                            <Text style={styles.logoThin}>Mind</Text>
+                            <Text style={styles.logoBold}>Flow</Text>
+                        </View>
+                        <View style={styles.taglineRow}>
+                            <View style={styles.taglineDot} />
+                            <Text style={styles.tagline}>Find your inner peace</Text>
+                            <View style={styles.taglineDot} />
+                        </View>
                     </Animated.View>
 
                     {!keyboardVisible && (
                         <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                            <MeditationIllustration width={width * 0.42} height={width * 0.42} color={Colors.primary} />
+                            <SignupIllustration width={width * 0.50} height={width * 0.50} />
                         </Animated.View>
                     )}
 
+                    {/* Bottom panel with wave inside */}
                     <Animated.View style={[styles.bottomPanel, panelStyle]}>
                         <Text style={styles.panelTitle}>NEW ACCOUNT</Text>
                         <Text style={styles.panelSubtitle}>START YOUR JOURNEY</Text>
@@ -251,28 +249,19 @@ export default function SignupScreen() {
                                         secureTextEntry={!showPassword}
                                     />
                                     <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeButton}>
-                                        <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#90A4AE" />
+                                        <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#90A4AE" />
                                     </TouchableOpacity>
                                 </View>
 
-                                {/* Strength meter — only visible once user starts typing */}
                                 {password.length > 0 && (
                                     <View style={styles.strengthContainer}>
                                         <View style={styles.strengthBars}>
                                             {([1, 2, 3, 4] as StrengthLevel[]).map(level => (
-                                                <View
-                                                    key={level}
-                                                    style={[
-                                                        styles.strengthBar,
-                                                        { backgroundColor: strength >= level ? STRENGTH_COLOR[strength] : '#E0E6ED' },
-                                                    ]}
-                                                />
+                                                <View key={level} style={[styles.strengthBar, { backgroundColor: strength >= level ? STRENGTH_COLOR[strength] : '#E0E6ED' }]} />
                                             ))}
                                         </View>
                                         {strength > 0 && (
-                                            <Text style={[styles.strengthLabel, { color: STRENGTH_COLOR[strength] }]}>
-                                                {STRENGTH_LABEL[strength]}
-                                            </Text>
+                                            <Text style={[styles.strengthLabel, { color: STRENGTH_COLOR[strength] }]}>{STRENGTH_LABEL[strength]}</Text>
                                         )}
                                     </View>
                                 )}
@@ -302,10 +291,9 @@ export default function SignupScreen() {
                                         secureTextEntry={!showConfirm}
                                     />
                                     <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={styles.eyeButton}>
-                                        <Ionicons name={showConfirm ? "eye-off-outline" : "eye-outline"} size={22} color="#90A4AE" />
+                                        <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={22} color="#90A4AE" />
                                     </TouchableOpacity>
                                 </View>
-                                {/* Match indicator */}
                                 {confirmPassword.length > 0 && (
                                     <Text style={[styles.matchText, { color: confirmPassword === password ? '#2E7D32' : '#EF5350' }]}>
                                         {confirmPassword === password ? '✓ Passwords match' : '✗ Passwords do not match'}
@@ -326,6 +314,9 @@ export default function SignupScreen() {
                                 <Text style={styles.switchText}>ALREADY HAVE AN ACCOUNT?</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {/* Wave decoration at bottom of panel */}
+                        <PanelWave />
                     </Animated.View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -361,73 +352,74 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F6F8F9' },
     decorationContainer: { position: 'absolute', top: 0, left: 0, right: 0 },
     keyboardView: { flex: 1 },
-    scrollContent: {
-        flexGrow: 1,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 30,
-    },
-    headerText: {
-        fontSize: 16, fontWeight: '600', color: '#636E72',
-        letterSpacing: 2, marginBottom: 6, textTransform: 'uppercase',
-    },
+    scrollContent: { flexGrow: 1, justifyContent: 'space-between', alignItems: 'center', paddingTop: 30 },
+    logoBlock: { alignItems: 'center', marginBottom: 6 },
+    logoRow: { flexDirection: 'row', alignItems: 'baseline' },
+    logoThin: { fontSize: 30, fontWeight: '300', color: '#3A3A3A', letterSpacing: 2 },
+    logoBold: { fontSize: 30, fontWeight: '800', color: Colors.primary, letterSpacing: 2 },
+    taglineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+    taglineDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#7FD9D1', opacity: 0.80 },
+    tagline: { fontSize: 10, color: '#7A8285', letterSpacing: 3, textTransform: 'uppercase', fontWeight: '600' },
     illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
     bottomPanel: {
         backgroundColor: '#E3F2FD',
         width: '100%',
-        borderTopLeftRadius: 40, borderTopRightRadius: 40,
-        paddingTop: 20, paddingBottom: 28, paddingHorizontal: 24,
-        alignItems: 'center', flex: 1,
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingTop: 20,
+        paddingBottom: 104,   // extra space for wave
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        flex: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05, shadowRadius: 5, elevation: 10,
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 10,
+        overflow: 'hidden',   // clip wave inside panel
     },
-    panelTitle: {
-        fontSize: 14, fontWeight: '600', color: '#636E72',
-        letterSpacing: 2, marginBottom: 5,
-    },
-    panelSubtitle: {
-        fontSize: 18, fontWeight: 'bold', color: '#2D3436',
-        letterSpacing: 1, marginBottom: 15,
-    },
+    panelTitle: { fontSize: 14, fontWeight: '600', color: '#636E72', letterSpacing: 2, marginBottom: 5 },
+    panelSubtitle: { fontSize: 18, fontWeight: 'bold', color: '#2D3436', letterSpacing: 1, marginBottom: 15 },
     formContainer: { width: '100%', gap: 8 },
     inputWrapper: {
         backgroundColor: '#FFFFFF',
         borderRadius: 30,
-        paddingHorizontal: 20, paddingVertical: 10,
-        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
-        borderWidth: 1.5, borderColor: 'transparent',
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2,
+        borderWidth: 1.5,
+        borderColor: 'transparent',
     },
     inputError: { borderColor: '#EF5350' },
     input: { flex: 1, fontSize: 16, color: '#2D3436' },
     eyeButton: { paddingLeft: 8 },
-    eyeText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
     errorText: { color: '#EF5350', fontSize: 11, marginTop: 3, marginLeft: 16 },
     matchText: { fontSize: 11, marginTop: 3, marginLeft: 16, fontWeight: '500' },
-
     strengthContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, paddingHorizontal: 4 },
     strengthBars: { flexDirection: 'row', gap: 4, flex: 1 },
     strengthBar: { flex: 1, height: 4, borderRadius: 2 },
     strengthLabel: { fontSize: 11, fontWeight: '700', width: 50, textAlign: 'right' },
-
     requirementsList: { paddingHorizontal: 4, marginTop: 4, gap: 1 },
-
     signupButton: {
         backgroundColor: '#95C27E',
-        borderRadius: 30, paddingVertical: 14,
+        borderRadius: 30,
+        paddingVertical: 14,
         alignItems: 'center',
         shadowColor: '#95C27E',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3, shadowRadius: 5, elevation: 4, marginTop: 6,
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 4,
+        marginTop: 6,
     },
     signupButtonDisabled: { opacity: 0.7 },
     signupButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
     switchButton: { paddingVertical: 12, alignItems: 'center' },
-    switchText: {
-        color: Colors.primary, fontWeight: 'bold', fontSize: 12,
-        letterSpacing: 1, textDecorationLine: 'underline',
-    },
+    switchText: { color: Colors.primary, fontWeight: 'bold', fontSize: 12, letterSpacing: 1, textDecorationLine: 'underline' },
 });

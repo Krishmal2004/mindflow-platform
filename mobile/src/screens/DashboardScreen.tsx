@@ -22,6 +22,23 @@ const { width } = Dimensions.get('window');
 
 type DashboardNavProp = NativeStackNavigationProp<RootStackParamList>;
 
+function QuoteCardWave() {
+    const h = 56;
+    return (
+        <Svg width={width} height={h} viewBox={`0 0 ${width} ${h}`} style={{ position: 'absolute', bottom: 0, left: 0 }} pointerEvents="none">
+            <Defs>
+                <SvgLinearGradient id="qwave" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor="#A7D7C5" stopOpacity="1" />
+                    <Stop offset="0.5" stopColor="#7FD9D1" stopOpacity="1" />
+                    <Stop offset="1" stopColor="#63C9D9" stopOpacity="1" />
+                </SvgLinearGradient>
+            </Defs>
+            <Path d={`M0 ${h*0.45} C${width*0.25} ${h*0.1} ${width*0.5} ${h*0.75} ${width*0.75} ${h*0.3} C${width*0.88} ${h*0.1} ${width} ${h*0.45} ${width} ${h*0.45} L${width} ${h} L0 ${h} Z`} fill="url(#qwave)" opacity={0.2} />
+            <Path d={`M0 ${h*0.65} C${width*0.22} ${h*0.38} ${width*0.5} ${h*0.85} ${width*0.72} ${h*0.55} C${width*0.86} ${h*0.32} ${width} ${h*0.62} ${width} ${h*0.62} L${width} ${h} L0 ${h} Z`} fill="url(#qwave)" opacity={0.12} />
+        </Svg>
+    );
+}
+
 // Mindfulness quotes
 const MINDFULNESS_QUOTES = [
     { text: "Breathe in peace, breathe out stress.", author: "Unknown" },
@@ -259,6 +276,8 @@ export default function DashboardScreen() {
     const [summaryLoaded, setSummaryLoaded] = useState(false);
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
+    const mountFade = useRef(new Animated.Value(0)).current;
+    const mountScale = useRef(new Animated.Value(0.96)).current;
 
     const getStatus = (key: string) => {
         const s = statuses[key];
@@ -393,6 +412,10 @@ export default function DashboardScreen() {
         };
         loadUser();
         registerForPushNotificationsAsync();
+        Animated.parallel([
+            Animated.timing(mountFade, { toValue: 1, duration: 750, useNativeDriver: true }),
+            Animated.timing(mountScale, { toValue: 1, duration: 750, useNativeDriver: true }),
+        ]).start();
     }, []);
 
     // Pulsing active node ring
@@ -476,12 +499,7 @@ export default function DashboardScreen() {
                   `C ${mapWidth * 0.6} ${cy4}, ${mapWidth * 0.4} ${cy5}, ${cx5} ${cy5}`;
 
     return (
-        <LinearGradient
-            colors={['#F0FDF4', '#F8FAFC', '#FFFFFF']}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.container}>
             <StatusBar style="dark" />
 
             {/* Top Leaves Decoration */}
@@ -489,16 +507,16 @@ export default function DashboardScreen() {
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
             </View>
 
-            <ScrollView 
+            <ScrollView
                 contentContainerStyle={[
-                    styles.scrollContent, 
-                    { paddingTop: insets.top > 0 ? insets.top + 24 : 80 }
-                ]} 
+                    styles.scrollContent,
+                    { paddingTop: insets.top > 0 ? insets.top + 16 : 60 }
+                ]}
                 showsVerticalScrollIndicator={false}
             >
 
                 {/* Header */}
-                <View style={styles.header}>
+                <Animated.View style={[styles.header, { opacity: mountFade }]}>
                     <View style={styles.headerRow}>
                         <Text style={styles.greetingText}>HELLO, {userName.toUpperCase()} !</Text>
                         <View style={styles.dateContainer}>
@@ -509,7 +527,7 @@ export default function DashboardScreen() {
                     <Text style={styles.questionText}>
                         {isControlGroup ? <>WHAT WOULD YOU{'\n'}LIKE TO DO?</> : <>READY FOR YOUR{'\n'}MINDFUL MOMENT?</>}
                     </Text>
-                </View>
+                </Animated.View>
 
                 {/* Pending-assignment banner — shown only when no research group is set */}
                 {isUnassigned && (
@@ -597,11 +615,8 @@ export default function DashboardScreen() {
 
                 {/* Journey Roadmap Section - Vertical Curved Map */}
                 <View style={styles.roadmapSection}>
-                    <View style={styles.roadmapHeader}>
-                        <Text style={styles.roadmapTitle}>YOUR JOURNEY</Text>
-                        <Text style={styles.roadmapSubtitle}>Follow the path to mindfulness</Text>
-                    </View>
-
+                    <Text style={styles.roadmapTitle}>YOUR JOURNEY</Text>
+                    <Text style={styles.roadmapSubtitle}>Follow the path to mindfulness</Text>
                     <View style={[styles.mapContainer, { height: mapHeight }]}>
                         {/* SVG Path Background */}
                         <Svg
@@ -661,7 +676,7 @@ export default function DashboardScreen() {
                 message={modalMessage}
                 onClose={() => setModalVisible(false)}
             />
-        </LinearGradient>
+        </View>
     );
 }
 
@@ -773,28 +788,24 @@ const styles = StyleSheet.create({
     roadmapSection: {
         marginBottom: 20,
     },
-    roadmapHeader: {
-        marginBottom: 16,
-    },
     roadmapTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: Colors.textSecondary,
-        letterSpacing: 1,
-        marginBottom: 4,
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#B0BFCA',
+        letterSpacing: 2,
+        textTransform: 'uppercase',
+        marginBottom: 2,
     },
     roadmapSubtitle: {
         fontSize: 12,
         color: '#94A3B8',
+        fontWeight: '500',
+        marginBottom: 16,
     },
     // Map Container
     mapContainer: {
         position: 'relative',
-        borderRadius: 24,
         overflow: 'visible',
-        backgroundColor: 'rgba(255,255,255,0.4)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.6)',
     },
     mapSvg: {
         position: 'absolute',

@@ -44,6 +44,10 @@ export const submitDailyEntry = async (req: AuthenticatedRequest, res: Response)
         const result = await dailyService.submitDailyEntry(req.user.id, validation.data);
         res.json(result);
     } catch (error: any) {
+        if (error.message === 'DAILY_ALREADY_SUBMITTED') {
+            res.status(409).json({ error: 'Already submitted for today. Resets at midnight.' });
+            return;
+        }
         console.error('submitDailyEntry:', error);
         res.status(500).json({ error: error.message || 'Internal server error' });
     }

@@ -39,14 +39,6 @@ export class DailyService {
     public async submitDailyEntry(userId: string, entryData: any) {
         const today = startOfToday();
 
-        const { data: existing } = await supabase
-            .from('daily_sliders')
-            .select('id')
-            .eq('user_id', userId)
-            .gte('created_at', today.toISOString())
-            .limit(1)
-            .single();
-
         // Fetch user's profile to retrieve research_id for study arm segmentation
         const { data: profile } = await supabase
             .from('profiles')
@@ -55,6 +47,21 @@ export class DailyService {
             .single();
 
         const isControlGroup = profile?.research_id?.endsWith('.cg');
+
+        const { data: existing } = await supabase
+            .from('daily_sliders')
+            .select('id, stress_level')
+            .eq('user_id', userId)
+            .gte('created_at', today.toISOString())
+            .limit(1)
+            .single();
+
+        // Control group (.cg) may only submit once per day; block updates once completed
+        if (isControlGroup && existing && existing.stress_level !== null) {
+            const err = new Error('DAILY_ALREADY_SUBMITTED') as any;
+            err.status = 409;
+            throw err;
+        }
 
         const payload = {
             user_id: userId,

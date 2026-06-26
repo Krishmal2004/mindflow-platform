@@ -303,14 +303,26 @@ export default function AboutMeScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <LeavesDecoration width={width} height={width} />
+            <LeavesDecoration width={width} height={width * 0.7} />
 
-            <SafeAreaView edges={['top', 'left', 'right']}>
+            <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerArea}>
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                    <TouchableOpacity
+                        onPress={() => {
+                            if (navigation.canGoBack()) {
+                                navigation.goBack();
+                            } else {
+                                navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                            }
+                        }}
+                        style={styles.backButton}
+                    >
+                        <Ionicons name="arrow-back" size={22} color="#1A1A2E" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>About Me</Text>
+                    <View style={styles.headerTitleBlock}>
+                        <Text style={styles.headerTitle}>About Me</Text>
+                        <Text style={styles.headerSubtitle}>Your research profile</Text>
+                    </View>
                     <View style={{ width: 40 }} />
                 </View>
             </SafeAreaView>
@@ -419,20 +431,29 @@ export default function AboutMeScreen() {
                 ) : (
                     <>
                         <View style={styles.helpCard}>
-                            <Ionicons name="information-circle-outline" size={24} color="#0284C7" style={{ marginBottom: 6 }} />
-                            <Text style={styles.helpTitle}>Help us know you better</Text>
-                            <Text style={styles.helpText}>
-                                Please provide accurate and truthful information. This helps us personalize your MindFlow experience.
-                            </Text>
+                            <View style={styles.helpCardIcon}>
+                                <Ionicons name="information-circle" size={22} color="#0284C7" />
+                            </View>
+                            <View style={styles.helpCardContent}>
+                                <Text style={styles.helpTitle}>Help us know you better</Text>
+                                <Text style={styles.helpText}>
+                                    Please provide accurate and truthful information. This helps us personalise your MindFlow experience.
+                                </Text>
+                            </View>
                         </View>
 
                         {/* CARD 1: ACADEMIC DETAILS */}
                         <View style={styles.groupedFormCard}>
                             <View style={styles.formCardHeader}>
-                                <JourneyIcons.Academic width={22} height={22} color={Colors.primary} />
-                                <View>
+                                <View style={styles.formCardIconWrap}>
+                                    <JourneyIcons.Academic width={20} height={20} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
                                     <Text style={styles.formCardHeaderText}>Academic Details</Text>
                                     <Text style={styles.formCardHeaderSubtext}>Your university and area of study</Text>
+                                </View>
+                                <View style={styles.stepBadge}>
+                                    <Text style={styles.stepBadgeText}>1 / 3</Text>
                                 </View>
                             </View>
                             
@@ -521,10 +542,15 @@ export default function AboutMeScreen() {
                         {/* CARD 2: PERSONAL CONTEXT */}
                         <View style={styles.groupedFormCard}>
                             <View style={styles.formCardHeader}>
-                                <JourneyIcons.Person width={22} height={22} color={Colors.primary} />
-                                <View>
+                                <View style={styles.formCardIconWrap}>
+                                    <JourneyIcons.Person width={20} height={20} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
                                     <Text style={styles.formCardHeaderText}>Personal Profile</Text>
                                     <Text style={styles.formCardHeaderSubtext}>Background and living details</Text>
+                                </View>
+                                <View style={styles.stepBadge}>
+                                    <Text style={styles.stepBadgeText}>2 / 3</Text>
                                 </View>
                             </View>
                             
@@ -625,10 +651,15 @@ export default function AboutMeScreen() {
                         {/* CARD 3: GOALS & MINDFLOW JOURNEY */}
                         <View style={styles.groupedFormCard}>
                             <View style={styles.formCardHeader}>
-                                <JourneyIcons.Star width={22} height={22} color={Colors.primary} />
-                                <View>
+                                <View style={styles.formCardIconWrap}>
+                                    <JourneyIcons.Star width={20} height={20} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
                                     <Text style={styles.formCardHeaderText}>Goals & Hobbies</Text>
                                     <Text style={styles.formCardHeaderSubtext}>Your interests and previous experience</Text>
+                                </View>
+                                <View style={styles.stepBadge}>
+                                    <Text style={styles.stepBadgeText}>3 / 3</Text>
                                 </View>
                             </View>
                             
@@ -762,48 +793,69 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    headerArea: {
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 14,
     },
     backButton: {
         width: 40,
         height: 40,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F1F5F9',
         borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    headerTitleBlock: {
+        alignItems: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#2D3436',
+        color: '#1A1A2E',
+    },
+    headerSubtitle: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '500',
+        letterSpacing: 0.5,
+        marginTop: 2,
     },
     content: {
         padding: 16,
         paddingBottom: 60,
     },
     helpCard: {
-        backgroundColor: '#E0F2FE',
-        borderRadius: 20,
-        padding: 16,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 16,
+        padding: 14,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#BAE6FD',
+        borderColor: '#BFDBFE',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+    },
+    helpCardIcon: {
+        marginTop: 1,
+    },
+    helpCardContent: {
+        flex: 1,
     },
     helpTitle: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
-        color: '#0284C7',
-        marginBottom: 4,
+        color: '#1D4ED8',
+        marginBottom: 3,
     },
     helpText: {
         fontSize: 13,
@@ -841,9 +893,9 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     cardHeaderText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: '#2D3436',
+        color: '#1A1A2E',
     },
     cardBody: {
         padding: 20,
@@ -883,43 +935,68 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         shadowColor: '#475569',
         shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
         elevation: 2,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#EEF2F7',
     },
     formCardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         borderBottomWidth: 1,
-        borderColor: '#F8FAFC',
+        borderColor: '#F1F5F9',
         gap: 12,
+        backgroundColor: '#FAFBFD',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+    },
+    formCardIconWrap: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: '#E6F4EA',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     formCardHeaderText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        color: '#2D3436',
+        color: '#1A1A2E',
     },
     formCardHeaderSubtext: {
         fontSize: 11,
         color: '#94A3B8',
-        marginTop: 1,
+        marginTop: 2,
+    },
+    stepBadge: {
+        backgroundColor: '#F1F5F9',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    stepBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#64748B',
     },
     formCardBody: {
-        padding: 20,
-        paddingTop: 10,
+        padding: 16,
+        paddingTop: 8,
     },
     formField: {
         marginTop: 16,
     },
     fieldLabel: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700',
-        color: '#475569',
+        color: '#1A1A2E',
         marginBottom: 8,
+        letterSpacing: 0.1,
     },
     required: {
         color: '#EF4444',
@@ -963,8 +1040,8 @@ const styles = StyleSheet.create({
     },
     pillText: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#475569',
+        fontWeight: '500',
+        color: '#334155',
     },
     pillTextActive: {
         color: Colors.primary,
@@ -1010,12 +1087,12 @@ const styles = StyleSheet.create({
     },
     selectRowText: {
         fontSize: 14,
-        color: '#475569',
-        fontWeight: '600',
+        color: '#334155',
+        fontWeight: '500',
         flex: 1,
     },
     selectRowTextActive: {
-        color: '#2D3436',
+        color: '#1A1A2E',
         fontWeight: '700',
     },
 
@@ -1074,7 +1151,7 @@ const styles = StyleSheet.create({
     checkboxLabel: {
         flex: 1,
         fontSize: 13,
-        color: '#475569',
+        color: '#1A1A2E',
         lineHeight: 18,
         fontWeight: '500',
     },
