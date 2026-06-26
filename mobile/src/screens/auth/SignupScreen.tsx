@@ -4,10 +4,12 @@ import {
     KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
@@ -52,6 +54,7 @@ const STRENGTH_COLOR: Record<StrengthLevel, string> = {
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SignupScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -182,7 +185,7 @@ export default function SignupScreen() {
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
                 <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40 }]}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
@@ -248,7 +251,7 @@ export default function SignupScreen() {
                                         secureTextEntry={!showPassword}
                                     />
                                     <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeButton}>
-                                        <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                                        <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#90A4AE" />
                                     </TouchableOpacity>
                                 </View>
 
@@ -299,7 +302,7 @@ export default function SignupScreen() {
                                         secureTextEntry={!showConfirm}
                                     />
                                     <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={styles.eyeButton}>
-                                        <Text style={styles.eyeText}>{showConfirm ? 'Hide' : 'Show'}</Text>
+                                        <Ionicons name={showConfirm ? "eye-off-outline" : "eye-outline"} size={22} color="#90A4AE" />
                                     </TouchableOpacity>
                                 </View>
                                 {/* Match indicator */}

@@ -16,6 +16,8 @@ export type RootStackParamList = {
         message: string;
         buttonText?: string;
         isDaily?: boolean;
+        themeColor?: string;
+        themeBgGrad?: readonly string[];
     };
     AboutMe: undefined;
 };

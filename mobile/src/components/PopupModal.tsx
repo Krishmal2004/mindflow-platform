@@ -18,9 +18,10 @@ interface PopupModalProps {
     buttonText?: string;
     onClose: () => void;
     onConfirm?: () => void;
+    themeColor?: string;
 }
 
-export const PopupModal = ({ visible, type, title, message, buttonText = 'OK', onClose, onConfirm }: PopupModalProps) => {
+export const PopupModal = ({ visible, type, title, message, buttonText = 'OK', onClose, onConfirm, themeColor }: PopupModalProps) => {
     const scaleAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -37,9 +38,23 @@ export const PopupModal = ({ visible, type, title, message, buttonText = 'OK', o
     }, [visible]);
 
     const getIconAndColors = () => {
+        const primaryColor = themeColor || Colors.primary;
+        let lightBg = '#E6F4EA';
+        if (themeColor === '#E07A5F') { // Stress Snapshot
+            lightBg = '#FFF4F2';
+        } else if (themeColor === '#0D9488') { // Mindful Mirror
+            lightBg = '#F0FDFA';
+        } else if (themeColor === '#D97706') { // Daily Sliders
+            lightBg = '#FFF9F0';
+        } else if (themeColor === '#6366F1') { // Weekly Whispers
+            lightBg = '#EEF2FF';
+        } else if (themeColor) {
+            lightBg = `${themeColor}15`;
+        }
+
         switch (type) {
             case 'success':
-                return { icon: 'checkmark-circle', color: Colors.primary, bgColor: '#E6F4EA' };
+                return { icon: 'checkmark-circle', color: primaryColor, bgColor: lightBg };
             case 'error':
                 return { icon: 'close-circle', color: '#EF4444', bgColor: '#FEE2E2' };
             case 'warning':

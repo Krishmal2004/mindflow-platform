@@ -319,7 +319,9 @@ export default function WeeklyWhispersScreen() {
                                 params: {
                                     title: 'Great Job!',
                                     message: 'Your voice recording has been submitted successfully. See you next week!',
-                                    buttonText: 'Back to Journey'
+                                    buttonText: 'Back to Journey',
+                                    themeColor: Colors.primary,
+                                    themeBgGrad: [THEME_BG, '#E0E7FF', '#FFFFFF']
                                 }
                             }
                         ],
@@ -355,6 +357,9 @@ export default function WeeklyWhispersScreen() {
         return (
             <SafeAreaView style={styles.container}>
                 <StatusBar style="dark" />
+                {/* Background leaves */}
+                <LeavesDecoration width={width} height={width} color={Colors.primary} />
+
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
@@ -362,9 +367,6 @@ export default function WeeklyWhispersScreen() {
                     <Text style={styles.title}>Weekly Whispers</Text>
                     <View style={{ width: 40 }} />
                 </View>
-
-                {/* Background leaves */}
-                <LeavesDecoration width={width} height={width} color={Colors.primary} />
 
                 <View style={styles.successContainer}>
                     <View style={styles.successIcon}>
@@ -401,7 +403,11 @@ export default function WeeklyWhispersScreen() {
                     message={popup.message}
                     onClose={hidePopup}
                     onConfirm={popup.onConfirm}
+                    themeColor={Colors.primary}
                 />
+
+                {/* Background leaves */}
+                <LeavesDecoration width={width} height={width} color={Colors.primary} />
 
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -410,9 +416,6 @@ export default function WeeklyWhispersScreen() {
                     <Text style={styles.title}>Weekly Whispers</Text>
                     <View style={{ width: 40 }} />
                 </View>
-
-                {/* Background leaves */}
-                <LeavesDecoration width={width} height={width} color={Colors.primary} />
 
                 <ScrollView contentContainerStyle={styles.introContent} scrollEnabled={false}>
                     {/* Large SVG Illustration */}
@@ -471,6 +474,7 @@ export default function WeeklyWhispersScreen() {
                 message={popup.message}
                 onClose={hidePopup}
                 onConfirm={popup.onConfirm}
+                themeColor={Colors.primary}
             />
 
             {/* Background leaves */}

@@ -102,7 +102,9 @@ export default function ThriveTrackerScreen() {
                     navigation.replace('CompleteTask', {
                         title: 'Great Job!',
                         message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!',
-                        buttonText: 'Back to Journey'
+                        buttonText: 'Back to Journey',
+                        themeColor: Colors.primary,
+                        themeBgGrad: ['#E6F4EA', '#F1F7F3', '#FFFFFF']
                     });
                     return;
                 }
@@ -174,7 +176,9 @@ export default function ThriveTrackerScreen() {
                 navigation.replace('CompleteTask', {
                     title: 'Great Job!',
                     message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!',
-                    buttonText: 'Back to Journey'
+                    buttonText: 'Back to Journey',
+                    themeColor: Colors.primary,
+                    themeBgGrad: ['#E6F4EA', '#F1F7F3', '#FFFFFF']
                 });
             });
 
@@ -245,6 +249,7 @@ export default function ThriveTrackerScreen() {
                     message={popup.message}
                     onClose={hidePopup}
                     onConfirm={popup.onConfirm}
+                    themeColor={Colors.primary}
                 />
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -302,6 +307,7 @@ export default function ThriveTrackerScreen() {
                 message={popup.message}
                 onClose={hidePopup}
                 onConfirm={popup.onConfirm}
+                themeColor={Colors.primary}
             />
 
             {/* Header */}
@@ -333,12 +339,17 @@ export default function ThriveTrackerScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <Text style={styles.instructionText}>
-                    In the last 2 weeks, how often have you felt...
-                </Text>
+                <View style={styles.instructionContainer}>
+                    <Ionicons name="sparkles" size={16} color={Colors.primary} />
+                    <Text style={styles.instructionText}>
+                        In the last 2 weeks, how often have you felt...
+                    </Text>
+                </View>
 
                 <View style={styles.questionCard}>
-                    <Text style={styles.questionNumberText}>Question {currentQuestionIndex + 1}</Text>
+                    <View style={styles.questionNumberBadge}>
+                        <Text style={styles.questionNumberText}>Question {currentQuestionIndex + 1}</Text>
+                    </View>
                     <Text style={styles.questionText}>{currentQuestionText}</Text>
 
                     <View style={styles.optionsContainer}>
@@ -498,12 +509,28 @@ const styles = StyleSheet.create({
     content: {
         padding: 20,
     },
-    instructionText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#636E72',
+    instructionContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 20,
         marginBottom: 20,
-        textAlign: 'center',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+        elevation: 1,
+    },
+    instructionText: {
+        fontSize: 14,
+        color: '#475569',
+        fontWeight: '600',
+        marginLeft: 8,
+        flex: 1,
     },
     questionCard: {
         backgroundColor: '#FFFFFF',
@@ -516,13 +543,20 @@ const styles = StyleSheet.create({
         elevation: 4,
         minHeight: 320,
     },
+    questionNumberBadge: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#E6F4EA', // soft theme primary bg
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
     questionNumberText: {
-        fontSize: 12,
-        fontWeight: '700',
+        fontSize: 11,
+        fontWeight: '800',
         color: Colors.primary,
-        marginBottom: 8,
         textTransform: 'uppercase',
-        letterSpacing: 1.5,
+        letterSpacing: 1,
     },
     questionText: {
         fontSize: 18,
@@ -537,15 +571,20 @@ const styles = StyleSheet.create({
     optionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 30, // Premium rounded pill
-        backgroundColor: '#F6F8F9',
+        padding: 18,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
         borderWidth: 1.5,
         borderColor: '#E2E8F0',
     },
     optionButtonSelected: {
         backgroundColor: '#E6F4EA',
         borderColor: Colors.primary,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
     },
     radioCircle: {
         width: 22,

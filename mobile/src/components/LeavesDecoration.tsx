@@ -60,12 +60,12 @@ export const LeavesDecoration = ({ width = 400, height = 400, color = '#749F82' 
         <Svg width={width} height={height} viewBox="0 0 400 400" fill="none" style={{ position: 'absolute' }}>
             <Defs>
                 <LinearGradient id={`leafGrad1_${colorId}`} x1="0" y1="0" x2="1" y2="1">
-                    <Stop offset="0" stopColor={color} stopOpacity="0.65" />
-                    <Stop offset="1" stopColor={color} stopOpacity="0.15" />
+                    <Stop offset="0" stopColor={color} stopOpacity="0.45" />
+                    <Stop offset="1" stopColor={color} stopOpacity="0.05" />
                 </LinearGradient>
                 <LinearGradient id={`leafGrad2_${colorId}`} x1="0" y1="1" x2="1" y2="0">
-                    <Stop offset="0" stopColor={color} stopOpacity="0.55" />
-                    <Stop offset="1" stopColor={color} stopOpacity="0.1" />
+                    <Stop offset="0" stopColor={color} stopOpacity="0.35" />
+                    <Stop offset="1" stopColor={color} stopOpacity="0.02" />
                 </LinearGradient>
             </Defs>
 
@@ -75,23 +75,23 @@ export const LeavesDecoration = ({ width = 400, height = 400, color = '#749F82' 
                 stroke={color}
                 strokeWidth="2.5"
                 strokeLinecap="round"
-                opacity="0.25"
+                opacity="0.10"
                 fill="none"
             />
 
             {/* Detailed leaves along the stem */}
-            <DetailedLeaf x={330} y={60} rotate={-45} scale={0.7} opacity={0.6} color={color} />
-            <DetailedLeaf x={270} y={110} rotate={-75} scale={0.65} opacity={0.65} color={color} />
-            <DetailedLeaf x={290} y={140} rotate={-15} scale={0.6} opacity={0.55} color={color} />
-            <DetailedLeaf x={210} y={180} rotate={-80} scale={0.55} opacity={0.7} color={color} />
-            <DetailedLeaf x={230} y={210} rotate={-10} scale={0.5} opacity={0.6} color={color} />
-            <DetailedLeaf x={140} y={250} rotate={-85} scale={0.48} opacity={0.75} color={color} />
-            <DetailedLeaf x={160} y={280} rotate={-5} scale={0.42} opacity={0.65} color={color} />
-            <DetailedLeaf x={80} y={350} rotate={-90} scale={0.35} opacity={0.6} color={color} />
+            <DetailedLeaf x={330} y={60} rotate={-45} scale={0.7} opacity={0.2} color={color} />
+            <DetailedLeaf x={270} y={110} rotate={-75} scale={0.65} opacity={0.22} color={color} />
+            <DetailedLeaf x={290} y={140} rotate={-15} scale={0.6} opacity={0.18} color={color} />
+            <DetailedLeaf x={210} y={180} rotate={-80} scale={0.55} opacity={0.24} color={color} />
+            <DetailedLeaf x={230} y={210} rotate={-10} scale={0.5} opacity={0.2} color={color} />
+            <DetailedLeaf x={140} y={250} rotate={-85} scale={0.48} opacity={0.25} color={color} />
+            <DetailedLeaf x={160} y={280} rotate={-5} scale={0.42} opacity={0.22} color={color} />
+            <DetailedLeaf x={80} y={350} rotate={-90} scale={0.35} opacity={0.2} color={color} />
 
             {/* Subtle Floating Leaves in other areas */}
-            <DetailedLeaf x={50} y={80} rotate={35} scale={0.38} opacity={0.35} color={color} />
-            <DetailedLeaf x={320} y={300} rotate={-120} scale={0.45} opacity={0.3} color={color} />
+            <DetailedLeaf x={50} y={80} rotate={35} scale={0.38} opacity={0.12} color={color} />
+            <DetailedLeaf x={320} y={300} rotate={-120} scale={0.45} opacity={0.1} color={color} />
         </Svg>
     );
 };

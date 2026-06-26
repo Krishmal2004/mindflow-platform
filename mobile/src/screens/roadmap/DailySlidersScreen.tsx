@@ -7,7 +7,9 @@ import {
     TouchableOpacity,
     TextInput,
     ActivityIndicator,
-    Dimensions
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -55,14 +57,20 @@ export const INFLUENCING_FACTORS = [
 ];
 
 const SLEEP_TIMES = [
-    '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM'
+    '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM', '3:00 AM', '3:30 AM', '4:00 AM'
 ];
 
-const MIN_WATCH_SECONDS = 60;
+const MIN_WATCH_SECONDS = 300;
 const WATCH_SYNC_INTERVAL_SECONDS = 5;
 
+const formatWatchTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+};
+
 const WAKE_TIMES = [
-    '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM'
+    '2:00 AM', '2:30 AM', '3:00 AM', '3:30 AM', '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM'
 ];
 
 export default function DailySlidersScreen() {
@@ -81,6 +89,7 @@ export default function DailySlidersScreen() {
     const [weeklyVideoId, setWeeklyVideoId] = useState<string | null>(null);
     const [watchedSeconds, setWatchedSeconds] = useState(0);
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const [userGroup, setUserGroup] = useState<string>('');
     const unsyncedSecondsRef = useRef(0);
 
     // Form state
@@ -153,12 +162,19 @@ export default function DailySlidersScreen() {
 
             if (response.ok) {
                 const data = await response.json();
+                if (data.group) {
+                    setUserGroup(data.group);
+                }
                 if (data.completed) {
                     navigation.replace('CompleteTask', {
                         title: 'Great Job Today!',
                         message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                        isDaily: true
+                        isDaily: true,
+                        themeColor: Colors.primary,
+                        themeBgGrad: [THEME_BG, '#FFF9F0', '#FFFFFF']
                     });
+                } else if (data.videoPlaySeconds) {
+                    setWatchedSeconds(data.videoPlaySeconds);
                 }
             }
         } catch {
@@ -219,7 +235,8 @@ export default function DailySlidersScreen() {
     const handleVideoError = (error: string) => {
         setIsVideoPlaying(false);
         console.log('YouTube player error', error);
-        showPopup('error', 'Video Unavailable', "This guided session video can't be played right now. You can skip ahead to the sliders.");
+        const videoType = userGroup === 'cg' ? 'weekly watch' : 'guided session';
+        showPopup('error', 'Video Unavailable', `This ${videoType} video can't be played right now. You can skip ahead to the sliders.`);
     };
 
     const toggleFactor = (factor: string) => {
@@ -238,8 +255,8 @@ export default function DailySlidersScreen() {
     const isStepValid = () => {
         switch (currentStep) {
             case 0:
-                // Skippable when there's no guided session today; otherwise requires the minimum watch time.
-                return !weeklyVideoId || watchedSeconds >= MIN_WATCH_SECONDS;
+                // Guided session watch time is tracked, but the user is not forced to watch before continuing.
+                return true;
             case 1:
                 return relaxationLevel !== null && stressLevel !== null;
             case 2:
@@ -247,7 +264,7 @@ export default function DailySlidersScreen() {
                 if (mindfulnessPractice === 'yes') {
                     const hasPractice = selectedPractices.length > 0;
                     const isOtherValid = !selectedPractices.includes('Other') || otherPracticeText.trim() !== '';
-                    return practiceDuration.trim() !== '' && hasPractice && isOtherValid;
+                    return practiceDuration.trim() !== '' && parseInt(practiceDuration) >= 5 && hasPractice && isOtherValid;
                 }
                 return true;
             case 3:
@@ -259,11 +276,25 @@ export default function DailySlidersScreen() {
         }
     };
 
+    const getStepDisplayNumber = () => {
+        if (userGroup === 'cg') {
+            if (currentStep === 0) return 1;
+            if (currentStep === 1) return 2;
+            if (currentStep === 3) return 3;
+            if (currentStep === 4) return 4;
+        }
+        return currentStep + 1;
+    };
+
+    const getStepTotalCount = () => {
+        return userGroup === 'cg' ? 4 : 5;
+    };
+
     const getCompletionProgress = () => {
         let completed = 0;
-        let total = 7;
+        const total = userGroup === 'cg' ? 6 : 7;
 
-        if (mindfulnessPractice !== null) {
+        if (userGroup !== 'cg' && mindfulnessPractice !== null) {
             if (mindfulnessPractice === 'no') {
                 completed++;
             } else if (practiceDuration && selectedPractices.length > 0) {
@@ -311,9 +342,9 @@ export default function DailySlidersScreen() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    mindfulness_practice: mindfulnessPractice,
-                    practice_duration: mindfulnessPractice === 'yes' ? parseInt(practiceDuration) : null,
-                    practice_log: mindfulnessPractice === 'yes' ? selectedPractices.map(p => p === 'Other' ? otherPracticeText.trim() : p).filter(p => p !== '').join(', ') : null,
+                    mindfulness_practice: userGroup === 'cg' ? null : mindfulnessPractice,
+                    practice_duration: userGroup === 'cg' ? null : (mindfulnessPractice === 'yes' ? parseInt(practiceDuration) : null),
+                    practice_log: userGroup === 'cg' ? null : (mindfulnessPractice === 'yes' ? selectedPractices.map(p => p === 'Other' ? otherPracticeText.trim() : p).filter(p => p !== '').join(', ') : null),
                     stress_level: stressLevel,
                     mood: moodLevel,
                     sleep_quality: sleepQuality,
@@ -333,7 +364,9 @@ export default function DailySlidersScreen() {
                 navigation.replace('CompleteTask', {
                     title: 'Great Job Today!',
                     message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                    isDaily: true
+                    isDaily: true,
+                    themeColor: Colors.primary,
+                    themeBgGrad: [THEME_BG, '#FFF9F0', '#FFFFFF']
                 });
             });
 
@@ -357,14 +390,22 @@ export default function DailySlidersScreen() {
 
     const nextStep = () => {
         if (isStepValid()) {
-            setCurrentStep(prev => Math.min(prev + 1, 4));
+            if (currentStep === 1 && userGroup === 'cg') {
+                setCurrentStep(3); // Skip step 2 for control group
+            } else {
+                setCurrentStep(prev => Math.min(prev + 1, 4));
+            }
         } else {
             showPopup('warning', 'Incomplete Section', 'Please answer the current questions before moving forward.');
         }
     };
 
     const prevStep = () => {
-        setCurrentStep(prev => Math.max(prev - 1, 0));
+        if (currentStep === 3 && userGroup === 'cg') {
+            setCurrentStep(1); // Skip step 2 going backward
+        } else {
+            setCurrentStep(prev => Math.max(prev - 1, 0));
+        }
     };
 
     return (
@@ -377,6 +418,7 @@ export default function DailySlidersScreen() {
                 message={popup.message}
                 onClose={hidePopup}
                 onConfirm={popup.onConfirm}
+                themeColor={Colors.primary}
             />
 
             {/* Background leaves */}
@@ -396,12 +438,17 @@ export default function DailySlidersScreen() {
             {/* Step Progress Line */}
             <View style={styles.progressBarContainer}>
                 <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${(currentStep + 1) * 20}%` }]} />
+                    <View style={[styles.progressBarFill, { width: `${Math.round((getStepDisplayNumber() / getStepTotalCount()) * 100)}%` }]} />
                 </View>
-                <Text style={styles.stepIndicator}>Step {currentStep + 1} of 5</Text>
+                <Text style={styles.stepIndicator}>Step {getStepDisplayNumber()} of {getStepTotalCount()}</Text>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* STEP 0: Guided Video Session */}
                 {currentStep === 0 && (
@@ -412,8 +459,12 @@ export default function DailySlidersScreen() {
                                     <Ionicons name="play-circle-outline" size={24} color={Colors.primary} />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.sectionTitle}>Guided Session</Text>
-                                    <Text style={styles.sectionSubtitle}>Take a moment to listen to today&apos;s audio guide</Text>
+                                    <Text style={styles.sectionTitle}>{userGroup === 'cg' ? 'Weekly Watch' : 'Guided Session'}</Text>
+                                    <Text style={styles.sectionSubtitle}>
+                                        {userGroup === 'cg'
+                                            ? "Take a moment to watch today's weekly video"
+                                            : "Take a moment to listen to today's audio guide"}
+                                    </Text>
                                 </View>
                             </View>
 
@@ -437,21 +488,29 @@ export default function DailySlidersScreen() {
                                         <Ionicons name="headset" size={48} color="#CBD5E1" />
                                     </View>
                                     <View style={styles.recordingInfo}>
-                                        <Text style={styles.recordingTitle}>No guided session today</Text>
+                                        <Text style={styles.recordingTitle}>
+                                            {userGroup === 'cg' ? 'No weekly watch today' : 'No guided session today'}
+                                        </Text>
                                         <Text style={styles.recordingDuration}>You can skip directly to sliders</Text>
                                     </View>
                                 </View>
                             )}
                             {weeklyVideoId && (
                                 <Text style={styles.watchProgressText}>
-                                    {watchedSeconds >= MIN_WATCH_SECONDS
-                                        ? '✓ Minimum watch time reached — you can continue'
-                                        : watchedSeconds === 0 && !isVideoPlaying
-                                            ? `Press play above to start — watch at least ${MIN_WATCH_SECONDS}s to continue`
-                                            : `Watch at least ${MIN_WATCH_SECONDS}s to continue — ${watchedSeconds}s watched`}
+                                    {watchedSeconds === 0 && !isVideoPlaying
+                                        ? userGroup === 'cg'
+                                            ? "Press play above to start today's weekly watch"
+                                            : "Press play above to start today's guided session"
+                                        : userGroup === 'cg'
+                                            ? `Watching weekly watch — ${formatWatchTime(watchedSeconds)} watched`
+                                            : `Watching guided session — ${formatWatchTime(watchedSeconds)} watched`}
                                 </Text>
                             )}
-                            <Text style={styles.stepTip}>Tip: You can watch the session video first, then swipe or tap next to record your sliders.</Text>
+                            <Text style={styles.stepTip}>
+                                {userGroup === 'cg'
+                                    ? 'Tip: You can watch the weekly video first, then swipe or tap next to record your sliders.'
+                                    : 'Tip: You can watch the session video first, then swipe or tap next to record your sliders.'}
+                            </Text>
                         </View>
                     </View>
                 )}
@@ -586,11 +645,12 @@ export default function DailySlidersScreen() {
                                     <Text style={styles.practiceLabel}>Practice Duration (minutes)</Text>
                                     <TextInput
                                         style={styles.durationInput}
-                                        placeholder="Enter duration (e.g. 15)"
+                                        placeholder="Min. 5 minutes (e.g. 15)"
                                         placeholderTextColor="#94A3B8"
                                         value={practiceDuration}
                                         onChangeText={setPracticeDuration}
                                         keyboardType="numeric"
+                                        returnKeyType="done"
                                     />
 
                                     <Text style={[styles.practiceLabel, { marginTop: 20 }]}>What did you practice?</Text>
@@ -865,6 +925,7 @@ export default function DailySlidersScreen() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }

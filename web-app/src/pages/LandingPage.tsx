@@ -1,62 +1,78 @@
 import { useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button"
-import AuthLogo from "@/assets/Auth.png"
+import appLogo from '@/assets/app-icon.png';
 
 export default function LandingPage() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  return (
+    <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden', position: 'relative' }}>
+      {/* Leaves decoration */}
+      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.15, pointerEvents: 'none' }}>
+        <svg width="200" height="200" viewBox="0 0 200 200">
+          <ellipse cx="150" cy="50" rx="80" ry="60" fill="#749F82" transform="rotate(-30 150 50)" />
+          <ellipse cx="180" cy="120" rx="60" ry="45" fill="#749F82" transform="rotate(20 180 120)" />
+        </svg>
+      </div>
 
-    return (
-        <div className="min-h-screen bg-white flex flex-col" style={{ paddingTop: 'var(--sat, 0px)', paddingBottom: 'var(--sab, 0px)' }}>
-            {/* Header */}
-            <header className="w-full py-4 px-5 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                    <img src={AuthLogo} alt="MindFlow Logo" className="h-7 w-7" />
-                    <span className="text-lg font-bold text-neutral-900 tracking-tight">MindFlow</span>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate('/login')} className="border-neutral-300 text-neutral-700 text-xs h-8 px-3">
-                    Sign In
-                </Button>
-            </header>
+      {/* Header */}
+      <div style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 48px)', textAlign: 'center', zIndex: 1 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#636E72', letterSpacing: 3, textTransform: 'uppercase' }}>MindFlow</p>
+      </div>
 
-            {/* Hero */}
-            <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-                <div className="inline-block px-3 py-1 mb-5 text-xs font-medium text-neutral-500 bg-neutral-100 rounded-full">
-                    Research Initiative 2026
-                </div>
+      {/* Illustration */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '24px 0', zIndex: 1 }}>
+        <img
+          src={appLogo}
+          alt="MindFlow"
+          style={{
+            width: 'min(70vw, 280px)',
+            height: 'min(70vw, 280px)',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 20px 40px rgba(116,159,130,0.3))',
+          }}
+        />
+      </div>
 
-                <h1 className="text-4xl sm:text-5xl font-extrabold text-neutral-900 tracking-tighter mb-4 leading-[1.1]">
-                    Your Mindful <br />
-                    <span className="text-neutral-400">Journey.</span>
-                </h1>
-
-                <p className="text-base text-neutral-500 mb-8 leading-relaxed max-w-sm">
-                    Track your daily well-being, complete guided exercises, and contribute to mindfulness research.
-                </p>
-
-                <Button
-                    size="lg"
-                    className="bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-white w-full max-w-xs h-12 text-base font-semibold rounded-xl shadow-lg"
-                    onClick={() => navigate('/login')}
-                >
-                    Get Started
-                </Button>
-
-                <div className="mt-14 grid grid-cols-2 gap-8 text-center">
-                    <div>
-                        <h3 className="font-bold text-xl text-neutral-900">Daily</h3>
-                        <p className="text-xs text-neutral-400 mt-1">Mood & Sleep Tracking</p>
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-xl text-neutral-900">Weekly</h3>
-                        <p className="text-xs text-neutral-400 mt-1">Voice Reflections</p>
-                    </div>
-                </div>
-            </main>
-
-            {/* Footer */}
-            <footer className="py-6 text-center text-xs text-neutral-300">
-                &copy; {new Date().getFullYear()} MindFlow Research
-            </footer>
+      {/* Bottom panel */}
+      <div
+        style={{
+          width: '100%',
+          background: '#E3F2FD',
+          borderTopLeftRadius: 40,
+          borderTopRightRadius: 40,
+          padding: '28px 24px',
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 28px)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+          zIndex: 1,
+        }}
+      >
+        <p style={{ textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#636E72', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>WELCOME</p>
+        <p style={{ textAlign: 'center', fontSize: 20, fontWeight: 800, color: '#2D3436', letterSpacing: 1, marginBottom: 8 }}>START YOUR JOURNEY</p>
+        <p style={{ textAlign: 'center', fontSize: 13, color: '#636E72', lineHeight: 1.6, marginBottom: 24 }}>
+          Join the MindFlow research study and discover the path to mindfulness and wellbeing.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              width: '100%', padding: 16, background: '#749F82', color: '#fff',
+              border: 'none', borderRadius: 30, fontSize: 16, fontWeight: 700,
+              letterSpacing: 1, cursor: 'pointer', boxShadow: '0 4px 12px rgba(116,159,130,0.4)',
+            }}
+          >
+            LOG IN
+          </button>
+          <button
+            onClick={() => navigate('/signup')}
+            style={{
+              width: '100%', padding: 16, background: '#95C27E', color: '#fff',
+              border: 'none', borderRadius: 30, fontSize: 16, fontWeight: 700,
+              letterSpacing: 1, cursor: 'pointer', boxShadow: '0 4px 12px rgba(149,194,126,0.4)',
+            }}
+          >
+            OR SIGN UP
+          </button>
         </div>
-    )
+      </div>
+    </div>
+  );
 }
