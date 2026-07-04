@@ -28,7 +28,7 @@ export const registerPushToken = async (req: AuthenticatedRequest, res: Response
         res.json(result);
     } catch (error: any) {
         console.error('registerPushToken:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -42,10 +42,10 @@ export const unregisterPushToken = async (req: AuthenticatedRequest, res: Respon
             return;
         }
 
-        const result = await notificationService.removeToken(validation.data.token);
+        const result = await notificationService.removeToken(req.user.id, validation.data.token);
         res.json(result);
     } catch (error: any) {
         console.error('unregisterPushToken:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

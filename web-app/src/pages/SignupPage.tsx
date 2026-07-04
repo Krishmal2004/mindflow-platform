@@ -58,7 +58,6 @@ export default function SignupPage() {
 
   const strength = getStrength(password);
   const passwordsMatch = password.length > 0 && confirmPw.length > 0 && password === confirmPw;
-  const passwordsMismatch = confirmPw.length > 0 && password !== confirmPw;
 
   const validate = () => {
     const errs: Record<string, string> = {};

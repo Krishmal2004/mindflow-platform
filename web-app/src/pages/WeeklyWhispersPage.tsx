@@ -54,6 +54,10 @@ export default function WeeklyWhispersPage() {
 
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setPopup({ visible: true, type: 'error', title: 'Not Supported', message: 'Voice recording isn\'t supported in this browser. Please try a different browser or device.' });
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -85,7 +89,14 @@ export default function WeeklyWhispersPage() {
         });
       }, 1000);
     } catch (err) {
-      setPopup({ visible: true, type: 'error', title: 'Microphone Error', message: 'Could not access microphone. Please allow microphone permission.' });
+      const name = err instanceof DOMException ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setPopup({ visible: true, type: 'warning', title: 'Permission Required', message: 'Microphone permission is needed to record your voice.' });
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setPopup({ visible: true, type: 'error', title: 'No Microphone Found', message: 'We couldn\'t find a microphone on this device.' });
+      } else {
+        setPopup({ visible: true, type: 'error', title: 'Recording Error', message: 'Failed to start recording. Please try again.' });
+      }
     }
   };
 
@@ -118,7 +129,10 @@ export default function WeeklyWhispersPage() {
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'reflection.webm');
+      // Backend route is `upload.single('file')` (backend/src/routes/roadmapRoutes.ts) —
+      // a different field name here means multer never populates req.file and every
+      // upload 400s with "No file uploaded".
+      formData.append('file', audioBlob, 'reflection.webm');
       const uploadResult = await api.uploadWeeklyAudio(formData);
       await api.submitWeekly({
         duration: recordSeconds,
@@ -127,7 +141,13 @@ export default function WeeklyWhispersPage() {
       });
       navigate('/complete', {
         replace: true,
-        state: { title: 'Reflection Saved!', message: 'Your weekly voice reflection has been saved. Keep up the great work!', isDaily: false },
+        state: {
+          title: 'Reflection Saved!',
+          message: 'Your weekly voice reflection has been saved. Keep up the great work!',
+          isDaily: false,
+          themeColor: '#6366F1',
+          themeBgColor: '#EEF2FF',
+        },
       });
     } catch (err: unknown) {
       setPopup({ visible: true, type: 'error', title: 'Upload Failed', message: err instanceof Error ? err.message : 'Failed to save reflection.' });

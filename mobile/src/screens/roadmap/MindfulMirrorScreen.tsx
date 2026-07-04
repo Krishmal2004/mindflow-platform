@@ -58,6 +58,7 @@ const SCALE_OPTIONS = [
 export default function MindfulMirrorScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const startTimeRef = useRef<number | null>(null);
+    const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // State
     const [currentStep, setCurrentStep] = useState<'intro' | 'questionnaire'>('intro');
@@ -87,6 +88,9 @@ export default function MindfulMirrorScreen() {
 
     useEffect(() => {
         checkStatus();
+        return () => {
+            if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
+        };
     }, []);
 
     const getAuthToken = async () => {
@@ -134,9 +138,17 @@ export default function MindfulMirrorScreen() {
             [`q${currentQuestionIndex + 1}`]: value
         }));
 
-        // Small delay for smooth transition feel, auto advance to next question
+        // Small delay for smooth transition feel, auto advance to next question.
+        // Clear any pending advance first so rapid re-taps on the same question
+        // reset the timer instead of stacking multiple advances.
+        if (advanceTimeoutRef.current) {
+            clearTimeout(advanceTimeoutRef.current);
+            advanceTimeoutRef.current = null;
+        }
+
         if (currentQuestionIndex < FFMQ_QUESTIONS.length - 1) {
-            setTimeout(() => {
+            advanceTimeoutRef.current = setTimeout(() => {
+                advanceTimeoutRef.current = null;
                 setCurrentQuestionIndex(prev => prev + 1);
             }, 250);
         }

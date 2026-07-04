@@ -6,6 +6,8 @@ interface LocationState {
   message?: string;
   buttonText?: string;
   isDaily?: boolean;
+  themeColor?: string;
+  themeBgColor?: string;
 }
 
 export default function CompleteTaskPage() {
@@ -18,8 +20,11 @@ export default function CompleteTaskPage() {
   const buttonText = state.buttonText || 'Back to Dashboard';
   const isDaily = state.isDaily ?? false;
 
-  const color = isDaily ? '#D97706' : '#749F82';
-  const bgColor = isDaily ? '#FFFBEB' : '#F0FDF4';
+  // Each roadmap screen passes its own accent (mirrors mobile's per-screen
+  // themeColor/themeBgGrad route params) — fall back to the daily/default split
+  // only when a caller doesn't specify one.
+  const color = state.themeColor || (isDaily ? '#D97706' : '#749F82');
+  const bgColor = state.themeBgColor || (isDaily ? '#FFFBEB' : '#F0FDF4');
 
   const [scale, setScale] = useState(0.8);
 

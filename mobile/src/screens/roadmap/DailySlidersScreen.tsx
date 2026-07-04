@@ -60,7 +60,6 @@ const SLEEP_TIMES = [
     '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM', '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM', '1:30 AM', '2:00 AM', '2:30 AM', '3:00 AM', '3:30 AM', '4:00 AM'
 ];
 
-const MIN_WATCH_SECONDS = 300;
 const WATCH_SYNC_INTERVAL_SECONDS = 5;
 
 const formatWatchTime = (seconds: number) => {
@@ -255,7 +254,7 @@ export default function DailySlidersScreen() {
     const isStepValid = () => {
         switch (currentStep) {
             case 0:
-                // Guided session watch time is tracked, but the user is not forced to watch before continuing.
+                // Watch time is tracked for analytics only; the user is not required to watch before continuing.
                 return true;
             case 1:
                 return relaxationLevel !== null && stressLevel !== null;

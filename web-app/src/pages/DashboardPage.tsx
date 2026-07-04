@@ -161,9 +161,20 @@ export default function DashboardPage() {
     return new Date(status.nextReset) > new Date();
   };
 
+  // Mirrors mobile DashboardScreen's renderNode: every node is hard-locked until the
+  // researcher assigns a research group, regardless of individual step completion state.
+  const isNodeLocked = (index: number) => isUnassigned || isSequenceLocked(index);
+
   const handleStepPress = (step: JourneyStep, index: number) => {
     const status = getStatusForStep(step);
 
+    if (isUnassigned) {
+      setModal({
+        visible: true, type: 'info', title: 'Group Not Yet Assigned',
+        message: 'Your researcher has not assigned you to a study group yet. Data entry will be available once your Research ID is set. In the meantime, please complete your About Me profile.',
+      });
+      return;
+    }
     if (isSequenceLocked(index)) {
       setModal({ visible: true, type: 'info', title: 'Step Locked', message: 'Complete the previous steps to unlock this one.' });
       return;
@@ -283,8 +294,8 @@ export default function DashboardPage() {
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {JOURNEY_STEPS.map((step, index) => {
               const status = getStatusForStep(step);
-              const isCompleted = status.completed;
-              const isLocked = isSequenceLocked(index);
+              const isCompleted = status.completed && !isUnassigned;
+              const isLocked = isNodeLocked(index);
               const isRight = index % 2 === 0;
 
               return (

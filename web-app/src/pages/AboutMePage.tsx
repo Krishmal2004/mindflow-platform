@@ -3,21 +3,65 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
 
+// Mirrors mobile/src/screens/AboutMeScreen.tsx exactly — these option lists and the
+// faculty->major dependency are part of the research data schema, not just UI copy.
 const EDUCATION_LEVELS = ['First Year', 'Second Year', 'Third Year', 'Fourth Year', 'Graduate Student', 'Other'];
-const LIVING_SITUATIONS = ['Dorm', 'Off-campus housing', 'With family', 'Other'];
+const LIVING_SITUATIONS = [
+  'Living at Home (Commuting)',
+  'University Hostel / Dormitory',
+  'Private Boarding / Room Rentals',
+  'Private Apartment / Studio Living',
+  'Living with Relatives (Guardian Setup)',
+];
 const CULTURAL_BACKGROUNDS = ['Buddhism', 'Islam', 'Hindu', 'Christian', 'Other'];
-const HOBBIES_OPTIONS = ['Reading', 'Sports', 'Music', 'Art', 'Gaming', 'Cooking', 'Travel', 'Yoga', 'Meditation', 'Nature', 'Other'];
+const HOBBIES_OPTIONS = [
+  'Reading', 'Sports & Fitness', 'Music', 'Travel', 'Cooking & Baking',
+  'Video Gaming', 'Art & Crafts', 'Hiking & Outdoors', 'Watching Movies/TV', 'Photography', 'Other',
+];
+const FACULTIES = [
+  'Faculty of Computing',
+  'Faculty of Engineering',
+  'SLIIT Business School',
+  'Faculty of Humanities & Sciences',
+  'School of Architecture',
+];
+const FACULTY_MAJORS: Record<string, string[]> = {
+  'Faculty of Computing': [
+    'Artificial Intelligence', 'Software Engineering', 'Information Technology', 'Data Science',
+    'Cyber Security', 'Information Systems Engineering', 'Interactive Media', 'Computer Systems Engineering',
+    'Computer Systems and Network Engineering', 'Computer Science',
+  ],
+  'Faculty of Engineering': [
+    'Civil Engineering', 'Mechanical Engineering', 'Mechanical Engineering (Mechatronics Specialisation)',
+    'Mechatronic Engineering', 'Materials Engineering', 'Electrical Engineering', 'Electrical & Electronic Engineering',
+    'Quantity Surveying',
+  ],
+  'SLIIT Business School': [
+    'Business Analytics', 'Business Administration', 'Business Management', 'Commerce', 'Economics',
+    'Fashion Business & Management', 'Marketing Management', 'Human Capital Management',
+    'Logistics and Supply Chain Management', 'Management Information Systems', 'Accounting & Finance',
+    'Quality Management',
+  ],
+  'Faculty of Humanities & Sciences': [
+    'Psychology', 'Nursing (Higher National Diploma / NVQ Level 6)', 'Physical Sciences (BEd Hons)',
+    'Biological Sciences (BEd Hons)', 'Social Sciences (BEd Hons)', 'English (BEd Hons)',
+    'English Studies (BA Hons)', 'Law (LLB / Bachelor of Laws)', 'Biomedical Science', 'Biotechnology',
+    'Financial Mathematics and Applied Statistics',
+  ],
+  'School of Architecture': ['Architecture', 'Interior Design', 'Heritage and Cultural Tourism'],
+};
 
 interface AboutMeData {
   is_completed?: boolean;
   university_id?: string;
   education_level?: string;
+  faculty?: string;
   major_field_of_study?: string;
   age?: string | number;
   living_situation?: string;
   family_background?: string;
   cultural_background?: string;
-  hobbies?: string | string[];
+  hobbies_interests?: string | string[];
   personal_goals?: string;
   why_mindflow?: string;
 }
@@ -32,10 +76,10 @@ export default function AboutMePage() {
   // Form fields
   const [universityId, setUniversityId] = useState('');
   const [educationLevel, setEducationLevel] = useState('');
+  const [faculty, setFaculty] = useState('');
   const [major, setMajor] = useState('');
   const [age, setAge] = useState('');
   const [livingSituation, setLivingSituation] = useState('');
-  const [livingOther, setLivingOther] = useState('');
   const [familyBackground, setFamilyBackground] = useState('');
   const [culturalBackground, setCulturalBackground] = useState('');
   const [culturalOther, setCulturalOther] = useState('');
@@ -56,16 +100,27 @@ export default function AboutMePage() {
         setExistingData(d);
         if (d.university_id) setUniversityId(d.university_id);
         if (d.education_level) setEducationLevel(d.education_level);
+        if (d.faculty) setFaculty(d.faculty);
         if (d.major_field_of_study) setMajor(d.major_field_of_study);
         if (d.age) setAge(String(d.age));
         if (d.living_situation) setLivingSituation(d.living_situation);
         if (d.family_background) setFamilyBackground(d.family_background);
-        if (d.cultural_background) setCulturalBackground(d.cultural_background);
-        if (d.hobbies) {
-          const h = Array.isArray(d.hobbies) ? d.hobbies : (d.hobbies as string).split(',').map(s => s.trim());
-          setSelectedHobbies(h.filter(hb => HOBBIES_OPTIONS.includes(hb)));
-          const otherHobby = h.find(hb => !HOBBIES_OPTIONS.includes(hb));
-          if (otherHobby) { setSelectedHobbies(prev => [...prev, 'Other']); setHobbiesOther(otherHobby); }
+        if (d.cultural_background) {
+          // A previously-saved custom value that isn't one of the known pills still
+          // needs to show as "Other" with its text preserved, same as mobile does.
+          if (CULTURAL_BACKGROUNDS.includes(d.cultural_background)) {
+            setCulturalBackground(d.cultural_background);
+          } else {
+            setCulturalBackground('Other');
+            setCulturalOther(d.cultural_background);
+          }
+        }
+        if (d.hobbies_interests) {
+          const raw = Array.isArray(d.hobbies_interests) ? d.hobbies_interests : (d.hobbies_interests as string).split(',').map(s => s.trim()).filter(Boolean);
+          const known = raw.filter(hb => HOBBIES_OPTIONS.includes(hb));
+          const other = raw.filter(hb => !HOBBIES_OPTIONS.includes(hb));
+          setSelectedHobbies(other.length > 0 ? [...known, 'Other'] : known);
+          if (other.length > 0) setHobbiesOther(other.join(', '));
         }
         if (d.personal_goals) setPersonalGoals(d.personal_goals);
         if (d.why_mindflow) setWhyMindflow(d.why_mindflow);
@@ -79,23 +134,39 @@ export default function AboutMePage() {
   };
 
   const handleSubmit = async () => {
-    if (!universityId.trim()) { setPopup({ visible: true, type: 'warning', title: 'Required', message: 'Please enter your university ID.' }); return; }
-    if (!educationLevel) { setPopup({ visible: true, type: 'warning', title: 'Required', message: 'Please select your education level.' }); return; }
-    if (!declaration) { setPopup({ visible: true, type: 'warning', title: 'Declaration Required', message: 'Please accept the declaration to proceed.' }); return; }
+    // Mirrors mobile/src/screens/AboutMeScreen.tsx#save's required-field validation
+    // (client-side UX; the backend enforces the same set server-side as defense in depth).
+    if (!universityId.trim()) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please enter your University ID.' }); return; }
+    if (!educationLevel) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please select your Education Level.' }); return; }
+    if (!faculty) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please select your Faculty.' }); return; }
+    if (!major) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please select your Major.' }); return; }
+    const ageNum = age ? parseInt(age, 10) : NaN;
+    if (!age || isNaN(ageNum) || ageNum <= 0) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please enter a valid Age.' }); return; }
+    if (!livingSituation) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please select your Living Situation.' }); return; }
+    if (!familyBackground.trim()) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please describe your Family Background.' }); return; }
+    if (!culturalBackground) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please select your Cultural Background.' }); return; }
+    if (selectedHobbies.length === 0) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please select at least one Hobby.' }); return; }
+    if (!whyMindflow.trim()) { setPopup({ visible: true, type: 'warning', title: 'Required Field', message: 'Please share your Previous Experience.' }); return; }
+    if (!declaration) { setPopup({ visible: true, type: 'warning', title: 'Declaration Required', message: 'Please confirm that your information is accurate before submitting.' }); return; }
 
-    const hobbiesArr = selectedHobbies.map(h => h === 'Other' ? hobbiesOther.trim() || 'Other' : h).filter(Boolean);
+    const hobbiesArr = selectedHobbies
+      .filter(h => h !== 'Other')
+      .concat(hobbiesOther.trim() ? [hobbiesOther.trim()] : []);
 
     setSubmitting(true);
     try {
       await api.submitAboutMe({
         university_id: universityId.trim(),
         education_level: educationLevel,
+        faculty,
         major_field_of_study: major.trim(),
-        age: age ? parseInt(age) : undefined,
-        living_situation: livingSituation === 'Other' ? livingOther.trim() : livingSituation,
+        age: age ? parseInt(age, 10) : null,
+        living_situation: livingSituation,
         family_background: familyBackground.trim(),
         cultural_background: culturalBackground === 'Other' ? culturalOther.trim() : culturalBackground,
-        hobbies: hobbiesArr.join(', '),
+        // Backend column is `hobbies_interests` (see database/project_db.sql) — the
+        // previous `hobbies` key here was silently dropped by the server's allowlist.
+        hobbies_interests: hobbiesArr.join(', '),
         personal_goals: personalGoals.trim(),
         why_mindflow: whyMindflow.trim(),
         is_completed: true,
@@ -185,21 +256,44 @@ export default function AboutMePage() {
             </div>
           </div>
 
-          {/* Major */}
+          {/* Faculty */}
           <div>
-            <label style={labelStyle}>Major / Field of Study</label>
-            <input value={major} onChange={e => setMajor(e.target.value)} placeholder="e.g., Computer Science" style={inputStyle} disabled={isCompleted} />
+            <label style={labelStyle}>Faculty *</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {FACULTIES.map(f => (
+                <button
+                  key={f}
+                  onClick={() => { if (isCompleted) return; setFaculty(f); setMajor(''); }}
+                  style={{ ...pillStyle(faculty === f), cursor: isCompleted ? 'default' : 'pointer' }}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Major (depends on Faculty, same as mobile) */}
+          <div>
+            <label style={labelStyle}>Major / Field of Study *</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {(faculty ? FACULTY_MAJORS[faculty] || [] : []).map(m => (
+                <button key={m} onClick={() => !isCompleted && setMajor(m)} style={{ ...pillStyle(major === m), cursor: isCompleted ? 'default' : 'pointer' }}>
+                  {m}
+                </button>
+              ))}
+              {!faculty && <p style={{ fontSize: 13, color: '#94A3B8' }}>Select a Faculty first</p>}
+            </div>
           </div>
 
           {/* Age */}
           <div>
-            <label style={labelStyle}>Age</label>
+            <label style={labelStyle}>Age *</label>
             <input value={age} onChange={e => setAge(e.target.value)} type="number" placeholder="Your age" style={{ ...inputStyle, width: 120 }} disabled={isCompleted} />
           </div>
 
           {/* Living Situation */}
           <div>
-            <label style={labelStyle}>Living Situation</label>
+            <label style={labelStyle}>Living Situation *</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {LIVING_SITUATIONS.map(l => (
                 <button key={l} onClick={() => !isCompleted && setLivingSituation(l)} style={{ ...pillStyle(livingSituation === l), cursor: isCompleted ? 'default' : 'pointer' }}>
@@ -207,21 +301,18 @@ export default function AboutMePage() {
                 </button>
               ))}
             </div>
-            {livingSituation === 'Other' && !isCompleted && (
-              <input value={livingOther} onChange={e => setLivingOther(e.target.value)} placeholder="Please specify..." style={{ ...inputStyle, marginTop: 8 }} />
-            )}
           </div>
 
           {/* Family Background */}
           <div>
-            <label style={labelStyle}>Family Background</label>
+            <label style={labelStyle}>Family Background *</label>
             <textarea value={familyBackground} onChange={e => setFamilyBackground(e.target.value)} placeholder="Describe your family background..." rows={3}
               style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} disabled={isCompleted} />
           </div>
 
           {/* Cultural Background */}
           <div>
-            <label style={labelStyle}>Cultural / Religious Background</label>
+            <label style={labelStyle}>Cultural / Religious Background *</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {CULTURAL_BACKGROUNDS.map(c => (
                 <button key={c} onClick={() => !isCompleted && setCulturalBackground(c)} style={{ ...pillStyle(culturalBackground === c), cursor: isCompleted ? 'default' : 'pointer' }}>
@@ -236,7 +327,7 @@ export default function AboutMePage() {
 
           {/* Hobbies */}
           <div>
-            <label style={labelStyle}>Hobbies & Interests</label>
+            <label style={labelStyle}>Hobbies & Interests *</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {HOBBIES_OPTIONS.map(h => (
                 <button key={h} onClick={() => !isCompleted && toggleHobby(h)} style={{ ...pillStyle(selectedHobbies.includes(h)), cursor: isCompleted ? 'default' : 'pointer' }}>
@@ -258,7 +349,7 @@ export default function AboutMePage() {
 
           {/* Why MindFlow */}
           <div>
-            <label style={labelStyle}>Why MindFlow?</label>
+            <label style={labelStyle}>Why MindFlow? *</label>
             <textarea value={whyMindflow} onChange={e => setWhyMindflow(e.target.value)} placeholder="Why did you join this research study?" rows={3}
               style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} disabled={isCompleted} />
           </div>

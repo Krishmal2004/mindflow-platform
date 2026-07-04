@@ -40,15 +40,22 @@ export default function ThriveTrackerPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const startTimeRef = useRef<number | null>(null);
+  const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [popup, setPopup] = useState<{ visible: boolean; type: 'success' | 'error' | 'warning' | 'info'; title: string; message: string }>({
     visible: false, type: 'info', title: '', message: '',
   });
 
   useEffect(() => {
+    return () => {
+      if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     api.getThriveStatus()
       .then(data => {
         if ((data as StatusData).completed) {
-          navigate('/complete', { replace: true, state: { title: 'Already Completed', message: 'You have already completed the Thrive Tracker for this period.', isDaily: false } });
+          navigate('/complete', { replace: true, state: { title: 'Great Job!', message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!', isDaily: false, themeColor: COLOR, themeBgColor: BG_COLOR } });
         } else {
           setStep('intro');
         }
@@ -60,8 +67,17 @@ export default function ThriveTrackerPage() {
     if (startTimeRef.current === null) startTimeRef.current = Date.now();
     const next = { ...answers, [qIndex]: value };
     setAnswers(next);
+    // Clear any pending advance first so rapid re-clicks on the same question
+    // reset the timer instead of stacking multiple advances.
+    if (advanceTimeoutRef.current) {
+      clearTimeout(advanceTimeoutRef.current);
+      advanceTimeoutRef.current = null;
+    }
     if (qIndex < QUESTIONS.length - 1) {
-      setTimeout(() => setQIndex(prev => prev + 1), 250);
+      advanceTimeoutRef.current = setTimeout(() => {
+        advanceTimeoutRef.current = null;
+        setQIndex(prev => prev + 1);
+      }, 250);
     }
   };
 
@@ -78,7 +94,7 @@ export default function ThriveTrackerPage() {
       await api.submitThrive(payload);
       navigate('/complete', {
         replace: true,
-        state: { title: 'Thrive Tracker Complete!', message: 'Your WEMWBS-14 wellbeing assessment has been saved.', isDaily: false },
+        state: { title: 'Great Job!', message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!', isDaily: false, themeColor: COLOR, themeBgColor: BG_COLOR },
       });
     } catch (err: unknown) {
       setPopup({ visible: true, type: 'error', title: 'Error', message: err instanceof Error ? err.message : 'Failed to submit.' });

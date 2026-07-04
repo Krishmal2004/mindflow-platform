@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import { MulterError } from 'multer';
 
 dotenv.config();
 
@@ -70,12 +71,20 @@ app.use((_req: Request, res: Response) => {
 // Global error handler — prevents raw stack traces leaking to clients
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('[Unhandled Error]', err.stack ?? err.message);
-    const isMulter = err.message?.includes('audio files');
-    const status = isMulter ? 400 : 500;
-    const message = isMulter
-        ? err.message
-        : 'An unexpected error occurred. Please try again later.';
-    res.status(status).json({ error: message });
+
+    // MulterError (e.g. LIMIT_FILE_SIZE -> "File too large") and the custom fileFilter
+    // rejection ("Only audio files...") are both client mistakes, not server failures.
+    const isFileFilterRejection = err.message?.includes('audio files');
+    const isMulterError = err instanceof MulterError;
+    if (isMulterError || isFileFilterRejection) {
+        const message = isMulterError
+            ? (err.code === 'LIMIT_FILE_SIZE' ? 'Audio file is too large (max 10MB).' : err.message)
+            : err.message;
+        res.status(400).json({ error: message });
+        return;
+    }
+
+    res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' });
 });
 
 export default app;

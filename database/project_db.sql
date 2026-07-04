@@ -221,6 +221,33 @@ CREATE POLICY "Admins manage all daily sliders"
 CREATE INDEX IF NOT EXISTS idx_daily_sliders_user_id ON daily_sliders(user_id);
 CREATE INDEX IF NOT EXISTS idx_daily_sliders_created_at ON daily_sliders(created_at);
 
+-- Prevents duplicate daily entries per user per day when concurrent submits race
+-- (e.g. double-tap or a client retry-on-timeout hitting submitDailyEntry/updateVideoProgress twice).
+ALTER TABLE daily_sliders
+    ADD COLUMN IF NOT EXISTS entry_date DATE GENERATED ALWAYS AS (created_at::date) STORED;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'daily_sliders_user_entry_date_unique'
+    ) THEN
+        ALTER TABLE daily_sliders
+            ADD CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date);
+    END IF;
+END $$;
+
+-- Function: increment_daily_video_seconds
+-- Purpose: Atomically inserts-or-increments today's video_play_seconds in a single
+-- statement, closing the read-then-write race in DailyService#updateVideoProgress.
+CREATE OR REPLACE FUNCTION public.increment_daily_video_seconds(p_user_id UUID, p_seconds INTEGER)
+RETURNS daily_sliders AS $$
+    INSERT INTO daily_sliders (user_id, video_play_seconds, created_at)
+    VALUES (p_user_id, p_seconds, NOW())
+    ON CONFLICT (user_id, entry_date)
+    DO UPDATE SET video_play_seconds = daily_sliders.video_play_seconds + EXCLUDED.video_play_seconds
+    RETURNING *;
+$$ LANGUAGE sql;
+
 -- ------------------------------------------------------------------------------
 -- Table: voice_recordings
 -- Purpose: Stores metadata for user voice recordings uploaded to storage (e.g., R2).

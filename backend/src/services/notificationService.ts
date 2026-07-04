@@ -38,8 +38,14 @@ export class NotificationService {
         return { success: true };
     }
 
-    public async removeToken(token: string) {
-        const { error } = await supabase.from('push_tokens').delete().eq('expo_push_token', token);
+    public async removeToken(userId: string, token: string) {
+        // Scope to user_id too: without it, any authenticated user who obtains another
+        // device's token string could unregister push notifications for that user.
+        const { error } = await supabase
+            .from('push_tokens')
+            .delete()
+            .eq('expo_push_token', token)
+            .eq('user_id', userId);
         if (error) throw error;
         return { success: true };
     }
@@ -78,7 +84,15 @@ export class NotificationService {
 
         const messages: ExpoPushMessage[] = [];
         for (const userId of userIds) {
-            const pending = await this.getPendingTaskLabels(userId);
+            // One user's status lookup throwing (e.g. a bad row) must not abort the
+            // loop and silently skip reminders for every remaining user that night.
+            let pending: string[];
+            try {
+                pending = await this.getPendingTaskLabels(userId);
+            } catch (error) {
+                console.error(`[NotificationService] Failed to get pending tasks for user ${userId}:`, error);
+                continue;
+            }
             if (pending.length === 0) continue;
 
             const name = nameByUser.get(userId) || 'there';

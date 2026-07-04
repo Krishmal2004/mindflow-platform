@@ -7,7 +7,7 @@ const PRACTICE_TYPES = ['Physical Session', 'Other'];
 
 const INFLUENCING_FACTORS = [
   { label: 'Education', covers: 'Exams, deadlines, lectures, grades, studying.' },
-  { label: 'Personal', covers: 'Friends, family, romantic partners, job/work, health, energy level, hobbies, self-care.' },
+  { label: 'Personal', covers: 'Friends, family, romantic partners, job/work, health, energy level, hobbies, self-care, or unexplained mood.' },
   { label: 'Environment', covers: 'Weather, noise, living space, commute, crowding, safety.' },
 ];
 
@@ -15,11 +15,10 @@ const SLEEP_TIMES = ['6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM'
 const WAKE_TIMES = ['2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM','4:30 AM','5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM'];
 
 const STEP_NAMES = ['Guided Session', 'Relaxation & Stress', 'Mindfulness', 'Mood & Feeling', 'Sleep'];
-const MIN_WATCH_SECONDS = 60;
 const SYNC_INTERVAL = 5;
 
 interface VideoData { youtube_id?: string; title?: string }
-interface StatusData { completed?: boolean }
+interface StatusData { completed?: boolean; group?: string }
 
 // Emoji-like level icons using colored circles with numbers
 function LevelButton({ level, value, onChange, color }: { level: number; value: number | null; onChange: (v: number) => void; color: string }) {
@@ -52,6 +51,7 @@ export default function DailySlidersPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [userGroup, setUserGroup] = useState('');
 
   // Video state
   const [weeklyVideoId, setWeeklyVideoId] = useState<string | null>(null);
@@ -85,6 +85,7 @@ export default function DailySlidersPage() {
       api.getWeeklyVideo().catch(() => null),
     ]).then(([status, video]) => {
       const s = status as StatusData;
+      if (s.group) setUserGroup(s.group);
       if (s.completed) {
         navigate('/complete', { replace: true, state: { title: 'Great Job Today!', message: 'You have already completed your daily check-in. See you tomorrow!', isDaily: true } });
         return;
@@ -118,19 +119,34 @@ export default function DailySlidersPage() {
     };
   }, [currentStep, weeklyVideoId, isVideoPlaying]);
 
-  // YouTube postMessage listener
+  // YouTube postMessage listener. The IFrame Player API only starts broadcasting
+  // onStateChange/infoDelivery events after it receives a {event:"listening"} handshake
+  // from the host page — without sending that, isVideoPlaying (and the watch-time
+  // tracking effect above that depends on it) never fires.
   useEffect(() => {
+    const sendListening = () => {
+      iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'daily-video' }), '*');
+    };
+    // The player needs a moment after `src` is set before it accepts the handshake;
+    // resend a few times to cover slow loads rather than relying on a single onLoad fire.
+    const retries = [500, 1500, 3000].map(delay => setTimeout(sendListening, delay));
+
     const handler = (e: MessageEvent) => {
       try {
         const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
         if (data.event === 'onStateChange') {
           setIsVideoPlaying(data.info === 1); // 1 = playing
+        } else if (data.event === 'infoDelivery' && typeof data.info?.playerState === 'number') {
+          setIsVideoPlaying(data.info.playerState === 1);
         }
       } catch {}
     };
     window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
+    return () => {
+      window.removeEventListener('message', handler);
+      retries.forEach(clearTimeout);
+    };
+  }, [weeklyVideoId]);
 
   const togglePractice = (p: string) => {
     setSelectedPractices(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
@@ -138,7 +154,9 @@ export default function DailySlidersPage() {
 
   const isStepValid = () => {
     switch (currentStep) {
-      case 0: return !weeklyVideoId || watchedSeconds >= MIN_WATCH_SECONDS;
+      // Watch time is tracked for analytics only, matching mobile's DailySlidersScreen —
+      // the user is not forced to watch before continuing.
+      case 0: return true;
       case 1: return relaxationLevel !== null && stressLevel !== null;
       case 2: {
         if (mindfulnessPractice === null) return false;
@@ -154,14 +172,39 @@ export default function DailySlidersPage() {
     }
   };
 
-  const progress = Math.round(((currentStep) / STEP_NAMES.length) * 100);
+  // Control group (.cg) skips step 2 (Mindfulness Practice) entirely, matching
+  // mobile's DailySlidersScreen getStepDisplayNumber/getStepTotalCount/nextStep/prevStep.
+  const getStepDisplayNumber = () => {
+    if (userGroup === 'cg') {
+      if (currentStep === 0) return 1;
+      if (currentStep === 1) return 2;
+      if (currentStep === 3) return 3;
+      if (currentStep === 4) return 4;
+    }
+    return currentStep + 1;
+  };
+  const getStepTotalCount = () => (userGroup === 'cg' ? 4 : 5);
+
+  const progress = Math.round((getStepDisplayNumber() / getStepTotalCount()) * 100);
 
   const handleNext = () => {
     if (!isStepValid()) {
       setPopup({ visible: true, type: 'warning', title: 'Incomplete', message: 'Please fill in all required fields before continuing.' });
       return;
     }
-    setCurrentStep(prev => prev + 1);
+    if (currentStep === 1 && userGroup === 'cg') {
+      setCurrentStep(3);
+    } else {
+      setCurrentStep(prev => Math.min(prev + 1, 4));
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 3 && userGroup === 'cg') {
+      setCurrentStep(1);
+    } else {
+      setCurrentStep(prev => Math.max(prev - 1, 0));
+    }
   };
 
   const handleSubmit = async () => {
@@ -171,13 +214,14 @@ export default function DailySlidersPage() {
     }
     setSubmitting(true);
     try {
-      const practiceLog = mindfulnessPractice === 'yes'
+      const isControlGroup = userGroup === 'cg';
+      const practiceLog = !isControlGroup && mindfulnessPractice === 'yes'
         ? selectedPractices.map(p => p === 'Other' ? otherPracticeText.trim() : p).filter(Boolean).join(', ')
         : null;
 
       await api.submitDaily({
-        mindfulness_practice: mindfulnessPractice,
-        practice_duration: mindfulnessPractice === 'yes' ? parseInt(practiceDuration) || null : null,
+        mindfulness_practice: isControlGroup ? null : mindfulnessPractice,
+        practice_duration: !isControlGroup && mindfulnessPractice === 'yes' ? parseInt(practiceDuration) || null : null,
         practice_log: practiceLog,
         stress_level: stressLevel!,
         mood: moodLevel!,
@@ -215,10 +259,10 @@ export default function DailySlidersPage() {
       <div style={{ background: '#D97706', paddingTop: 'env(safe-area-inset-top, 0px)', padding: '16px 20px 20px' }}>
         <div style={{ maxWidth: 430, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <button onClick={() => currentStep > 0 ? setCurrentStep(p => p - 1) : navigate('/dashboard')}
+            <button onClick={() => currentStep > 0 ? handleBack() : navigate('/dashboard')}
               style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', color: '#fff', fontSize: 18 }}>←</button>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase' }}>Step {currentStep + 1} of {STEP_NAMES.length}</p>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase' }}>Step {getStepDisplayNumber()} of {getStepTotalCount()}</p>
               <h2 style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{STEP_NAMES[currentStep]}</h2>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: '4px 10px' }}>
@@ -240,29 +284,26 @@ export default function DailySlidersPage() {
                 <div style={{ aspectRatio: '16/9', background: '#000' }}>
                   <iframe
                     ref={iframeRef}
-                    src={`https://www.youtube.com/embed/${weeklyVideoId}?enablejsapi=1&modestbranding=1&rel=0&playsinline=1`}
+                    src={`https://www.youtube.com/embed/${weeklyVideoId}?enablejsapi=1&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
                     style={{ width: '100%', height: '100%', border: 'none' }}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     title={videoTitle || 'Guided Session'}
+                    onLoad={() => iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'daily-video' }), '*')}
                   />
                 </div>
                 <div style={{ padding: 16 }}>
                   <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 15 }}>{videoTitle || "This Week's Guided Session"}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                    <div style={{ flex: 1, height: 6, background: '#F0F0F0', borderRadius: 3 }}>
-                      <div style={{ height: '100%', background: watchedSeconds >= MIN_WATCH_SECONDS ? '#749F82' : '#D97706', borderRadius: 3, width: `${Math.min(100, (watchedSeconds / MIN_WATCH_SECONDS) * 100)}%`, transition: 'width 0.5s' }} />
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: watchedSeconds >= MIN_WATCH_SECONDS ? '#749F82' : '#D97706' }}>
-                      {watchedSeconds}s / {MIN_WATCH_SECONDS}s
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#D97706' }}>
+                      {watchedSeconds === 0 && !isVideoPlaying
+                        ? `Press play above to start ${userGroup === 'cg' ? "today's weekly watch" : "today's guided session"}`
+                        : `${userGroup === 'cg' ? 'Watching weekly watch' : 'Watching guided session'} — ${Math.floor(watchedSeconds / 60)}m ${(watchedSeconds % 60).toString().padStart(2, '0')}s watched`}
                     </span>
                   </div>
-                  {watchedSeconds < MIN_WATCH_SECONDS && (
-                    <p style={{ fontSize: 12, color: '#636E72', marginTop: 4 }}>Watch at least 60 seconds to continue.</p>
-                  )}
-                  {watchedSeconds >= MIN_WATCH_SECONDS && (
-                    <p style={{ fontSize: 12, color: '#749F82', fontWeight: 600, marginTop: 4 }}>✓ Minimum watch time reached!</p>
-                  )}
+                  <p style={{ fontSize: 11, fontStyle: 'italic', color: '#94A3B8', marginTop: 8 }}>
+                    Tip: You can watch the {userGroup === 'cg' ? 'weekly video' : 'session video'} first, then tap Next to record your sliders.
+                  </p>
                 </div>
               </div>
             ) : (
@@ -493,7 +534,7 @@ export default function DailySlidersPage() {
         <div style={{ maxWidth: 430, margin: '0 auto', display: 'flex', gap: 12, width: '100%' }}>
           {currentStep > 0 && (
             <button
-              onClick={() => setCurrentStep(p => p - 1)}
+              onClick={handleBack}
               style={{ flex: 1, padding: 14, background: '#F6F8F9', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
             >
               Back

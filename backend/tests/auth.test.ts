@@ -45,7 +45,7 @@ describe('signup', () => {
         expect(res.status).toHaveBeenCalledWith(201);
     });
 
-    it('logs but does not fail signup when the profile upsert errors', async () => {
+    it('retries with a fallback username and warns when the profile upsert keeps failing', async () => {
         supabaseMock.auth.signUp.mockResolvedValue({ data: { user: { id: 'user-3' } }, error: null });
         const upsert = jest.fn(() => ({ error: { message: 'duplicate username' } }));
         (supabaseMock.from as jest.Mock).mockImplementation(() => ({ upsert }));
@@ -56,8 +56,30 @@ describe('signup', () => {
 
         await signup(req, res);
 
-        expect(consoleSpy).toHaveBeenCalledWith('Signup profile upsert error:', 'duplicate username');
+        expect(upsert).toHaveBeenCalledTimes(2);
+        expect(upsert).toHaveBeenNthCalledWith(1, { id: 'user-3', username: 'Carl' });
+        expect(upsert).toHaveBeenNthCalledWith(2, { id: 'user-3', username: 'Carl_user-3' });
         expect(res.status).toHaveBeenCalledWith(201);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ warning: expect.any(String) }));
+        consoleSpy.mockRestore();
+    });
+
+    it('does not warn when the fallback-username retry succeeds', async () => {
+        supabaseMock.auth.signUp.mockResolvedValue({ data: { user: { id: 'user-4' } }, error: null });
+        const upsert = jest.fn()
+            .mockReturnValueOnce({ error: { message: 'duplicate username' } })
+            .mockReturnValueOnce({ error: null });
+        (supabaseMock.from as jest.Mock).mockImplementation(() => ({ upsert }));
+        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+        const req: any = { body: { email: 'dana@example.com', password: 'password123' } };
+        const res = mockResponse();
+
+        await signup(req, res);
+
+        expect(upsert).toHaveBeenCalledTimes(2);
+        expect(res.status).toHaveBeenCalledWith(201);
+        expect(res.json).toHaveBeenCalledWith(expect.not.objectContaining({ warning: expect.anything() }));
         consoleSpy.mockRestore();
     });
 

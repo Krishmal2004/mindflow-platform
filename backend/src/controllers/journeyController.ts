@@ -22,13 +22,22 @@ export const getJourneyStatus = async (req: AuthenticatedRequest, res: Response)
             return;
         }
 
-        const [daily, weekly, thrive, stress, mindful] = await Promise.all([
+        // allSettled instead of all: one roadmap step's status check failing (e.g. a
+        // transient Supabase blip) shouldn't 500 the whole journey view for the other four.
+        const keys = ['daily', 'weekly', 'thrive', 'stress', 'mindful'] as const;
+        const results = await Promise.allSettled([
             dailyService.getDailyStatus(req.user.id),
             weeklyService.getWeeklyStatus(req.user.id),
             thriveService.getThriveStatus(req.user.id),
             stressService.getStressStatus(req.user.id),
             mindfulService.getMindfulStatus(req.user.id),
         ]);
+
+        const [daily, weekly, thrive, stress, mindful] = results.map((result, i) => {
+            if (result.status === 'fulfilled') return result.value;
+            console.error(`getJourneyStatus: ${keys[i]} failed:`, result.reason);
+            return { completed: false, nextReset: null, error: true };
+        });
 
         res.json({ daily, weekly, thrive, stress, mindful });
     } catch (error) {

@@ -2,21 +2,28 @@
   "name": "MindFlow",
   "short_name": "MindFlow",
   "description": "Track your daily well-being and contribute to mindfulness research",
-  "start_url": "/dashboard",
+  "start_url": "/",
+  "id": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#F6F8F9",
+  "theme_color": "#749F82",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/Auth.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/Auth.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

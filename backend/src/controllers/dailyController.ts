@@ -27,7 +27,7 @@ export const getDailyStatus = async (req: AuthenticatedRequest, res: Response): 
         res.json(status);
     } catch (error: any) {
         console.error('getDailyStatus:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -49,7 +49,7 @@ export const submitDailyEntry = async (req: AuthenticatedRequest, res: Response)
             return;
         }
         console.error('submitDailyEntry:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -58,8 +58,11 @@ export const updateVideoProgress = async (req: AuthenticatedRequest, res: Respon
         if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
         const { seconds } = req.body;
-        if (typeof seconds !== 'number' || seconds < 0) {
-            res.status(400).json({ error: 'Seconds must be a non-negative number' });
+        // Upper bound guards against a buggy/malicious client pushing an unbounded
+        // increment; WATCH_SYNC_INTERVAL_SECONDS on the client flushes every 5s, so
+        // 300 (5 min) comfortably covers normal usage plus background/retry bursts.
+        if (typeof seconds !== 'number' || seconds < 0 || seconds > 300) {
+            res.status(400).json({ error: 'Seconds must be a number between 0 and 300' });
             return;
         }
 
@@ -67,6 +70,6 @@ export const updateVideoProgress = async (req: AuthenticatedRequest, res: Respon
         res.json(result);
     } catch (error: any) {
         console.error('updateVideoProgress:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

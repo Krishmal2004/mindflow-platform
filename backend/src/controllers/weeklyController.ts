@@ -19,7 +19,7 @@ export const getWeeklyStatus = async (req: AuthenticatedRequest, res: Response):
         res.json(status);
     } catch (error: any) {
         console.error('getWeeklyStatus:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -37,7 +37,7 @@ export const submitWeeklyEntry = async (req: AuthenticatedRequest, res: Response
         res.json(result);
     } catch (error: any) {
         console.error('submitWeeklyEntry:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -54,7 +54,7 @@ export const uploadAudio = async (req: AuthenticatedRequest, res: Response): Pro
         res.json(result);
     } catch (error: any) {
         console.error('uploadAudio:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -65,6 +65,6 @@ export const getWeeklyVideo = async (req: AuthenticatedRequest, res: Response): 
         res.json(result);
     } catch (error: any) {
         console.error('getWeeklyVideo:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

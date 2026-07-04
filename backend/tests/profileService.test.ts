@@ -20,7 +20,10 @@ describe('ProfileService.getAboutMe', () => {
         expect(result).toEqual({ id: 'user-1', is_completed: true });
     });
 
-    it('returns null when no row exists yet (PGRST116)', async () => {
+    it('returns a default is_completed:false shape when no row exists yet (PGRST116)', async () => {
+        // A bare `null` here would fail the client's `data && !data.is_completed` onboarding-gate
+        // check and let a brand-new user straight into the main app, so the service must return
+        // a real object with is_completed:false instead of null.
         (supabaseMock.from as jest.Mock).mockImplementation(() => ({
             select: () => ({
                 eq: () => ({
@@ -31,7 +34,8 @@ describe('ProfileService.getAboutMe', () => {
 
         const result = await new ProfileService().getAboutMe('user-2');
 
-        expect(result).toBeNull();
+        expect(result).not.toBeNull();
+        expect(result).toEqual(expect.objectContaining({ id: 'user-2', is_completed: false }));
     });
 });
 

@@ -7,7 +7,7 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import OtpVerificationPage from '@/pages/OtpVerificationPage';
-import UserDashboard from '@/pages/UserDashboard'; // re-exports DashboardPage
+import DashboardPage from '@/pages/DashboardPage';
 import DailySlidersPage from '@/pages/DailySlidersPage';
 import WeeklyWhispersPage from '@/pages/WeeklyWhispersPage';
 import ThriveTrackerPage from '@/pages/ThriveTrackerPage';
@@ -52,7 +52,7 @@ export default function App() {
           <Route path="/verify-otp" element={<OtpVerificationPage />} />
 
           {/* Protected routes with BottomNav */}
-          <Route path="/dashboard" element={<ProtectedRoute><AppShell><UserDashboard /></AppShell></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><AppShell><DashboardPage /></AppShell></ProtectedRoute>} />
           <Route path="/journey" element={<ProtectedRoute><AppShell><JourneyPage /></AppShell></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute><AppShell><CalendarPage /></AppShell></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><AppShell><ProfilePage /></AppShell></ProtectedRoute>} />

@@ -46,7 +46,7 @@ export class DailyService {
             .eq('id', userId)
             .single();
 
-        const isControlGroup = profile?.research_id?.endsWith('.cg');
+        const isControlGroup = deriveResearchGroup(profile?.research_id) === 'cg';
 
         const { data: existing } = await supabase
             .from('daily_sliders')
@@ -77,42 +77,31 @@ export class DailyService {
             practice_log: isControlGroup ? null : (entryData.practice_log || null),
         };
 
-        let result;
-        if (existing) {
-            result = await supabase.from('daily_sliders').update(payload).eq('id', existing.id).select().single();
-        } else {
-            result = await supabase.from('daily_sliders').insert({ ...payload, created_at: new Date().toISOString() }).select().single();
-        }
+        // Upsert on the (user_id, entry_date) unique constraint instead of a manual
+        // select-then-insert/update: closes the race where two concurrent submits
+        // (double-tap, retry-on-timeout) both see no existing row and both insert,
+        // producing duplicate rows for the same day.
+        const { data, error } = await supabase
+            .from('daily_sliders')
+            .upsert(payload, { onConflict: 'user_id,entry_date' })
+            .select()
+            .single();
 
-        if (result.error) throw result.error;
-        return result.data;
+        if (error) throw error;
+        return data;
     }
 
     /** Increment video watch seconds for today's entry. */
     public async updateVideoProgress(userId: string, seconds: number) {
-        const today = startOfToday();
+        // Single atomic INSERT ... ON CONFLICT DO UPDATE via a DB function, rather than a
+        // select-then-insert/update: closes the same race as submitDailyEntry for the
+        // frequent (every few seconds) video-progress pings.
+        const { data, error } = await supabase.rpc('increment_daily_video_seconds', {
+            p_user_id: userId,
+            p_seconds: seconds,
+        });
+        if (error) throw error;
 
-        const { data: existing } = await supabase
-            .from('daily_sliders')
-            .select('id, video_play_seconds')
-            .eq('user_id', userId)
-            .gte('created_at', today.toISOString())
-            .limit(1)
-            .single();
-
-        if (existing) {
-            const { error } = await supabase
-                .from('daily_sliders')
-                .update({ video_play_seconds: (existing.video_play_seconds || 0) + seconds })
-                .eq('id', existing.id);
-            if (error) throw error;
-        } else {
-            const { error } = await supabase
-                .from('daily_sliders')
-                .insert({ user_id: userId, video_play_seconds: seconds, created_at: new Date().toISOString() });
-            if (error) throw error;
-        }
-
-        return { success: true };
+        return { success: true, video_play_seconds: data?.video_play_seconds };
     }
 }
