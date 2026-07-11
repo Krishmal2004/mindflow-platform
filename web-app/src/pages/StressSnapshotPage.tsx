@@ -6,16 +6,16 @@ import { PageShell } from '@/components/PageShell';
 import { LeavesDecoration, StressIllustration } from '@/components/Illustrations';
 
 const QUESTIONS = [
-  "been upset because of something that happened unexpectedly?",
-  "felt that you were unable to control the important things in your life?",
-  'felt nervous and "stressed"?',
-  "felt confident about your ability to handle your personal problems?",
-  "felt that things were going your way?",
-  "found that you could not cope with all the things that you had to do?",
-  "been able to control irritations in your life?",
-  "felt that you were on top of things?",
-  "been angered because of things that were outside of your control?",
-  "felt difficulties were piling up so high that you could not overcome them?",
+  "Been upset because of something that happened unexpectedly?",
+  "Felt that you were unable to control the important things in your life?",
+  'Felt nervous and "stressed"?',
+  "Felt confident about your ability to handle your personal problems?",
+  "Felt that things were going your way?",
+  "Found that you could not cope with all the things that you had to do?",
+  "Been able to control irritations in your life?",
+  "Felt that you were on top of things?",
+  "Been angered because of things that were outside of your control?",
+  "Felt difficulties were piling up so high that you could not overcome them?",
 ];
 
 const SCALE = [
@@ -28,7 +28,7 @@ const SCALE = [
 
 const COLOR = '#E07A5F';
 const BG_COLOR = '#FFF4F2';
-const PREFIX = 'In the last month, how often have you...';
+const PREFIX = 'In the last 1 month, how often have you...';
 
 interface StatusData { completed?: boolean }
 
@@ -124,15 +124,16 @@ export default function StressSnapshotPage() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
             <StressIllustration width={150} height={150} color={COLOR} />
           </div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: COLOR, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>MONTHLY ASSESSMENT</p>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2D3436', marginBottom: 8 }}>Stress Snapshot</h1>
-          <p style={{ fontSize: 13, color: '#636E72', lineHeight: 1.6, marginBottom: 8 }}>Perceived Stress Scale (PSS-10)</p>
-          <p style={{ fontSize: 13, color: '#636E72', lineHeight: 1.7, marginBottom: 24 }}>
-            The questions below ask about your feelings and thoughts during the <strong>last month</strong>.
-          </p>
-          <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 24 }}>{QUESTIONS.length} questions · 3–5 minutes</p>
-          <button onClick={() => setStep('questionnaire')} style={{ width: '100%', padding: 16, background: COLOR, color: '#fff', border: 'none', borderRadius: 16, fontWeight: 700, fontSize: 16, cursor: 'pointer' }}>
-            Begin Assessment
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#2D3436', marginBottom: 4 }}>Perceived Stress</h1>
+          <p style={{ fontSize: 15, color: '#636E72', marginBottom: 28 }}>Monthly Assessment (PSS-10)</p>
+          <div style={{ background: BG_COLOR, borderRadius: 24, padding: 24, width: '100%', textAlign: 'left', marginBottom: 32 }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: '#2D3436', marginBottom: 12 }}>Instructions</p>
+            <p style={{ fontSize: 14, color: '#636E72', lineHeight: 1.6 }}>
+              The questions in this scale ask you about your feelings and thoughts during the last month. You will rate how often you felt or thought a certain way.
+            </p>
+          </div>
+          <button onClick={() => setStep('questionnaire')} style={{ width: '100%', padding: 18, background: COLOR, color: '#fff', border: 'none', borderRadius: 16, fontWeight: 700, fontSize: 18, cursor: 'pointer' }}>
+            Start Assessment →
           </button>
         </div>
       </div>
@@ -140,43 +141,48 @@ export default function StressSnapshotPage() {
     );
   }
 
-  const progress = Math.round(((qIndex + (answers[qIndex] ? 1 : 0)) / QUESTIONS.length) * 100);
+  // Header badge = answered-question completion percentage; the step-position bar below
+  // it is a separate percentage — matching mobile's StressSnapshotScreen getProgress()
+  // vs. the (currentQuestionIndex+1)/total bar fill.
+  const completionProgress = Math.round((Object.keys(answers).length / QUESTIONS.length) * 100);
+  const stepProgress = Math.round(((qIndex + 1) / QUESTIONS.length) * 100);
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: BG_COLOR, paddingBottom: 100 }}>
+    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 100 }}>
       {/* Header */}
-      <div style={{ background: COLOR, paddingTop: 'env(safe-area-inset-top, 0px)', padding: '16px 20px 20px' }}>
-        <div style={{ maxWidth: 430, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <button onClick={() => qIndex > 0 ? setQIndex(p => p - 1) : setStep('intro')}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', color: '#fff', fontSize: 18 }}>←</button>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1 }}>Question {qIndex + 1} of {QUESTIONS.length}</p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Stress Snapshot</p>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: '4px 10px' }}>
-              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{progress}%</span>
-            </div>
-          </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2 }}>
-            <div style={{ height: '100%', background: '#fff', borderRadius: 2, width: `${progress}%`, transition: 'width 0.3s' }} />
-          </div>
+      <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={() => qIndex > 0 ? setQIndex(p => p - 1) : setStep('intro')}
+          style={{ width: 40, height: 40, borderRadius: 20, background: '#fff', border: 'none', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', cursor: 'pointer', color: '#1E293B', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
+        <p style={{ fontSize: 20, fontWeight: 700, color: '#2D3436', margin: 0 }}>Stress Snapshot</p>
+        <div style={{ background: BG_COLOR, borderRadius: 20, padding: '6px 12px' }}>
+          <span style={{ color: COLOR, fontSize: 12, fontWeight: 700 }}>{completionProgress}%</span>
         </div>
       </div>
 
-      <div style={{ maxWidth: 430, margin: '0 auto', padding: '24px 16px' }}>
-        {/* Prefix */}
-        <p style={{ fontSize: 13, color: '#636E72', fontStyle: 'italic', marginBottom: 12, textAlign: 'center' }}>{PREFIX}</p>
+      <div style={{ maxWidth: 430, margin: '0 auto', padding: '0 24px', marginBottom: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ height: 8, background: '#E2E8F0', borderRadius: 4, width: '100%', overflow: 'hidden' }}>
+          <div style={{ height: '100%', background: COLOR, borderRadius: 4, width: `${stepProgress}%`, transition: 'width 0.3s' }} />
+        </div>
+        <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginTop: 6 }}>Question {qIndex + 1} of {QUESTIONS.length}</p>
+      </div>
 
-        {/* Question */}
-        <div style={{ background: '#fff', borderRadius: 20, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', minHeight: 100, display: 'flex', alignItems: 'center' }}>
-          <p style={{ fontSize: 18, fontWeight: 700, color: '#2D3436', lineHeight: 1.6, textAlign: 'center', width: '100%' }}>
-            ...{QUESTIONS[qIndex]}
-          </p>
+      <div style={{ maxWidth: 430, margin: '0 auto', padding: '20px 16px' }}>
+        {/* Instruction line */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', padding: '14px 20px', borderRadius: 20, marginBottom: 20, border: '1px solid #E2E8F0' }}>
+          <p style={{ fontSize: 14, color: '#475569', fontWeight: 600, margin: 0 }}>{PREFIX}</p>
         </div>
 
-        {/* Scale */}
+        {/* Question */}
+        <div style={{ background: '#fff', borderRadius: 30, padding: 24, marginBottom: 20, boxShadow: '0 6px 16px rgba(0,0,0,0.04)', minHeight: 320 }}>
+          <div style={{ display: 'inline-block', background: BG_COLOR, padding: '6px 12px', borderRadius: 12, marginBottom: 16 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: COLOR, textTransform: 'uppercase', letterSpacing: 1 }}>Question {qIndex + 1}</span>
+          </div>
+          <p style={{ fontSize: 18, fontWeight: 700, color: '#2D3436', lineHeight: 1.4, marginBottom: 24 }}>
+            {QUESTIONS[qIndex]}
+          </p>
+
+          {/* Scale */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {SCALE.map(s => (
             <button
@@ -196,6 +202,7 @@ export default function StressSnapshotPage() {
               {answers[qIndex] === s.value && <span style={{ fontSize: 18 }}>✓</span>}
             </button>
           ))}
+        </div>
         </div>
       </div>
 

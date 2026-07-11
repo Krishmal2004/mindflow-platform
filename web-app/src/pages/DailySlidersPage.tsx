@@ -15,8 +15,7 @@ const INFLUENCING_FACTORS = [
 const SLEEP_TIMES = ['6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM','12:00 AM','12:30 AM','1:00 AM','1:30 AM','2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM'];
 const WAKE_TIMES = ['2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM','4:30 AM','5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM'];
 
-// 0 = Video, 1 = Calm(before)/Factor, 2 = Sleep, 3 = Practice, 4 = Stress/Calm(after)
-const STEP_NAMES = ['Guided Session', 'Right Now', 'Sleep', 'Mindfulness', 'Stress & Calm'];
+// 0 = Calm(before)/Stress/Factor, 1 = Sleep, 2 = Video, 3 = Practice, 4 = Calm(after)
 const SYNC_INTERVAL = 5;
 
 interface VideoData { youtube_id?: string; title?: string }
@@ -98,7 +97,7 @@ export default function DailySlidersPage() {
 
   // Watch timer
   useEffect(() => {
-    if (currentStep !== 0 || !weeklyVideoId || !isVideoPlaying) return;
+    if (currentStep !== 2 || !weeklyVideoId || !isVideoPlaying) return;
     const interval = setInterval(() => {
       setWatchedSeconds(prev => prev + 1);
       unsyncedRef.current += 1;
@@ -149,11 +148,11 @@ export default function DailySlidersPage() {
 
   const isStepValid = () => {
     switch (currentStep) {
+      case 0: return calmBefore !== null && stressLevel !== null && selectedFactor !== null;
+      case 1: return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
       // Watch time is tracked for analytics only, matching mobile's DailySlidersScreen —
       // the user is not forced to watch before continuing.
-      case 0: return true;
-      case 1: return calmBefore !== null && selectedFactor !== null;
-      case 2: return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
+      case 2: return true;
       case 3: {
         if (mindfulnessPractice === null) return false;
         if (mindfulnessPractice === 'yes') {
@@ -161,7 +160,7 @@ export default function DailySlidersPage() {
         }
         return true;
       }
-      case 4: return stressLevel !== null && calmAfter !== null;
+      case 4: return calmAfter !== null;
       default: return false;
     }
   };
@@ -179,7 +178,30 @@ export default function DailySlidersPage() {
   };
   const getStepTotalCount = () => (userGroup === 'cg' ? 4 : 5);
 
-  const progress = Math.round((getStepDisplayNumber() / getStepTotalCount()) * 100);
+  // Field-completion percentage shown in the header badge — distinct from the step
+  // position bar below it, matching mobile's DailySlidersScreen getCompletionProgress.
+  const getCompletionProgress = () => {
+    let completed = 0;
+    const total = userGroup === 'cg' ? 6 : 7;
+
+    if (userGroup !== 'cg' && mindfulnessPractice !== null) {
+      if (mindfulnessPractice === 'no') {
+        completed++;
+      } else if (practiceDuration && practiceLocation !== null) {
+        completed++;
+      }
+    }
+    if (stressLevel !== null) completed++;
+    if (calmBefore !== null) completed++;
+    if (selectedFactor) completed++;
+    if (sleepStart && wakeUp) completed++;
+    if (sleepQuality !== null) completed++;
+    if (calmAfter !== null) completed++;
+
+    return Math.round((completed / total) * 100);
+  };
+
+  const stepProgress = Math.round((getStepDisplayNumber() / getStepTotalCount()) * 100);
 
   const handleNext = () => {
     if (!isStepValid()) {
@@ -245,70 +267,28 @@ export default function DailySlidersPage() {
   const STEP_COLOR = '#D97706';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFBEB', paddingBottom: 100 }}>
-      {/* Header */}
-      <div style={{ background: '#D97706', paddingTop: 'env(safe-area-inset-top, 0px)', padding: '16px 20px 20px' }}>
-        <div style={{ maxWidth: 430, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-            <button onClick={() => currentStep > 0 ? handleBack() : navigate('/dashboard')}
-              style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', color: '#fff', fontSize: 18 }}>←</button>
-            <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1, textTransform: 'uppercase' }}>Step {getStepDisplayNumber()} of {getStepTotalCount()}</p>
-              <h2 style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{STEP_NAMES[currentStep]}</h2>
-            </div>
-            <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: '4px 10px' }}>
-              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{progress}%</span>
-            </div>
-          </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.3)', borderRadius: 2 }}>
-            <div style={{ height: '100%', background: '#fff', borderRadius: 2, width: `${progress}%`, transition: 'width 0.3s' }} />
-          </div>
+    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 100 }}>
+      {/* Header — mirrors mobile's close-to-dashboard button + static title + completion badge */}
+      <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={() => navigate('/dashboard')}
+          style={{ width: 40, height: 40, borderRadius: 20, background: '#fff', border: 'none', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', cursor: 'pointer', color: '#1E293B', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        <p style={{ fontSize: 20, fontWeight: 700, color: '#2D3436', margin: 0 }}>Daily Check-in</p>
+        <div style={{ background: '#FFFBEB', borderRadius: 20, padding: '6px 12px' }}>
+          <span style={{ color: STEP_COLOR, fontSize: 12, fontWeight: 700 }}>{getCompletionProgress()}%</span>
         </div>
       </div>
 
-      <div style={{ maxWidth: 430, margin: '0 auto', padding: '20px 16px' }}>
-        {/* Step 0: Video */}
-        {currentStep === 0 && (
-          <div>
-            {weeklyVideoId ? (
-              <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-                <div style={{ aspectRatio: '16/9', background: '#000' }}>
-                  <iframe
-                    ref={iframeRef}
-                    src={`https://www.youtube.com/embed/${weeklyVideoId}?enablejsapi=1&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
-                    style={{ width: '100%', height: '100%', border: 'none' }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={videoTitle || 'Guided Session'}
-                    onLoad={() => iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'daily-video' }), '*')}
-                  />
-                </div>
-                <div style={{ padding: 16 }}>
-                  <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 15 }}>{videoTitle || "This Week's Guided Session"}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#D97706' }}>
-                      {watchedSeconds === 0 && !isVideoPlaying
-                        ? `Press play above to start ${userGroup === 'cg' ? "today's weekly watch" : "today's guided session"}`
-                        : `${userGroup === 'cg' ? 'Watching weekly watch' : 'Watching guided session'} — ${Math.floor(watchedSeconds / 60)}m ${(watchedSeconds % 60).toString().padStart(2, '0')}s watched`}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: 11, fontStyle: 'italic', color: '#94A3B8', marginTop: 8 }}>
-                    Tip: You can watch the {userGroup === 'cg' ? 'weekly video' : 'session video'} first, then tap Next to record your sliders.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-                <div style={{ width: 64, height: 64, borderRadius: 32, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 28 }}>📺</div>
-                <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 8 }}>No Video This Week</p>
-                <p style={{ color: '#636E72', fontSize: 13 }}>No guided session has been assigned for this week. You can proceed to the next step.</p>
-              </div>
-            )}
-          </div>
-        )}
+      {/* Step progress line — separate from the header, matching mobile's progressBarContainer */}
+      <div style={{ maxWidth: 430, margin: '0 auto', padding: '0 24px', marginBottom: 12, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ height: 8, background: '#E2E8F0', borderRadius: 4, width: '100%', overflow: 'hidden' }}>
+          <div style={{ height: '100%', background: STEP_COLOR, borderRadius: 4, width: `${stepProgress}%`, transition: 'width 0.3s' }} />
+        </div>
+        <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginTop: 6 }}>Step {getStepDisplayNumber()} of {getStepTotalCount()}</p>
+      </div>
 
-        {/* Step 1: Calm (Before) & Primary Influencing Factor */}
-        {currentStep === 1 && (
+      <div style={{ maxWidth: 430, margin: '0 auto', padding: '0 16px 20px' }}>
+        {/* Step 0: Calm (Before), Stress Level & Primary Influencing Factor */}
+        {currentStep === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Right now I feel calm</p>
@@ -321,6 +301,20 @@ export default function DailySlidersPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
                 <span style={{ fontSize: 10, color: '#94A3B8' }}>Strongly Disagree</span>
                 <span style={{ fontSize: 10, color: '#94A3B8' }}>Strongly Agree</span>
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Stress Level</p>
+              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How stressed are you feeling?</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[1, 2, 3, 4, 5].map(l => (
+                  <LevelButton key={l} level={l} value={stressLevel} onChange={setStressLevel} color="#EF4444" category="stress" />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Low</span>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very High</span>
               </div>
             </div>
 
@@ -347,8 +341,8 @@ export default function DailySlidersPage() {
           </div>
         )}
 
-        {/* Step 2: Sleep */}
-        {currentStep === 2 && (
+        {/* Step 1: Sleep */}
+        {currentStep === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Sleep Quality</p>
@@ -409,6 +403,46 @@ export default function DailySlidersPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Step 2: Guided Session */}
+        {currentStep === 2 && (
+          <div>
+            {weeklyVideoId ? (
+              <div style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+                <div style={{ aspectRatio: '16/9', background: '#000' }}>
+                  <iframe
+                    ref={iframeRef}
+                    src={`https://www.youtube.com/embed/${weeklyVideoId}?enablejsapi=1&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={videoTitle || 'Guided Session'}
+                    onLoad={() => iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'daily-video' }), '*')}
+                  />
+                </div>
+                <div style={{ padding: 16 }}>
+                  <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 15 }}>{videoTitle || "This Week's Guided Session"}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#D97706' }}>
+                      {watchedSeconds === 0 && !isVideoPlaying
+                        ? `Press play above to start ${userGroup === 'cg' ? "today's weekly watch" : "today's guided session"}`
+                        : `${userGroup === 'cg' ? 'Watching weekly watch' : 'Watching guided session'} — ${Math.floor(watchedSeconds / 60)}m ${(watchedSeconds % 60).toString().padStart(2, '0')}s watched`}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 11, fontStyle: 'italic', color: '#94A3B8', marginTop: 8 }}>
+                    Tip: You can watch the {userGroup === 'cg' ? 'weekly video' : 'session video'} first, then tap Next to begin your mindfulness practice.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+                <div style={{ width: 64, height: 64, borderRadius: 32, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 28 }}>📺</div>
+                <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 8 }}>No Video This Week</p>
+                <p style={{ color: '#636E72', fontSize: 13 }}>No guided session has been assigned for this week. You can proceed to the next step.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -473,23 +507,9 @@ export default function DailySlidersPage() {
           </div>
         )}
 
-        {/* Step 4: Stress & Calm (After) */}
+        {/* Step 4: Calm (After) */}
         {currentStep === 4 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Stress Level</p>
-              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How stressed are you feeling?</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[1, 2, 3, 4, 5].map(l => (
-                  <LevelButton key={l} level={l} value={stressLevel} onChange={setStressLevel} color="#EF4444" category="stress" />
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Low</span>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very High</span>
-              </div>
-            </div>
-
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Right now I feel calm</p>
               <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>Select the response that best matches how much you agree</p>
@@ -523,7 +543,7 @@ export default function DailySlidersPage() {
               Back
             </button>
           )}
-          {currentStep < STEP_NAMES.length - 1 ? (
+          {currentStep < 4 ? (
             <button
               onClick={handleNext}
               style={{ flex: 2, padding: 14, background: STEP_COLOR, color: '#fff', border: 'none', borderRadius: 16, fontWeight: 700, fontSize: 15, cursor: 'pointer', opacity: isStepValid() ? 1 : 0.6 }}
