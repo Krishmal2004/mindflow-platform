@@ -25,7 +25,7 @@ interface DailySliderData {
     id: number;
     stress_level: number;
     sleep_quality: number;
-    relaxation_level: number;
+    calm_after: number;
     created_at: string;
 }
 
@@ -185,7 +185,7 @@ export default function JourneyScreen() {
             datasets: [{
                 data: recent.map(d =>
                     metric === 'stress' ? d.stress_level :
-                        metric === 'sleep' ? d.sleep_quality : d.relaxation_level
+                        metric === 'sleep' ? d.sleep_quality : d.calm_after
                 )
             }]
         };
@@ -282,7 +282,7 @@ export default function JourneyScreen() {
                                 </View>
 
                                 <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Relaxation</Text>
+                                    <Text style={styles.cardHeader}>Calm (After Practice)</Text>
                                     {renderChart('relax', Colors.primary)}
                                 </View>
                             </View>

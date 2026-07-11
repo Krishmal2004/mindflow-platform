@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { getUserName } from '@/lib/auth';
 import { PopupModal } from '@/components/PopupModal';
+import { PageShell } from '@/components/PageShell';
 import appLogo from '@/assets/app-icon.png';
 
 const MINDFULNESS_QUOTES = [
@@ -199,6 +200,7 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F0FDF4 0%, #F8FAFC 50%, #FFFFFF 100%)', paddingBottom: 80 }}>
       {/* Header */}
       <div style={{
@@ -381,5 +383,6 @@ export default function DashboardPage() {
         onClose={() => setModal(m => ({ ...m, visible: false }))}
       />
     </div>
+    </PageShell>
   );
 }

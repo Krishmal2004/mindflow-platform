@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
+import { EmotionIcons } from '@/components/Icons';
 
-const PRACTICE_TYPES = ['Physical Session', 'Other'];
+const PRACTICE_LOCATIONS = ['At University', 'Outside University'];
 
 const INFLUENCING_FACTORS = [
   { label: 'Education', covers: 'Exams, deadlines, lectures, grades, studying.' },
@@ -14,15 +15,14 @@ const INFLUENCING_FACTORS = [
 const SLEEP_TIMES = ['6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM','12:00 AM','12:30 AM','1:00 AM','1:30 AM','2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM'];
 const WAKE_TIMES = ['2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM','4:30 AM','5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM'];
 
-const STEP_NAMES = ['Guided Session', 'Relaxation & Stress', 'Mindfulness', 'Mood & Feeling', 'Sleep'];
+// 0 = Video, 1 = Calm(before)/Factor, 2 = Sleep, 3 = Practice, 4 = Stress/Calm(after)
+const STEP_NAMES = ['Guided Session', 'Right Now', 'Sleep', 'Mindfulness', 'Stress & Calm'];
 const SYNC_INTERVAL = 5;
 
 interface VideoData { youtube_id?: string; title?: string }
 interface StatusData { completed?: boolean; group?: string }
 
-// Emoji-like level icons using colored circles with numbers
-function LevelButton({ level, value, onChange, color }: { level: number; value: number | null; onChange: (v: number) => void; color: string }) {
-  const emojis = ['😔', '😟', '😐', '🙂', '😊'];
+function LevelButton({ level, value, onChange, color, category }: { level: number; value: number | null; onChange: (v: number) => void; color: string; category: keyof typeof EmotionIcons }) {
   const selected = value === level;
   return (
     <button
@@ -41,7 +41,7 @@ function LevelButton({ level, value, onChange, color }: { level: number; value: 
         transition: 'all 0.2s',
       }}
     >
-      <span style={{ fontSize: 22 }}>{emojis[level - 1]}</span>
+      {EmotionIcons[category](level, 28)}
       <span style={{ fontSize: 10, fontWeight: 600, color: selected ? color : '#94A3B8' }}>{level}</span>
     </button>
   );
@@ -62,13 +62,12 @@ export default function DailySlidersPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Form state
-  const [relaxationLevel, setRelaxationLevel] = useState<number | null>(null);
+  const [calmBefore, setCalmBefore] = useState<number | null>(null);
+  const [calmAfter, setCalmAfter] = useState<number | null>(null);
   const [stressLevel, setStressLevel] = useState<number | null>(null);
   const [mindfulnessPractice, setMindfulnessPractice] = useState<'yes' | 'no' | null>(null);
   const [practiceDuration, setPracticeDuration] = useState('');
-  const [selectedPractices, setSelectedPractices] = useState<string[]>([]);
-  const [otherPracticeText, setOtherPracticeText] = useState('');
-  const [moodLevel, setMoodLevel] = useState<number | null>(null);
+  const [practiceLocation, setPracticeLocation] = useState<string | null>(null);
   const [selectedFactor, setSelectedFactor] = useState<string | null>(null);
   const [sleepQuality, setSleepQuality] = useState<number | null>(null);
   const [sleepStart, setSleepStart] = useState<string | null>(null);
@@ -148,37 +147,32 @@ export default function DailySlidersPage() {
     };
   }, [weeklyVideoId]);
 
-  const togglePractice = (p: string) => {
-    setSelectedPractices(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
-  };
-
   const isStepValid = () => {
     switch (currentStep) {
       // Watch time is tracked for analytics only, matching mobile's DailySlidersScreen —
       // the user is not forced to watch before continuing.
       case 0: return true;
-      case 1: return relaxationLevel !== null && stressLevel !== null;
-      case 2: {
+      case 1: return calmBefore !== null && selectedFactor !== null;
+      case 2: return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
+      case 3: {
         if (mindfulnessPractice === null) return false;
         if (mindfulnessPractice === 'yes') {
-          if (!practiceDuration.trim() || parseInt(practiceDuration) < 5 || selectedPractices.length === 0) return false;
-          if (selectedPractices.includes('Other') && !otherPracticeText.trim()) return false;
+          if (!practiceDuration.trim() || parseInt(practiceDuration, 10) < 5 || practiceLocation === null) return false;
         }
         return true;
       }
-      case 3: return moodLevel !== null && selectedFactor !== null;
-      case 4: return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
+      case 4: return stressLevel !== null && calmAfter !== null;
       default: return false;
     }
   };
 
-  // Control group (.cg) skips step 2 (Mindfulness Practice) entirely, matching
+  // Control group (.cg) skips step 3 (Mindfulness Practice) entirely, matching
   // mobile's DailySlidersScreen getStepDisplayNumber/getStepTotalCount/nextStep/prevStep.
   const getStepDisplayNumber = () => {
     if (userGroup === 'cg') {
       if (currentStep === 0) return 1;
       if (currentStep === 1) return 2;
-      if (currentStep === 3) return 3;
+      if (currentStep === 2) return 3;
       if (currentStep === 4) return 4;
     }
     return currentStep + 1;
@@ -192,16 +186,16 @@ export default function DailySlidersPage() {
       setPopup({ visible: true, type: 'warning', title: 'Incomplete', message: 'Please fill in all required fields before continuing.' });
       return;
     }
-    if (currentStep === 1 && userGroup === 'cg') {
-      setCurrentStep(3);
+    if (currentStep === 2 && userGroup === 'cg') {
+      setCurrentStep(4);
     } else {
       setCurrentStep(prev => Math.min(prev + 1, 4));
     }
   };
 
   const handleBack = () => {
-    if (currentStep === 3 && userGroup === 'cg') {
-      setCurrentStep(1);
+    if (currentStep === 4 && userGroup === 'cg') {
+      setCurrentStep(2);
     } else {
       setCurrentStep(prev => Math.max(prev - 1, 0));
     }
@@ -215,18 +209,15 @@ export default function DailySlidersPage() {
     setSubmitting(true);
     try {
       const isControlGroup = userGroup === 'cg';
-      const practiceLog = !isControlGroup && mindfulnessPractice === 'yes'
-        ? selectedPractices.map(p => p === 'Other' ? otherPracticeText.trim() : p).filter(Boolean).join(', ')
-        : null;
 
       await api.submitDaily({
         mindfulness_practice: isControlGroup ? null : mindfulnessPractice,
-        practice_duration: !isControlGroup && mindfulnessPractice === 'yes' ? parseInt(practiceDuration) || null : null,
-        practice_log: practiceLog,
+        practice_duration: !isControlGroup && mindfulnessPractice === 'yes' ? parseInt(practiceDuration, 10) || null : null,
+        practice_location: !isControlGroup && mindfulnessPractice === 'yes' ? practiceLocation : null,
         stress_level: stressLevel!,
-        mood: moodLevel!,
+        calm_before: calmBefore!,
+        calm_after: calmAfter!,
         sleep_quality: sleepQuality!,
-        relaxation_level: relaxationLevel!,
         sleep_start_time: sleepStart!,
         wake_up_time: wakeUp!,
         feelings: selectedFactor || '',
@@ -316,128 +307,26 @@ export default function DailySlidersPage() {
           </div>
         )}
 
-        {/* Step 1: Relaxation & Stress */}
+        {/* Step 1: Calm (Before) & Primary Influencing Factor */}
         {currentStep === 1 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Relaxation Level</p>
-              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How relaxed do you feel right now?</p>
+              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Right now I feel calm</p>
+              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>Select the response that best matches how much you agree</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[1, 2, 3, 4, 5].map(l => (
-                  <LevelButton key={l} level={l} value={relaxationLevel} onChange={setRelaxationLevel} color={STEP_COLOR} />
+                  <LevelButton key={l} level={l} value={calmBefore} onChange={setCalmBefore} color={STEP_COLOR} category="relaxation" />
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Not Relaxed</span>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Relaxed</span>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Strongly Disagree</span>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Strongly Agree</span>
               </div>
             </div>
 
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Stress Level</p>
-              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How stressed are you feeling?</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[1, 2, 3, 4, 5].map(l => (
-                  <LevelButton key={l} level={l} value={stressLevel} onChange={setStressLevel} color="#EF4444" />
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Low</span>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very High</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Mindfulness Practice */}
-        {currentStep === 2 && (
-          <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Mindfulness Practice</p>
-            <p style={{ fontSize: 13, color: '#636E72', marginBottom: 20 }}>Did you practice mindfulness today?</p>
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              {(['yes', 'no'] as const).map(v => (
-                <button
-                  key={v}
-                  onClick={() => setMindfulnessPractice(v)}
-                  style={{
-                    flex: 1, padding: 16, borderRadius: 16, border: `2px solid ${mindfulnessPractice === v ? (v === 'yes' ? STEP_COLOR : '#EF4444') : '#DFE6E9'}`,
-                    background: mindfulnessPractice === v ? (v === 'yes' ? '#FFFBEB' : '#FEE2E2') : '#fff',
-                    color: mindfulnessPractice === v ? (v === 'yes' ? STEP_COLOR : '#EF4444') : '#636E72',
-                    fontWeight: 700, fontSize: 16, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase',
-                  }}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-            {mindfulnessPractice === 'yes' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#636E72', display: 'block', marginBottom: 6 }}>Duration (minutes)</label>
-                  <input
-                    value={practiceDuration}
-                    onChange={e => setPracticeDuration(e.target.value)}
-                    type="number"
-                    min="5"
-                    inputMode="numeric"
-                    placeholder="Min. 5 minutes"
-                    style={{ width: 140, padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 16, outline: 'none', background: '#F6F8F9' }}
-                  />
-                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Minimum 5 minutes</p>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#636E72', display: 'block', marginBottom: 6 }}>Practice Type</label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {PRACTICE_TYPES.map(p => (
-                      <button
-                        key={p}
-                        onClick={() => togglePractice(p)}
-                        style={{
-                          padding: '8px 16px', borderRadius: 20,
-                          border: `1.5px solid ${selectedPractices.includes(p) ? STEP_COLOR : '#DFE6E9'}`,
-                          background: selectedPractices.includes(p) ? '#FFFBEB' : '#fff',
-                          color: selectedPractices.includes(p) ? STEP_COLOR : '#636E72',
-                          fontWeight: selectedPractices.includes(p) ? 700 : 500, fontSize: 13, cursor: 'pointer',
-                        }}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                  {selectedPractices.includes('Other') && (
-                    <input
-                      value={otherPracticeText}
-                      onChange={e => setOtherPracticeText(e.target.value)}
-                      placeholder="Describe your practice..."
-                      style={{ marginTop: 8, width: '100%', padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 14, outline: 'none', background: '#F6F8F9', boxSizing: 'border-box' }}
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 3: Mood & Factor */}
-        {currentStep === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Mood Level</p>
-              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How's your mood today?</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[1, 2, 3, 4, 5].map(l => (
-                  <LevelButton key={l} level={l} value={moodLevel} onChange={setMoodLevel} color="#6366F1" />
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Bad</span>
-                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Good</span>
-              </div>
-            </div>
-
-            <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Main Influencing Factor</p>
-              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>What mainly influenced your mood?</p>
+              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Primary Influencing Factor</p>
+              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>Select the single factor that mostly affected your mood today</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {INFLUENCING_FACTORS.map(f => (
                   <button
@@ -458,15 +347,15 @@ export default function DailySlidersPage() {
           </div>
         )}
 
-        {/* Step 4: Sleep */}
-        {currentStep === 4 && (
+        {/* Step 2: Sleep */}
+        {currentStep === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Sleep Quality</p>
               <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How well did you sleep last night?</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[1, 2, 3, 4, 5].map(l => (
-                  <LevelButton key={l} level={l} value={sleepQuality} onChange={setSleepQuality} color="#3B82F6" />
+                  <LevelButton key={l} level={l} value={sleepQuality} onChange={setSleepQuality} color="#3B82F6" category="sleep" />
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
@@ -518,6 +407,100 @@ export default function DailySlidersPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Mindfulness Practice */}
+        {currentStep === 3 && (
+          <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Mindfulness Practice</p>
+            <p style={{ fontSize: 13, color: '#636E72', marginBottom: 20 }}>Did you practice mindfulness today?</p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              {(['yes', 'no'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setMindfulnessPractice(v)}
+                  style={{
+                    flex: 1, padding: 16, borderRadius: 16, border: `2px solid ${mindfulnessPractice === v ? (v === 'yes' ? STEP_COLOR : '#EF4444') : '#DFE6E9'}`,
+                    background: mindfulnessPractice === v ? (v === 'yes' ? '#FFFBEB' : '#FEE2E2') : '#fff',
+                    color: mindfulnessPractice === v ? (v === 'yes' ? STEP_COLOR : '#EF4444') : '#636E72',
+                    fontWeight: 700, fontSize: 16, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase',
+                  }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            {mindfulnessPractice === 'yes' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#636E72', display: 'block', marginBottom: 6 }}>Duration (minutes)</label>
+                  <input
+                    value={practiceDuration}
+                    onChange={e => setPracticeDuration(e.target.value)}
+                    type="number"
+                    min="5"
+                    inputMode="numeric"
+                    placeholder="Min. 5 minutes"
+                    style={{ width: 140, padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 16, outline: 'none', background: '#F6F8F9' }}
+                  />
+                  <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Minimum 5 minutes</p>
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#636E72', display: 'block', marginBottom: 6 }}>Where did you practice?</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {PRACTICE_LOCATIONS.map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setPracticeLocation(p)}
+                        style={{
+                          padding: '8px 16px', borderRadius: 20,
+                          border: `1.5px solid ${practiceLocation === p ? STEP_COLOR : '#DFE6E9'}`,
+                          background: practiceLocation === p ? '#FFFBEB' : '#fff',
+                          color: practiceLocation === p ? STEP_COLOR : '#636E72',
+                          fontWeight: practiceLocation === p ? 700 : 500, fontSize: 13, cursor: 'pointer',
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: Stress & Calm (After) */}
+        {currentStep === 4 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Stress Level</p>
+              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>How stressed are you feeling?</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[1, 2, 3, 4, 5].map(l => (
+                  <LevelButton key={l} level={l} value={stressLevel} onChange={setStressLevel} color="#EF4444" category="stress" />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very Low</span>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Very High</span>
+              </div>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 4 }}>Right now I feel calm</p>
+              <p style={{ fontSize: 13, color: '#636E72', marginBottom: 16 }}>Select the response that best matches how much you agree</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[1, 2, 3, 4, 5].map(l => (
+                  <LevelButton key={l} level={l} value={calmAfter} onChange={setCalmAfter} color={STEP_COLOR} category="relaxation" />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Strongly Disagree</span>
+                <span style={{ fontSize: 10, color: '#94A3B8' }}>Strongly Agree</span>
               </div>
             </div>
           </div>

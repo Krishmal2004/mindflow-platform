@@ -40,8 +40,8 @@ type GroupFilter = 'all' | 'cg' | 'ex';
 
 interface AnalyticsSnapshot {
     dailySliders: Array<{
-        user_id: string; mood: number; stress_level: number;
-        sleep_quality: number; relaxation_level: number;
+        user_id: string; calm_before: number; stress_level: number;
+        sleep_quality: number; calm_after: number;
         practice_duration: number; mindfulness_practice: string; created_at: string;
     }>;
     voiceRecordings: Array<{ user_id: string; created_at: string }>;
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
     const [dailyCount, setDailyCount] = useState(0);
     const [voiceCount, setVoiceCount] = useState(0);
     const [calendarCount, setCalendarCount] = useState(0);
-    const [recentSubmissions, setRecentSubmissions] = useState<Array<{ id: number; user_id: string; mood: number; stress_level: number; created_at: string }>>([]);
+    const [recentSubmissions, setRecentSubmissions] = useState<Array<{ id: number; user_id: string; calm_before: number; stress_level: number; created_at: string }>>([]);
     const [chartData, setChartData] = useState<Array<{ date: string; checkins: number }>>([]);
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -543,14 +543,14 @@ export default function AdminDashboard() {
         .map(([userId, stats]) => ({ userId, ...stats, total: stats.checkins + stats.voice + stats.pss + stats.wemwbs + stats.ffmq }))
         .sort((a, b) => b.total - a.total);
 
-    // Mood/stress trend chart
-    const trendGrouped = new Map<string, { moodSum: number; stressSum: number; sleepSum: number; count: number }>();
+    // Calm/stress trend chart
+    const trendGrouped = new Map<string, { calmSum: number; stressSum: number; sleepSum: number; count: number }>();
     fSliders.forEach(d => {
         const key = analyticsTimeframe === 'today'
             ? new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : new Date(d.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' });
-        const ext = trendGrouped.get(key) || { moodSum: 0, stressSum: 0, sleepSum: 0, count: 0 };
-        ext.moodSum += d.mood;
+        const ext = trendGrouped.get(key) || { calmSum: 0, stressSum: 0, sleepSum: 0, count: 0 };
+        ext.calmSum += d.calm_before;
         ext.stressSum += d.stress_level;
         ext.sleepSum += d.sleep_quality;
         ext.count++;
@@ -558,7 +558,7 @@ export default function AdminDashboard() {
     });
     const trendChartData = Array.from(trendGrouped.entries()).map(([label, s]) => ({
         label,
-        Mood: +(s.moodSum / s.count).toFixed(2),
+        Calm: +(s.calmSum / s.count).toFixed(2),
         Stress: +(s.stressSum / s.count).toFixed(2),
         Sleep: +(s.sleepSum / s.count).toFixed(2),
     }));
@@ -740,7 +740,7 @@ export default function AdminDashboard() {
                                         <Card className="lg:col-span-3 border border-neutral-200 bg-white shadow-none">
                                             <CardHeader className="pb-2">
                                                 <CardTitle className="text-sm font-semibold">Latest Check-ins</CardTitle>
-                                                <CardDescription className="text-[11px]">Most recent participant mood and stress logs.</CardDescription>
+                                                <CardDescription className="text-[11px]">Most recent participant calm and stress logs.</CardDescription>
                                             </CardHeader>
                                             <CardContent>
                                                 <div className="space-y-3">
@@ -761,7 +761,7 @@ export default function AdminDashboard() {
                                                                     </p>
                                                                 </div>
                                                                 <div className="flex gap-1 shrink-0">
-                                                                    <Badge className="text-[9px] font-bold bg-neutral-950 text-white px-1.5 py-0.5 rounded">M:{row.mood}</Badge>
+                                                                    <Badge className="text-[9px] font-bold bg-neutral-950 text-white px-1.5 py-0.5 rounded">C:{row.calm_before}</Badge>
                                                                     <Badge variant="outline" className="text-[9px] font-semibold px-1.5 py-0.5 rounded border-neutral-200">S:{row.stress_level}</Badge>
                                                                 </div>
                                                             </div>
@@ -864,7 +864,7 @@ export default function AdminDashboard() {
                                         {[
                                             { label: 'Active Participants', value: activeUids.size, sub: 'Unique contributors in period', Icon: Users },
                                             { label: 'Avg Stress Level', value: avg(fSliders.map(d => d.stress_level)), sub: 'Scale 1 (low) – 5 (high)', Icon: Activity },
-                                            { label: 'Avg Mood Index', value: avg(fSliders.map(d => d.mood)), sub: 'Scale 1 (poor) – 5 (excellent)', Icon: Activity },
+                                            { label: 'Avg Calm Index', value: avg(fSliders.map(d => d.calm_before)), sub: 'Scale 1 (poor) – 5 (excellent)', Icon: Activity },
                                             { label: 'Practice Minutes', value: fSliders.reduce((s, d) => s + (d.practice_duration || 0), 0), sub: 'Cumulative duration in period', Icon: Clock },
                                         ].map(({ label, value, sub, Icon }) => (
                                             <Card key={label} className="border border-neutral-200 bg-white shadow-none">
@@ -926,10 +926,10 @@ export default function AdminDashboard() {
 
                                     {/* Charts row */}
                                     <div className="grid gap-6 lg:grid-cols-7">
-                                        {/* Mood/Stress/Sleep trend */}
+                                        {/* Calm/Stress/Sleep trend */}
                                         <Card className="lg:col-span-4 border border-neutral-200 bg-white shadow-none">
                                             <CardHeader className="pb-2">
-                                                <CardTitle className="text-sm font-semibold">Mood · Stress · Sleep Trends</CardTitle>
+                                                <CardTitle className="text-sm font-semibold">Calm · Stress · Sleep Trends</CardTitle>
                                                 <CardDescription className="text-[11px]">Daily averages across all active participants.</CardDescription>
                                             </CardHeader>
                                             <CardContent className="pl-1">
@@ -944,7 +944,7 @@ export default function AdminDashboard() {
                                                                 <YAxis stroke="#aaa" fontSize={10} tickLine={false} axisLine={false} domain={[1, 5]} />
                                                                 <Tooltip contentStyle={{ background: '#000', border: 'none', borderRadius: '6px', color: '#fff', fontSize: '11px' }} />
                                                                 <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-                                                                <Line type="monotone" dataKey="Mood" stroke="#171717" strokeWidth={2} dot={{ r: 2 }} />
+                                                                <Line type="monotone" dataKey="Calm" stroke="#171717" strokeWidth={2} dot={{ r: 2 }} />
                                                                 <Line type="monotone" dataKey="Stress" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={{ r: 2 }} />
                                                                 <Line type="monotone" dataKey="Sleep" stroke="#3b82f6" strokeWidth={2} strokeDasharray="2 2" dot={{ r: 2 }} />
                                                             </LineChart>
@@ -1041,7 +1041,7 @@ export default function AdminDashboard() {
                                                             {[
                                                                 { label: 'Active Users', cg: new Set(cgSliders.map(d => d.user_id)).size, ex: new Set(exSliders.map(d => d.user_id)).size, fmt: (v: number) => String(v) },
                                                                 { label: 'Check-ins', cg: cgSliders.length, ex: exSliders.length, fmt: (v: number) => String(v) },
-                                                                { label: 'Avg Mood', cg: parseFloat(avg(cgSliders.map(d => d.mood))), ex: parseFloat(avg(exSliders.map(d => d.mood))), fmt: (v: number) => isNaN(v) ? '-' : v.toFixed(2) },
+                                                                { label: 'Avg Calm', cg: parseFloat(avg(cgSliders.map(d => d.calm_before))), ex: parseFloat(avg(exSliders.map(d => d.calm_before))), fmt: (v: number) => isNaN(v) ? '-' : v.toFixed(2) },
                                                                 { label: 'Avg Stress', cg: parseFloat(avg(cgSliders.map(d => d.stress_level))), ex: parseFloat(avg(exSliders.map(d => d.stress_level))), fmt: (v: number) => isNaN(v) ? '-' : v.toFixed(2) },
                                                                 { label: 'Avg Sleep', cg: parseFloat(avg(cgSliders.map(d => d.sleep_quality))), ex: parseFloat(avg(exSliders.map(d => d.sleep_quality))), fmt: (v: number) => isNaN(v) ? '-' : v.toFixed(2) },
                                                                 { label: 'Practice Mins', cg: cgSliders.reduce((s, d) => s + (d.practice_duration || 0), 0), ex: exSliders.reduce((s, d) => s + (d.practice_duration || 0), 0), fmt: (v: number) => String(v) },

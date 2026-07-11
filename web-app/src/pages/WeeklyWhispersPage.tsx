@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration, VoiceRecordingIllustration } from '@/components/Illustrations';
 
 const PASSAGE_TEXT = `The North Wind and the Sun had a quarrel about which of them was the stronger. While they were disputing with much heat and bluster, a Traveler passed along the road wrapped in a cloak.
 
@@ -160,17 +162,20 @@ export default function WeeklyWhispersPage() {
 
   if (step === 'loading') {
     return (
+      <PageShell>
       <div style={{ minHeight: '100vh', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 36, height: 36, border: '3px solid #C7D2FE', borderTopColor: '#6366F1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      </PageShell>
     );
   }
 
   if (step === 'done') {
     return (
+      <PageShell>
       <div style={{ minHeight: '100vh', background: '#EEF2FF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 340, width: '100%', textAlign: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 340, width: '100%', textAlign: 'center' }} className="animate-enter">
           <div style={{ width: 80, height: 80, borderRadius: 40, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 36 }}>🎙️</div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: '#2D3436', marginBottom: 8 }}>Already Submitted</h2>
           <p style={{ fontSize: 14, color: '#636E72', lineHeight: 1.6, marginBottom: 8 }}>You've completed your Weekly Whispers for this week.</p>
@@ -184,11 +189,16 @@ export default function WeeklyWhispersPage() {
           </button>
         </div>
       </div>
+      </PageShell>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#EEF2FF', paddingBottom: 80 }}>
+    <PageShell>
+    <div style={{ minHeight: '100vh', background: '#EEF2FF', paddingBottom: 80, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.3, pointerEvents: 'none' }} className="animate-fade-in">
+        <LeavesDecoration width={280} height={280} color="#6366F1" />
+      </div>
       {/* Header */}
       <div style={{ background: STEP_COLOR, paddingTop: 'env(safe-area-inset-top, 0px)', padding: '16px 20px 20px' }}>
         <div style={{ maxWidth: 430, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -204,7 +214,10 @@ export default function WeeklyWhispersPage() {
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '20px 16px' }}>
         {/* Intro step */}
         {step === 'intro' && (
-          <div>
+          <div className="animate-enter">
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <VoiceRecordingIllustration width={160} height={142} color="#6366F1" />
+            </div>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, marginBottom: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 20, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📖</div>
@@ -322,5 +335,6 @@ export default function WeeklyWhispersPage() {
         onClose={() => setPopup(p => ({ ...p, visible: false }))}
       />
     </div>
+    </PageShell>
   );
 }

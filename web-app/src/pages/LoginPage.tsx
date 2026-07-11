@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setAuth } from '@/lib/auth';
 import { getPostAuthRoute } from '@/lib/postAuthRoute';
-import appLogo from '@/assets/app-icon.png';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration, MeditationIllustration, PanelWave } from '@/components/Illustrations';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -99,41 +100,40 @@ export default function LoginPage() {
   };
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100dvh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
       {/* Decorative leaves */}
-      <div aria-hidden style={{ position: 'absolute', top: 0, right: 0, opacity: 0.12, pointerEvents: 'none', zIndex: 0 }}>
-        <svg width="220" height="220" viewBox="0 0 220 220">
-          <ellipse cx="165" cy="55" rx="88" ry="66" fill="#749F82" transform="rotate(-30 165 55)" />
-          <ellipse cx="200" cy="135" rx="66" ry="50" fill="#749F82" transform="rotate(20 200 135)" />
-        </svg>
+      <div aria-hidden style={{ position: 'absolute', top: 0, right: 0, opacity: 0.5, pointerEvents: 'none', zIndex: 0 }} className="animate-fade-in">
+        <LeavesDecoration width={260} height={260} color="#749F82" />
       </div>
 
       {/* Top illustration area — shrinks when keyboard opens via dvh */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 40px)', paddingBottom: 24, zIndex: 1, minHeight: 180 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 40px)', paddingBottom: 24, zIndex: 1, minHeight: 180 }} className="animate-enter">
         <p style={{ fontSize: 12, fontWeight: 700, color: '#749F82', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 20 }}>MindFlow</p>
-        <img
-          src={appLogo}
-          alt="MindFlow"
-          style={{ width: 'min(52vw, 180px)', height: 'min(52vw, 180px)', objectFit: 'contain', filter: 'drop-shadow(0 12px 28px rgba(116,159,130,0.3))' }}
-        />
+        <div style={{ width: 'min(52vw, 180px)', height: 'min(52vw, 160px)', filter: 'drop-shadow(0 12px 28px rgba(116,159,130,0.3))' }}>
+          <MeditationIllustration width={180} height={160} />
+        </div>
       </div>
 
       {/* Bottom panel */}
       <div style={{
-        background: '#E3F2FD',
+        background: '#FFFFFF',
         borderTopLeftRadius: 36,
         borderTopRightRadius: 36,
         padding: '28px 22px',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 28px)',
         zIndex: 1,
         boxShadow: '0 -8px 30px rgba(0,0,0,0.08)',
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: 22 }}>
+        position: 'relative',
+        overflow: 'hidden',
+      }} className="animate-enter">
+        <PanelWave />
+        <div style={{ textAlign: 'center', marginBottom: 22, position: 'relative', zIndex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: '#749F82', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>WELCOME BACK</p>
           <p style={{ fontSize: 20, fontWeight: 800, color: '#2D3436', letterSpacing: 0.5 }}>Login to Continue</p>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative', zIndex: 1 }}>
           {/* Email */}
           <div style={inputBox(emailFocused)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={emailFocused ? '#749F82' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
@@ -221,5 +221,6 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+    </PageShell>
   );
 }

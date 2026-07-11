@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import appLogo from '@/assets/app-icon.png';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration, SignupIllustration, PanelWave } from '@/components/Illustrations';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
@@ -112,24 +113,24 @@ export default function SignupPage() {
   };
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100dvh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
-      <div aria-hidden style={{ position: 'absolute', top: 0, right: 0, opacity: 0.12, pointerEvents: 'none', zIndex: 0 }}>
-        <svg width="220" height="220" viewBox="0 0 220 220">
-          <ellipse cx="165" cy="55" rx="88" ry="66" fill="#749F82" transform="rotate(-30 165 55)" />
-          <ellipse cx="200" cy="135" rx="66" ry="50" fill="#749F82" transform="rotate(20 200 135)" />
-        </svg>
+      <div aria-hidden style={{ position: 'absolute', top: 0, right: 0, opacity: 0.5, pointerEvents: 'none', zIndex: 0 }} className="animate-fade-in">
+        <LeavesDecoration width={260} height={260} color="#749F82" />
       </div>
 
       {/* Top brand header */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 28px)', paddingBottom: 16, zIndex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 28px)', paddingBottom: 16, zIndex: 1 }} className="animate-enter">
         <p style={{ fontSize: 12, fontWeight: 700, color: '#749F82', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 12 }}>MindFlow</p>
-        <img src={appLogo} alt="MindFlow" style={{ width: 64, height: 64, objectFit: 'contain', filter: 'drop-shadow(0 6px 14px rgba(116,159,130,0.28))' }} />
+        <div style={{ width: 90, height: 86, filter: 'drop-shadow(0 6px 14px rgba(116,159,130,0.28))' }}>
+          <SignupIllustration width={90} height={86} />
+        </div>
       </div>
 
       {/* Scrollable form panel */}
       <div style={{
         flex: 1,
-        background: '#E3F2FD',
+        background: '#FFFFFF',
         borderTopLeftRadius: 36,
         borderTopRightRadius: 36,
         padding: '24px 22px',
@@ -138,13 +139,15 @@ export default function SignupPage() {
         boxShadow: '0 -8px 30px rgba(0,0,0,0.08)',
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
-      } as React.CSSProperties}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        position: 'relative',
+      } as React.CSSProperties} className="animate-enter">
+        <PanelWave />
+        <div style={{ textAlign: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: '#749F82', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>JOIN US</p>
           <p style={{ fontSize: 20, fontWeight: 800, color: '#2D3436', letterSpacing: 0.5 }}>Create Your Account</p>
         </div>
 
-        <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', zIndex: 1 }}>
 
           {/* Full Name */}
           <div style={inputBox('name')}>
@@ -280,5 +283,6 @@ export default function SignupPage() {
         </form>
       </div>
     </div>
+    </PageShell>
   );
 }

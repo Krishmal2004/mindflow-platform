@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration, StressIllustration } from '@/components/Illustrations';
 
 const QUESTIONS = [
   "been upset because of something that happened unexpectedly?",
@@ -102,21 +104,25 @@ export default function StressSnapshotPage() {
 
   if (step === 'loading') {
     return (
+      <PageShell>
       <div style={{ minHeight: '100vh', background: BG_COLOR, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 36, height: 36, border: `3px solid #FECACA`, borderTopColor: COLOR, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      </PageShell>
     );
   }
 
   if (step === 'intro') {
     return (
-      <div style={{ minHeight: '100vh', background: BG_COLOR, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 360, width: '100%', textAlign: 'center' }}>
-          <div style={{ width: 80, height: 80, borderRadius: 40, background: BG_COLOR, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: `3px solid ${COLOR}` }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={COLOR} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
-            </svg>
+      <PageShell>
+      <div style={{ minHeight: '100vh', background: BG_COLOR, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.3, pointerEvents: 'none' }} className="animate-fade-in">
+          <LeavesDecoration width={280} height={280} color={COLOR} />
+        </div>
+        <div style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 360, width: '100%', textAlign: 'center', position: 'relative', zIndex: 1 }} className="animate-enter">
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <StressIllustration width={150} height={150} color={COLOR} />
           </div>
           <p style={{ fontSize: 12, fontWeight: 600, color: COLOR, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>MONTHLY ASSESSMENT</p>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#2D3436', marginBottom: 8 }}>Stress Snapshot</h1>
@@ -130,12 +136,14 @@ export default function StressSnapshotPage() {
           </button>
         </div>
       </div>
+      </PageShell>
     );
   }
 
   const progress = Math.round(((qIndex + (answers[qIndex] ? 1 : 0)) / QUESTIONS.length) * 100);
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: BG_COLOR, paddingBottom: 100 }}>
       {/* Header */}
       <div style={{ background: COLOR, paddingTop: 'env(safe-area-inset-top, 0px)', padding: '16px 20px 20px' }}>
@@ -211,5 +219,6 @@ export default function StressSnapshotPage() {
 
       <PopupModal visible={popup.visible} type={popup.type} title={popup.title} message={popup.message} onClose={() => setPopup(p => ({ ...p, visible: false }))} />
     </div>
+    </PageShell>
   );
 }

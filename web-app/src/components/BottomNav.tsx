@@ -45,6 +45,7 @@ export function BottomNav() {
 
   return (
     <nav
+      className="mf-bottomnav"
       style={{
         position: 'fixed',
         bottom: 0,

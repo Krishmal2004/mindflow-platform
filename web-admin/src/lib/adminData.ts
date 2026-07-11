@@ -8,7 +8,7 @@ export interface OverviewMetrics {
     recentSubmissions: Array<{
         id: number;
         user_id: string;
-        mood: number;
+        calm_before: number;
         stress_level: number;
         created_at: string;
     }>;
@@ -41,7 +41,7 @@ export async function fetchOverviewMetrics(): Promise<OverviewMetrics> {
         supabase.from('calendar_events').select('*', { count: 'exact', head: true }),
         supabase
             .from('daily_sliders')
-            .select('id, user_id, mood, stress_level, created_at')
+            .select('id, user_id, calm_before, stress_level, created_at')
             .order('created_at', { ascending: false })
             .limit(5),
         supabase.from('daily_sliders').select('created_at').gte('created_at', sevenDaysIso),

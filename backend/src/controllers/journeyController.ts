@@ -61,7 +61,7 @@ export const getJourneyData = async (req: AuthenticatedRequest, res: Response): 
             : JOURNEY_DEFAULT_LIMIT;
 
         const [dailyRes, weeklyRes, pss10Res, ffmq15Res, wemwbs14Res] = await Promise.all([
-            supabase.from('daily_sliders').select('id, user_id, mood, stress_level, sleep_quality, relaxation_level, mindfulness_practice, feelings, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+            supabase.from('daily_sliders').select('id, user_id, calm_before, calm_after, stress_level, sleep_quality, mindfulness_practice, practice_location, feelings, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
             supabase.from('voice_recordings').select('id, user_id, week_number, year, file_url, duration, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
             supabase.from('questionnaire_pss10_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
             supabase.from('questionnaire_ffmq15_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),

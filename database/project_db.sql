@@ -175,14 +175,15 @@ CREATE TABLE IF NOT EXISTS daily_sliders (
     mindfulness_practice TEXT CHECK (mindfulness_practice IN ('yes', 'no')),
     practice_duration INTEGER,
     practice_log TEXT,
+    practice_location TEXT CHECK (practice_location IN ('At University', 'Outside University')),
     stress_level INTEGER CHECK (stress_level >= 1 AND stress_level <= 5),
-    mood INTEGER CHECK (mood >= 1 AND mood <= 5),
+    calm_before INTEGER CHECK (calm_before >= 1 AND calm_before <= 5),
+    calm_after INTEGER CHECK (calm_after >= 1 AND calm_after <= 5),
     feelings TEXT,
     sleep_start_time TEXT,
     wake_up_time TEXT,
     sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 5),
     video_play_seconds INTEGER DEFAULT 0,
-    relaxation_level INTEGER CHECK (relaxation_level >= 1 AND relaxation_level <= 5),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -223,8 +224,11 @@ CREATE INDEX IF NOT EXISTS idx_daily_sliders_created_at ON daily_sliders(created
 
 -- Prevents duplicate daily entries per user per day when concurrent submits race
 -- (e.g. double-tap or a client retry-on-timeout hitting submitDailyEntry/updateVideoProgress twice).
+-- Cast goes through `AT TIME ZONE 'UTC'` (fixed-offset, therefore IMMUTABLE) rather than
+-- a bare `created_at::date`, which Postgres rejects in generated columns because casting
+-- a timestamptz straight to date is session-TimeZone-dependent (STABLE, not IMMUTABLE).
 ALTER TABLE daily_sliders
-    ADD COLUMN IF NOT EXISTS entry_date DATE GENERATED ALWAYS AS (created_at::date) STORED;
+    ADD COLUMN IF NOT EXISTS entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE 'UTC')::date) STORED;
 
 DO $$
 BEGIN
@@ -235,6 +239,15 @@ BEGIN
             ADD CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date);
     END IF;
 END $$;
+
+-- Replaces the separate mood/relaxation_level questions with a single "Right now I feel
+-- calm" item asked twice (before and after the mindfulness practice step), and replaces
+-- the free-text "what did you practice" picker with a two-option practice location.
+ALTER TABLE daily_sliders DROP COLUMN IF EXISTS mood;
+ALTER TABLE daily_sliders DROP COLUMN IF EXISTS relaxation_level;
+ALTER TABLE daily_sliders ADD COLUMN IF NOT EXISTS calm_before INTEGER CHECK (calm_before >= 1 AND calm_before <= 5);
+ALTER TABLE daily_sliders ADD COLUMN IF NOT EXISTS calm_after INTEGER CHECK (calm_after >= 1 AND calm_after <= 5);
+ALTER TABLE daily_sliders ADD COLUMN IF NOT EXISTS practice_location TEXT CHECK (practice_location IN ('At University', 'Outside University'));
 
 -- Function: increment_daily_video_seconds
 -- Purpose: Atomically inserts-or-increments today's video_play_seconds in a single

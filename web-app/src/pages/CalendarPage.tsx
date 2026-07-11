@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { PageShell } from '@/components/PageShell';
 
 interface CalendarEvent {
   id: number;
@@ -70,6 +71,7 @@ export default function CalendarPage() {
   };
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 80 }}>
       {/* Header */}
       <div style={{ background: '#749F82', paddingTop: 'env(safe-area-inset-top, 0px)', padding: '20px 20px 24px' }}>
@@ -206,5 +208,6 @@ export default function CalendarPage() {
         )}
       </div>
     </div>
+    </PageShell>
   );
 }

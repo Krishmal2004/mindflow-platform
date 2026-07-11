@@ -21,6 +21,7 @@ import { Colors as GlobalColors } from '../../constants/colors';
 import { StressIllustration } from '../../components/MeditationIllustration';
 import { PopupModal } from '../../components/PopupModal';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { FrequencyMeter } from '../../components/ScaleIcons';
 const Colors = {
     ...GlobalColors,
     primary: '#E07A5F',
@@ -30,16 +31,16 @@ const THEME_BG = '#FFF4F2';
 const { width } = Dimensions.get('window');
 
 const PSS_QUESTIONS = [
-    "been upset because of something that happened unexpectedly?",
-    "felt that you were unable to control the important things in your life?",
-    "felt nervous and \"stressed\"?",
-    "felt confident about your ability to handle your personal problems?",
-    "felt that things were going your way?",
-    "found that you could not cope with all the things that you had to do?",
-    "been able to control irritations in your life?",
-    "felt that you were on top of things?",
-    "been angered because of things that were outside of your control?",
-    "felt difficulties were piling up so high that you could not overcome them?"
+    "Been upset because of something that happened unexpectedly?",
+    "Felt that you were unable to control the important things in your life?",
+    "Felt nervous and \"stressed\"?",
+    "Felt confident about your ability to handle your personal problems?",
+    "Felt that things were going your way?",
+    "Found that you could not cope with all the things that you had to do?",
+    "Been able to control irritations in your life?",
+    "Felt that you were on top of things?",
+    "Been angered because of things that were outside of your control?",
+    "Felt difficulties were piling up so high that you could not overcome them?"
 ];
 
 const SCALE_OPTIONS = [
@@ -384,6 +385,9 @@ export default function StressSnapshotScreen() {
                                     ]}>
                                         {isSelected && <View style={styles.radioInner} />}
                                     </View>
+                                    <View style={styles.scaleIconSlot}>
+                                        <FrequencyMeter level={option.value} color={Colors.primary} />
+                                    </View>
                                     <Text style={[
                                         styles.optionText,
                                         isSelected && styles.optionTextSelected
@@ -611,6 +615,11 @@ const styles = StyleSheet.create({
     },
     radioCircleSelected: {
         borderColor: Colors.primary,
+    },
+    scaleIconSlot: {
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     radioInner: {
         width: 10,

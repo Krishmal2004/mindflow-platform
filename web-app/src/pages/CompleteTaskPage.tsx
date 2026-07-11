@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration } from '@/components/Illustrations';
 
 interface LocationState {
   title?: string;
@@ -34,6 +36,7 @@ export default function CompleteTaskPage() {
   }, []);
 
   return (
+    <PageShell>
     <div style={{
       minHeight: '100vh',
       background: bgColor,
@@ -42,7 +45,12 @@ export default function CompleteTaskPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: 24,
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.35, pointerEvents: 'none' }} className="animate-fade-in">
+        <LeavesDecoration width={280} height={280} color={color} />
+      </div>
       <div style={{
         background: '#fff',
         borderRadius: 28,
@@ -53,6 +61,8 @@ export default function CompleteTaskPage() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
         transform: `scale(${scale})`,
         transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+        position: 'relative',
+        zIndex: 1,
       }}>
         {/* Animated checkmark circle */}
         <div style={{
@@ -101,5 +111,6 @@ export default function CompleteTaskPage() {
         </button>
       </div>
     </div>
+    </PageShell>
   );
 }

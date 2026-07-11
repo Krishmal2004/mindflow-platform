@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { clearAuth, getUserName } from '@/lib/auth';
 import { PopupModal } from '@/components/PopupModal';
+import { PageShell } from '@/components/PageShell';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const NUM_BOXES = 8;
@@ -107,14 +108,17 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
+      <PageShell>
       <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 36, height: 36, border: '3px solid #E3F2FD', borderTopColor: '#749F82', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      </PageShell>
     );
   }
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 80 }}>
       {/* Header */}
       <div style={{ background: '#749F82', paddingTop: 'env(safe-area-inset-top, 0px)', padding: '20px 20px 40px' }}>
@@ -254,5 +258,6 @@ export default function ProfilePage() {
         onClose={() => setPopup(p => ({ ...p, visible: false }))}
       />
     </div>
+    </PageShell>
   );
 }

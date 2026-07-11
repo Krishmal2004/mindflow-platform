@@ -7,21 +7,19 @@ export class DailyService {
     public async getDailyStatus(userId: string) {
         const today = startOfToday();
 
-        // Fetch user's profile to retrieve research_id for study arm segmentation
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('research_id')
-            .eq('id', userId)
-            .single();
+        // Profile lookup (for research group) and today's entry check are independent
+        // reads — run them concurrently rather than one-after-another.
+        const [{ data: profile }, { data, error }] = await Promise.all([
+            supabase.from('profiles').select('research_id').eq('id', userId).single(),
+            supabase
+                .from('daily_sliders')
+                .select('stress_level, video_play_seconds')
+                .eq('user_id', userId)
+                .gte('created_at', today.toISOString())
+                .limit(1),
+        ]);
 
         const group = profile ? deriveResearchGroup(profile.research_id) : '';
-
-        const { data, error } = await supabase
-            .from('daily_sliders')
-            .select('stress_level, video_play_seconds')
-            .eq('user_id', userId)
-            .gte('created_at', today.toISOString())
-            .limit(1);
 
         if (error) throw error;
 
@@ -39,22 +37,20 @@ export class DailyService {
     public async submitDailyEntry(userId: string, entryData: any) {
         const today = startOfToday();
 
-        // Fetch user's profile to retrieve research_id for study arm segmentation
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('research_id')
-            .eq('id', userId)
-            .single();
+        // Profile lookup (for research group) and today's existing-entry check are
+        // independent reads — run them concurrently rather than one-after-another.
+        const [{ data: profile }, { data: existing }] = await Promise.all([
+            supabase.from('profiles').select('research_id').eq('id', userId).single(),
+            supabase
+                .from('daily_sliders')
+                .select('id, stress_level')
+                .eq('user_id', userId)
+                .gte('created_at', today.toISOString())
+                .limit(1)
+                .single(),
+        ]);
 
         const isControlGroup = deriveResearchGroup(profile?.research_id) === 'cg';
-
-        const { data: existing } = await supabase
-            .from('daily_sliders')
-            .select('id, stress_level')
-            .eq('user_id', userId)
-            .gte('created_at', today.toISOString())
-            .limit(1)
-            .single();
 
         // Control group (.cg) may only submit once per day; block updates once completed
         if (isControlGroup && existing && existing.stress_level !== null) {
@@ -66,15 +62,15 @@ export class DailyService {
         const payload = {
             user_id: userId,
             stress_level: entryData.stress_level,
-            mood: entryData.mood,
+            calm_before: entryData.calm_before,
+            calm_after: entryData.calm_after,
             sleep_quality: entryData.sleep_quality,
-            relaxation_level: entryData.relaxation_level,
             sleep_start_time: entryData.sleep_start_time || null,
             wake_up_time: entryData.wake_up_time || null,
             feelings: entryData.feelings || null,
             mindfulness_practice: isControlGroup ? null : (entryData.mindfulness_practice || null),
             practice_duration: isControlGroup ? null : (entryData.practice_duration || null),
-            practice_log: isControlGroup ? null : (entryData.practice_log || null),
+            practice_location: isControlGroup ? null : (entryData.practice_location || null),
         };
 
         // Upsert on the (user_id, entry_date) unique constraint instead of a manual

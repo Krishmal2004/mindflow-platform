@@ -21,6 +21,7 @@ import { Colors as GlobalColors } from '../../constants/colors';
 import { MirrorIllustration } from '../../components/MeditationIllustration';
 import { PopupModal } from '../../components/PopupModal';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { FocusRingIcons } from '../../components/ScaleIcons';
 const Colors = {
     ...GlobalColors,
     primary: '#0D9488',
@@ -373,6 +374,7 @@ export default function MindfulMirrorScreen() {
                     <View style={styles.optionsContainer}>
                         {SCALE_OPTIONS.map((option) => {
                             const isSelected = answers[`q${currentQuestionIndex + 1}`] === option.value;
+                            const FocusRingIcon = FocusRingIcons[option.value - 1];
                             return (
                                 <TouchableOpacity
                                     key={option.value}
@@ -388,6 +390,9 @@ export default function MindfulMirrorScreen() {
                                         isSelected && styles.radioCircleSelected
                                     ]}>
                                         {isSelected && <View style={styles.radioInner} />}
+                                    </View>
+                                    <View style={styles.scaleIconSlot}>
+                                        <FocusRingIcon size={30} />
                                     </View>
                                     <Text style={[
                                         styles.optionText,
@@ -616,6 +621,11 @@ const styles = StyleSheet.create({
     },
     radioCircleSelected: {
         borderColor: Colors.primary,
+    },
+    scaleIconSlot: {
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     radioInner: {
         width: 10,

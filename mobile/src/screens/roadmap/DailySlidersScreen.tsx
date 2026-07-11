@@ -9,7 +9,9 @@ import {
     ActivityIndicator,
     Dimensions,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    LayoutAnimation,
+    UIManager
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -22,7 +24,7 @@ import YoutubePlayer from 'react-native-youtube-iframe';
 
 import { Colors as GlobalColors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
-import { StressIcons, MoodIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
+import { StressIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
 import { PopupModal } from '../../components/PopupModal';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 const Colors = {
@@ -33,9 +35,18 @@ const THEME_BG = '#FFFBEB';
 
 const { width } = Dimensions.get('window');
 
-export const PRACTICE_TYPES = [
-    'Physical Session',
-    'Other'
+// Player grows while actively playing so the video is the visual focus, then
+// shrinks back once paused/stopped so the surrounding step content has room.
+const VIDEO_HEIGHT_PAUSED = 200;
+const VIDEO_HEIGHT_PLAYING = 260;
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+export const PRACTICE_LOCATIONS = [
+    'At University',
+    'Outside University'
 ];
 
 export const INFLUENCING_FACTORS = [
@@ -76,13 +87,12 @@ export default function DailySlidersScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
     // Wizard navigation state
-    const [currentStep, setCurrentStep] = useState(0); // 0 = Video, 1 = Relaxation/Stress, 2 = Practice, 3 = Mood/Factor, 4 = Sleep
+    const [currentStep, setCurrentStep] = useState(0); // 0 = Calm(before)/Stress/Factor, 1 = Sleep, 2 = Video, 3 = Practice, 4 = Calm(after)
 
     // Mindfulness practice state
     const [mindfulnessPractice, setMindfulnessPractice] = useState<'yes' | 'no' | null>(null);
     const [practiceDuration, setPracticeDuration] = useState('');
-    const [selectedPractices, setSelectedPractices] = useState<string[]>([]);
-    const [otherPracticeText, setOtherPracticeText] = useState('');
+    const [practiceLocation, setPracticeLocation] = useState<string | null>(null);
 
     // Video state
     const [weeklyVideoId, setWeeklyVideoId] = useState<string | null>(null);
@@ -93,9 +103,9 @@ export default function DailySlidersScreen() {
 
     // Form state
     const [stressLevel, setStressLevel] = useState<number | null>(null);
-    const [moodLevel, setMoodLevel] = useState<number | null>(null);
+    const [calmBefore, setCalmBefore] = useState<number | null>(null);
+    const [calmAfter, setCalmAfter] = useState<number | null>(null);
     const [sleepQuality, setSleepQuality] = useState<number | null>(null);
-    const [relaxationLevel, setRelaxationLevel] = useState<number | null>(null);
     const [selectedFactor, setSelectedFactor] = useState<string | null>(null);
     const [sleepStart, setSleepStart] = useState<string | null>(null);
     const [wakeUp, setWakeUp] = useState<string | null>(null);
@@ -205,7 +215,7 @@ export default function DailySlidersScreen() {
     // playing (not just loaded/paused); flushes to the backend every few seconds (and on
     // cleanup) so a closed app doesn't lose more than a few seconds of progress.
     useEffect(() => {
-        if (currentStep !== 0 || !weeklyVideoId || !isVideoPlaying) return;
+        if (currentStep !== 2 || !weeklyVideoId || !isVideoPlaying) return;
 
         const interval = setInterval(() => {
             setWatchedSeconds(prev => prev + 1);
@@ -228,6 +238,7 @@ export default function DailySlidersScreen() {
     }, [currentStep, weeklyVideoId, isVideoPlaying]);
 
     const handleVideoStateChange = (state: string) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsVideoPlaying(state === 'playing');
     };
 
@@ -242,34 +253,24 @@ export default function DailySlidersScreen() {
         setSelectedFactor(prev => prev === factor ? null : factor);
     };
 
-    const togglePractice = (practice: string) => {
-        setSelectedPractices(prev =>
-            prev.includes(practice)
-                ? prev.filter(p => p !== practice)
-                : [...prev, practice]
-        );
-    };
-
     // Check if the current step is valid to proceed
     const isStepValid = () => {
         switch (currentStep) {
             case 0:
+                return calmBefore !== null && stressLevel !== null && selectedFactor !== null;
+            case 1:
+                return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
+            case 2:
                 // Watch time is tracked for analytics only; the user is not required to watch before continuing.
                 return true;
-            case 1:
-                return relaxationLevel !== null && stressLevel !== null;
-            case 2:
+            case 3:
                 if (mindfulnessPractice === null) return false;
                 if (mindfulnessPractice === 'yes') {
-                    const hasPractice = selectedPractices.length > 0;
-                    const isOtherValid = !selectedPractices.includes('Other') || otherPracticeText.trim() !== '';
-                    return practiceDuration.trim() !== '' && parseInt(practiceDuration) >= 5 && hasPractice && isOtherValid;
+                    return practiceDuration.trim() !== '' && parseInt(practiceDuration, 10) >= 5 && practiceLocation !== null;
                 }
                 return true;
-            case 3:
-                return moodLevel !== null && selectedFactor !== null;
             case 4:
-                return sleepStart !== null && wakeUp !== null && sleepQuality !== null;
+                return calmAfter !== null;
             default:
                 return false;
         }
@@ -279,7 +280,7 @@ export default function DailySlidersScreen() {
         if (userGroup === 'cg') {
             if (currentStep === 0) return 1;
             if (currentStep === 1) return 2;
-            if (currentStep === 3) return 3;
+            if (currentStep === 2) return 3;
             if (currentStep === 4) return 4;
         }
         return currentStep + 1;
@@ -296,19 +297,16 @@ export default function DailySlidersScreen() {
         if (userGroup !== 'cg' && mindfulnessPractice !== null) {
             if (mindfulnessPractice === 'no') {
                 completed++;
-            } else if (practiceDuration && selectedPractices.length > 0) {
-                const isOtherValid = !selectedPractices.includes('Other') || otherPracticeText.trim() !== '';
-                if (isOtherValid) {
-                    completed++;
-                }
+            } else if (practiceDuration && practiceLocation !== null) {
+                completed++;
             }
         }
         if (stressLevel !== null) completed++;
-        if (moodLevel !== null) completed++;
+        if (calmBefore !== null) completed++;
         if (selectedFactor) completed++;
         if (sleepStart && wakeUp) completed++;
         if (sleepQuality !== null) completed++;
-        if (relaxationLevel !== null) completed++;
+        if (calmAfter !== null) completed++;
 
         return Math.round((completed / total) * 100);
     };
@@ -342,12 +340,12 @@ export default function DailySlidersScreen() {
                 },
                 body: JSON.stringify({
                     mindfulness_practice: userGroup === 'cg' ? null : mindfulnessPractice,
-                    practice_duration: userGroup === 'cg' ? null : (mindfulnessPractice === 'yes' ? parseInt(practiceDuration) : null),
-                    practice_log: userGroup === 'cg' ? null : (mindfulnessPractice === 'yes' ? selectedPractices.map(p => p === 'Other' ? otherPracticeText.trim() : p).filter(p => p !== '').join(', ') : null),
+                    practice_duration: userGroup === 'cg' ? null : (mindfulnessPractice === 'yes' ? parseInt(practiceDuration, 10) : null),
+                    practice_location: userGroup === 'cg' ? null : (mindfulnessPractice === 'yes' ? practiceLocation : null),
                     stress_level: stressLevel,
-                    mood: moodLevel,
+                    calm_before: calmBefore,
+                    calm_after: calmAfter,
                     sleep_quality: sleepQuality,
-                    relaxation_level: relaxationLevel,
                     feelings: selectedFactor,
                     sleep_start_time: sleepStart,
                     wake_up_time: wakeUp
@@ -389,8 +387,8 @@ export default function DailySlidersScreen() {
 
     const nextStep = () => {
         if (isStepValid()) {
-            if (currentStep === 1 && userGroup === 'cg') {
-                setCurrentStep(3); // Skip step 2 for control group
+            if (currentStep === 2 && userGroup === 'cg') {
+                setCurrentStep(4); // Skip step 3 (practice) for control group
             } else {
                 setCurrentStep(prev => Math.min(prev + 1, 4));
             }
@@ -400,8 +398,8 @@ export default function DailySlidersScreen() {
     };
 
     const prevStep = () => {
-        if (currentStep === 3 && userGroup === 'cg') {
-            setCurrentStep(1); // Skip step 2 going backward
+        if (currentStep === 4 && userGroup === 'cg') {
+            setCurrentStep(2); // Skip step 3 (practice) going backward
         } else {
             setCurrentStep(prev => Math.max(prev - 1, 0));
         }
@@ -449,83 +447,18 @@ export default function DailySlidersScreen() {
             >
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                {/* STEP 0: Guided Video Session */}
+                {/* STEP 0: Calm (Before), Stress Level & Primary Influencing Factor */}
                 {currentStep === 0 && (
                     <View style={styles.wizardCard}>
-                        <View style={styles.samsungPanel}>
-                            <View style={styles.sectionHeader}>
-                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
-                                    <Ionicons name="play-circle-outline" size={24} color={Colors.primary} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.sectionTitle}>{userGroup === 'cg' ? 'Weekly Watch' : 'Guided Session'}</Text>
-                                    <Text style={styles.sectionSubtitle}>
-                                        {userGroup === 'cg'
-                                            ? "Take a moment to watch today's weekly video"
-                                            : "Take a moment to listen to today's audio guide"}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            {weeklyVideoId ? (
-                                <View style={styles.videoWrapper}>
-                                    <YoutubePlayer
-                                        height={200}
-                                        videoId={weeklyVideoId}
-                                        play={isVideoPlaying}
-                                        onChangeState={handleVideoStateChange}
-                                        onError={handleVideoError}
-                                        webViewProps={{
-                                            allowsInlineMediaPlayback: true,
-                                            mediaPlaybackRequiresUserAction: false,
-                                        }}
-                                    />
-                                </View>
-                            ) : (
-                                <View style={styles.recordingCard}>
-                                    <View style={styles.recordingIcon}>
-                                        <Ionicons name="headset" size={48} color="#CBD5E1" />
-                                    </View>
-                                    <View style={styles.recordingInfo}>
-                                        <Text style={styles.recordingTitle}>
-                                            {userGroup === 'cg' ? 'No weekly watch today' : 'No guided session today'}
-                                        </Text>
-                                        <Text style={styles.recordingDuration}>You can skip directly to sliders</Text>
-                                    </View>
-                                </View>
-                            )}
-                            {weeklyVideoId && (
-                                <Text style={styles.watchProgressText}>
-                                    {watchedSeconds === 0 && !isVideoPlaying
-                                        ? userGroup === 'cg'
-                                            ? "Press play above to start today's weekly watch"
-                                            : "Press play above to start today's guided session"
-                                        : userGroup === 'cg'
-                                            ? `Watching weekly watch — ${formatWatchTime(watchedSeconds)} watched`
-                                            : `Watching guided session — ${formatWatchTime(watchedSeconds)} watched`}
-                                </Text>
-                            )}
-                            <Text style={styles.stepTip}>
-                                {userGroup === 'cg'
-                                    ? 'Tip: You can watch the weekly video first, then swipe or tap next to record your sliders.'
-                                    : 'Tip: You can watch the session video first, then swipe or tap next to record your sliders.'}
-                            </Text>
-                        </View>
-                    </View>
-                )}
-
-                {/* STEP 1: Relaxation & Stress Level */}
-                {currentStep === 1 && (
-                    <View style={styles.wizardCard}>
-                        {/* Relaxation */}
+                        {/* Calm (before) */}
                         <View style={styles.samsungPanel}>
                             <View style={styles.sectionHeader}>
                                 <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
                                     <Ionicons name="leaf-outline" size={24} color={Colors.primary} />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.sectionTitle}>Relaxation Level</Text>
-                                    <Text style={styles.sectionSubtitle}>Select the emoji that best reflects your relaxation level</Text>
+                                    <Text style={styles.sectionTitle}>Right now I feel calm</Text>
+                                    <Text style={styles.sectionSubtitle}>Select the response that best matches how much you agree</Text>
                                 </View>
                             </View>
 
@@ -535,9 +468,9 @@ export default function DailySlidersScreen() {
                                         key={index}
                                         style={[
                                             styles.emojiButton,
-                                            relaxationLevel === index + 1 && styles.emojiButtonSelected
+                                            calmBefore === index + 1 && styles.emojiButtonSelected
                                         ]}
-                                        onPress={() => setRelaxationLevel(index + 1)}
+                                        onPress={() => setCalmBefore(index + 1)}
                                         activeOpacity={0.7}
                                     >
                                         <IconComponent size={36} />
@@ -545,8 +478,8 @@ export default function DailySlidersScreen() {
                                 ))}
                             </View>
                             <View style={styles.scaleLabels}>
-                                <Text style={styles.scaleText}>Very Tense (1)</Text>
-                                <Text style={styles.scaleText}>Deeply Calm (5)</Text>
+                                <Text style={styles.scaleText}>Strongly Disagree (1)</Text>
+                                <Text style={styles.scaleText}>Strongly Agree (5)</Text>
                             </View>
                         </View>
 
@@ -580,154 +513,6 @@ export default function DailySlidersScreen() {
                             <View style={styles.scaleLabels}>
                                 <Text style={styles.scaleText}>Peaceful (1)</Text>
                                 <Text style={styles.scaleText}>Highly Stressed (5)</Text>
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {/* STEP 2: Mindfulness Practice */}
-                {currentStep === 2 && (
-                    <View style={styles.wizardCard}>
-                        <View style={styles.samsungPanel}>
-                            <View style={styles.sectionHeader}>
-                                <View style={[styles.sectionIconCircle, { backgroundColor: '#E0E7FF' }]}>
-                                    <Ionicons name="flower-outline" size={24} color="#6366F1" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
-                                    <Text style={styles.sectionSubtitle}>Did you spend time practicing mindfulness today?</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.yesNoRow}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.yesNoButton,
-                                        mindfulnessPractice === 'yes' && styles.yesButtonSelected
-                                    ]}
-                                    onPress={() => setMindfulnessPractice('yes')}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons
-                                        name={mindfulnessPractice === 'yes' ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                                        size={22}
-                                        color={mindfulnessPractice === 'yes' ? '#FFFFFF' : Colors.primary}
-                                    />
-                                    <Text style={[
-                                        styles.yesNoText,
-                                        mindfulnessPractice === 'yes' && styles.yesNoTextSelected
-                                    ]}>Yes, I did</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[
-                                        styles.yesNoButton,
-                                        mindfulnessPractice === 'no' && styles.noButtonSelected
-                                    ]}
-                                    onPress={() => setMindfulnessPractice('no')}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons
-                                        name={mindfulnessPractice === 'no' ? 'close-circle' : 'close-circle-outline'}
-                                        size={22}
-                                        color={mindfulnessPractice === 'no' ? '#FFFFFF' : '#EF4444'}
-                                    />
-                                    <Text style={[
-                                        styles.yesNoText,
-                                        mindfulnessPractice === 'no' && styles.yesNoTextSelected
-                                    ]}>No</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {mindfulnessPractice === 'yes' && (
-                                <View style={styles.practiceDetails}>
-                                    <Text style={styles.practiceLabel}>Practice Duration (minutes)</Text>
-                                    <TextInput
-                                        style={styles.durationInput}
-                                        placeholder="Min. 5 minutes (e.g. 15)"
-                                        placeholderTextColor="#94A3B8"
-                                        value={practiceDuration}
-                                        onChangeText={setPracticeDuration}
-                                        keyboardType="numeric"
-                                        returnKeyType="done"
-                                    />
-
-                                    <Text style={[styles.practiceLabel, { marginTop: 20 }]}>What did you practice?</Text>
-                                    <View style={styles.practiceGrid}>
-                                        {PRACTICE_TYPES.map((practice) => {
-                                            const isSelected = selectedPractices.includes(practice);
-                                            return (
-                                                <TouchableOpacity
-                                                    key={practice}
-                                                    style={[
-                                                        styles.practiceChip,
-                                                        isSelected && styles.practiceChipSelected
-                                                    ]}
-                                                    onPress={() => togglePractice(practice)}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Text style={[
-                                                        styles.practiceChipText,
-                                                        isSelected && styles.practiceChipTextSelected
-                                                    ]}>
-                                                        {practice}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-
-                                    {selectedPractices.includes('Other') && (
-                                        <View style={{ marginTop: 16 }}>
-                                            <Text style={styles.practiceLabel}>Please specify what you practiced</Text>
-                                            <TextInput
-                                                style={styles.durationInput}
-                                                placeholder="Enter practice name"
-                                                placeholderTextColor="#94A3B8"
-                                                value={otherPracticeText}
-                                                onChangeText={setOtherPracticeText}
-                                            />
-                                        </View>
-                                    )}
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                )}
-
-                {/* STEP 3: Mood & Factor */}
-                {currentStep === 3 && (
-                    <View style={styles.wizardCard}>
-                        {/* Mood */}
-                        <View style={styles.samsungPanel}>
-                            <View style={styles.sectionHeader}>
-                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
-                                    <Ionicons name="happy-outline" size={24} color={Colors.primary} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.sectionTitle}>Mood Level</Text>
-                                    <Text style={styles.sectionSubtitle}>How would you rate your mood today?</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.emojiRow}>
-                                {MoodIcons.map((IconComponent, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.emojiButton,
-                                            moodLevel === index + 1 && styles.emojiButtonSelected
-                                        ]}
-                                        onPress={() => setMoodLevel(index + 1)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <IconComponent size={36} />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                            <View style={styles.scaleLabels}>
-                                <Text style={styles.scaleText}>Low/Heavy (1)</Text>
-                                <Text style={styles.scaleText}>Joyful/Bright (5)</Text>
                             </View>
                         </View>
 
@@ -778,8 +563,8 @@ export default function DailySlidersScreen() {
                     </View>
                 )}
 
-                {/* STEP 4: Sleep Schedule */}
-                {currentStep === 4 && (
+                {/* STEP 1: Sleep Schedule */}
+                {currentStep === 1 && (
                     <View style={styles.wizardCard}>
                         {/* Sleep quality */}
                         <View style={styles.samsungPanel}>
@@ -869,6 +654,206 @@ export default function DailySlidersScreen() {
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
+                        </View>
+                    </View>
+                )}
+
+                {/* STEP 2: Guided Video Session */}
+                {currentStep === 2 && (
+                    <View style={styles.wizardCard}>
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
+                                    <Ionicons name="play-circle-outline" size={24} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>{userGroup === 'cg' ? 'Weekly Watch' : 'Guided Session'}</Text>
+                                    <Text style={styles.sectionSubtitle}>
+                                        {userGroup === 'cg'
+                                            ? "Take a moment to watch today's weekly video"
+                                            : "Take a moment to listen to today's audio guide"}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {weeklyVideoId ? (
+                                <View style={[styles.videoWrapper, { height: isVideoPlaying ? VIDEO_HEIGHT_PLAYING : VIDEO_HEIGHT_PAUSED }]}>
+                                    <YoutubePlayer
+                                        height={isVideoPlaying ? VIDEO_HEIGHT_PLAYING : VIDEO_HEIGHT_PAUSED}
+                                        videoId={weeklyVideoId}
+                                        play={isVideoPlaying}
+                                        onChangeState={handleVideoStateChange}
+                                        onError={handleVideoError}
+                                        webViewProps={{
+                                            allowsInlineMediaPlayback: true,
+                                            mediaPlaybackRequiresUserAction: false,
+                                        }}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.recordingCard}>
+                                    <View style={styles.recordingIcon}>
+                                        <Ionicons name="headset" size={48} color="#CBD5E1" />
+                                    </View>
+                                    <View style={styles.recordingInfo}>
+                                        <Text style={styles.recordingTitle}>
+                                            {userGroup === 'cg' ? 'No weekly watch today' : 'No guided session today'}
+                                        </Text>
+                                        <Text style={styles.recordingDuration}>You can skip directly to sliders</Text>
+                                    </View>
+                                </View>
+                            )}
+                            {weeklyVideoId && (
+                                <Text style={styles.watchProgressText}>
+                                    {watchedSeconds === 0 && !isVideoPlaying
+                                        ? userGroup === 'cg'
+                                            ? "Press play above to start today's weekly watch"
+                                            : "Press play above to start today's guided session"
+                                        : userGroup === 'cg'
+                                            ? `Watching weekly watch — ${formatWatchTime(watchedSeconds)} watched`
+                                            : `Watching guided session — ${formatWatchTime(watchedSeconds)} watched`}
+                                </Text>
+                            )}
+                            <Text style={styles.stepTip}>
+                                {userGroup === 'cg'
+                                    ? 'Tip: You can watch the weekly video first, then tap next to begin your mindfulness practice.'
+                                    : 'Tip: You can watch the session video first, then tap next to begin your mindfulness practice.'}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* STEP 3: Mindfulness Practice */}
+                {currentStep === 3 && (
+                    <View style={styles.wizardCard}>
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: '#E0E7FF' }]}>
+                                    <Ionicons name="flower-outline" size={24} color="#6366F1" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Mindfulness Practice</Text>
+                                    <Text style={styles.sectionSubtitle}>Did you spend time practicing mindfulness today?</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.yesNoRow}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.yesNoButton,
+                                        mindfulnessPractice === 'yes' && styles.yesButtonSelected
+                                    ]}
+                                    onPress={() => setMindfulnessPractice('yes')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={mindfulnessPractice === 'yes' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                        size={22}
+                                        color={mindfulnessPractice === 'yes' ? '#FFFFFF' : Colors.primary}
+                                    />
+                                    <Text style={[
+                                        styles.yesNoText,
+                                        mindfulnessPractice === 'yes' && styles.yesNoTextSelected
+                                    ]}>Yes, I did</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.yesNoButton,
+                                        mindfulnessPractice === 'no' && styles.noButtonSelected
+                                    ]}
+                                    onPress={() => setMindfulnessPractice('no')}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons
+                                        name={mindfulnessPractice === 'no' ? 'close-circle' : 'close-circle-outline'}
+                                        size={22}
+                                        color={mindfulnessPractice === 'no' ? '#FFFFFF' : '#EF4444'}
+                                    />
+                                    <Text style={[
+                                        styles.yesNoText,
+                                        mindfulnessPractice === 'no' && styles.yesNoTextSelected
+                                    ]}>No</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {mindfulnessPractice === 'yes' && (
+                                <View style={styles.practiceDetails}>
+                                    <Text style={styles.practiceLabel}>Practice Duration (minutes)</Text>
+                                    <TextInput
+                                        style={styles.durationInput}
+                                        placeholder="Min. 5 minutes (e.g. 15)"
+                                        placeholderTextColor="#94A3B8"
+                                        value={practiceDuration}
+                                        onChangeText={setPracticeDuration}
+                                        keyboardType="numeric"
+                                        returnKeyType="done"
+                                    />
+
+                                    <Text style={[styles.practiceLabel, { marginTop: 20 }]}>Where did you practice?</Text>
+                                    <View style={styles.practiceGrid}>
+                                        {PRACTICE_LOCATIONS.map((location) => {
+                                            const isSelected = practiceLocation === location;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={location}
+                                                    style={[
+                                                        styles.practiceChip,
+                                                        isSelected && styles.practiceChipSelected
+                                                    ]}
+                                                    onPress={() => setPracticeLocation(location)}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[
+                                                        styles.practiceChipText,
+                                                        isSelected && styles.practiceChipTextSelected
+                                                    ]}>
+                                                        {location}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                )}
+
+                {/* STEP 4: Calm (After) */}
+                {currentStep === 4 && (
+                    <View style={styles.wizardCard}>
+                        {/* Calm (after) */}
+                        <View style={styles.samsungPanel}>
+                            <View style={styles.sectionHeader}>
+                                <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
+                                    <Ionicons name="leaf-outline" size={24} color={Colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.sectionTitle}>Right now I feel calm</Text>
+                                    <Text style={styles.sectionSubtitle}>Select the response that best matches how much you agree</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.emojiRow}>
+                                {RelaxationIcons.map((IconComponent, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.emojiButton,
+                                            calmAfter === index + 1 && styles.emojiButtonSelected
+                                        ]}
+                                        onPress={() => setCalmAfter(index + 1)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <IconComponent size={36} />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            <View style={styles.scaleLabels}>
+                                <Text style={styles.scaleText}>Strongly Disagree (1)</Text>
+                                <Text style={styles.scaleText}>Strongly Agree (5)</Text>
+                            </View>
                         </View>
                     </View>
                 )}
@@ -1208,7 +1193,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     videoWrapper: {
-        height: 200,
         borderRadius: 20,
         overflow: 'hidden',
         backgroundColor: '#000',

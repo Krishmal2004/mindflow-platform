@@ -21,6 +21,7 @@ import { Colors } from '../../constants/colors';
 import { ThriveIllustration } from '../../components/MeditationIllustration';
 import { PopupModal } from '../../components/PopupModal';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { GrowthIcons } from '../../components/ScaleIcons';
 
 const { width } = Dimensions.get('window');
 
@@ -367,6 +368,7 @@ export default function ThriveTrackerScreen() {
                     <View style={styles.optionsContainer}>
                         {SCALE_OPTIONS.map((option) => {
                             const isSelected = answers[`q${currentQuestionIndex + 1}`] === option.value;
+                            const GrowthIcon = GrowthIcons[option.value - 1];
                             return (
                                 <TouchableOpacity
                                     key={option.value}
@@ -382,6 +384,9 @@ export default function ThriveTrackerScreen() {
                                         isSelected && styles.radioCircleSelected
                                     ]}>
                                         {isSelected && <View style={styles.radioInner} />}
+                                    </View>
+                                    <View style={styles.scaleIconSlot}>
+                                        <GrowthIcon size={30} />
                                     </View>
                                     <Text style={[
                                         styles.optionText,
@@ -610,6 +615,11 @@ const styles = StyleSheet.create({
     },
     radioCircleSelected: {
         borderColor: Colors.primary,
+    },
+    scaleIconSlot: {
+        marginRight: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     radioInner: {
         width: 10,

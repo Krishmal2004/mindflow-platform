@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { PageShell } from '@/components/PageShell';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -8,7 +9,7 @@ interface DailyEntry {
   created_at: string;
   stress_level?: number;
   sleep_quality?: number;
-  relaxation_level?: number;
+  calm_after?: number;
 }
 
 interface WeeklyEntry { created_at: string; duration?: number }
@@ -53,7 +54,7 @@ export default function JourneyPage() {
     date: formatDate(e.created_at),
     stress: e.stress_level,
     sleep: e.sleep_quality,
-    relaxation: e.relaxation_level,
+    relaxation: e.calm_after,
   }));
 
   const totalDays = dailyEntries.length;
@@ -67,14 +68,17 @@ export default function JourneyPage() {
 
   if (loading) {
     return (
+      <PageShell>
       <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 36, height: 36, border: '3px solid #E3F2FD', borderTopColor: '#749F82', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      </PageShell>
     );
   }
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 80 }}>
       {/* Header */}
       <div style={{ background: '#749F82', paddingTop: 'env(safe-area-inset-top, 0px)', padding: '20px 20px 24px' }}>
@@ -164,7 +168,7 @@ export default function JourneyPage() {
                       <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94A3B8' }} />
                       <YAxis domain={[1, 5]} tick={{ fontSize: 11, fill: '#94A3B8' }} />
                       <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-                      <Line type="monotone" dataKey="relaxation" stroke="#10B981" strokeWidth={2} dot={{ r: 4, fill: '#10B981' }} name="Relaxation" connectNulls />
+                      <Line type="monotone" dataKey="relaxation" stroke="#10B981" strokeWidth={2} dot={{ r: 4, fill: '#10B981' }} name="Calm (After)" connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -223,5 +227,6 @@ export default function JourneyPage() {
         )}
       </div>
     </div>
+    </PageShell>
   );
 }

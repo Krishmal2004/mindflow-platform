@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { setAuth } from '@/lib/auth';
 import { getPostAuthRoute } from '@/lib/postAuthRoute';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration, VerifyIllustration, PanelWave } from '@/components/Illustrations';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const NUM_BOXES = 8;
@@ -127,26 +129,22 @@ export default function OtpVerificationPage() {
   const hasAnyDigit = digits.some(d => d !== '');
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       <style>{shakeKeyframes}</style>
 
       {/* Leaves */}
-      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.15, pointerEvents: 'none' }}>
-        <svg width="200" height="200" viewBox="0 0 200 200">
-          <ellipse cx="150" cy="50" rx="80" ry="60" fill="#749F82" transform="rotate(-30 150 50)" />
-          <ellipse cx="180" cy="120" rx="60" ry="45" fill="#749F82" transform="rotate(20 180 120)" />
-        </svg>
+      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.5, pointerEvents: 'none' }} className="animate-fade-in">
+        <LeavesDecoration width={260} height={260} color="#749F82" />
       </div>
 
       {/* Top */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 48px)', zIndex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 48px)', zIndex: 1 }} className="animate-enter">
         <p style={{ fontSize: 13, fontWeight: 600, color: '#636E72', letterSpacing: 3, textTransform: 'uppercase' }}>MindFlow</p>
-        <div style={{ marginTop: 32, width: 80, height: 80, borderRadius: 40, background: '#E6F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#749F82" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.79 9.11a19.79 19.79 0 01-3.07-8.67A2 2 0 012.68 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 9.54c1.07 1.9 2.55 3.38 4.45 4.45l1.9-1.02a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 15.2v1.72z" />
-          </svg>
+        <div style={{ marginTop: 24, width: 140, height: 126 }}>
+          <VerifyIllustration width={140} height={126} />
         </div>
-        <p style={{ fontSize: 18, fontWeight: 800, color: '#2D3436', marginTop: 16 }}>Verify Your Email</p>
+        <p style={{ fontSize: 18, fontWeight: 800, color: '#2D3436', marginTop: 8 }}>Verify Your Email</p>
         <p style={{ fontSize: 13, color: '#636E72', textAlign: 'center', maxWidth: 280, lineHeight: 1.6, marginTop: 8, padding: '0 24px' }}>
           Enter the 8-digit code sent to<br />
           <strong style={{ color: '#2D3436' }}>{email}</strong>
@@ -156,7 +154,7 @@ export default function OtpVerificationPage() {
       {/* Bottom panel */}
       <div style={{
         flex: 1,
-        background: '#E3F2FD',
+        background: '#FFFFFF',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         padding: '32px 24px',
@@ -167,7 +165,11 @@ export default function OtpVerificationPage() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-      }}>
+        position: 'relative',
+        overflow: 'hidden',
+      }} className="animate-enter">
+        <PanelWave />
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         {/* OTP boxes */}
         <div
           style={{
@@ -246,7 +248,9 @@ export default function OtpVerificationPage() {
         >
           {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
         </button>
+        </div>
       </div>
     </div>
+    </PageShell>
   );
 }
