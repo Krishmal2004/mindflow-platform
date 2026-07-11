@@ -6,10 +6,10 @@ export default function LandingPage() {
   const navigate = useNavigate();
   return (
     <PageShell>
-      <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden', position: 'relative' }}>
+      <div style={{ minHeight: '100vh', background: '#F8FAF8', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden', position: 'relative' }}>
         {/* Leaves decoration */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60%', opacity: 0.6, pointerEvents: 'none', overflow: 'hidden' }} className="animate-fade-in">
-          <LeavesDecoration width={400} height={400} color="#749F82" />
+          <LeavesDecoration width={400} height={400} color="#0F9B71" />
         </div>
 
         {/* Header */}
@@ -50,7 +50,7 @@ export default function LandingPage() {
             <button
               onClick={() => navigate('/login')}
               style={{
-                width: '100%', padding: 16, background: '#749F82', color: '#fff',
+                width: '100%', padding: 16, background: '#0F9B71', color: '#fff',
                 border: 'none', borderRadius: 30, fontSize: 16, fontWeight: 700,
                 letterSpacing: 1, cursor: 'pointer', boxShadow: '0 4px 12px rgba(116,159,130,0.4)',
               }}
@@ -60,8 +60,8 @@ export default function LandingPage() {
             <button
               onClick={() => navigate('/signup')}
               style={{
-                width: '100%', padding: 16, background: 'transparent', color: '#749F82',
-                border: '1.5px solid #749F82', borderRadius: 30, fontSize: 16, fontWeight: 700,
+                width: '100%', padding: 16, background: 'transparent', color: '#0F9B71',
+                border: '1.5px solid #0F9B71', borderRadius: 30, fontSize: 16, fontWeight: 700,
                 letterSpacing: 1, cursor: 'pointer',
               }}
             >

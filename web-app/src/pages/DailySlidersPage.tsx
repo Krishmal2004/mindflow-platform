@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Tv } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
 import { EmotionIcons } from '@/components/Icons';
@@ -257,23 +258,23 @@ export default function DailySlidersPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 36, height: 36, border: '3px solid #FDE68A', borderTopColor: '#D97706', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ minHeight: '100vh', background: '#FFF6E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid #FDE68A', borderTopColor: '#EA8F00', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  const STEP_COLOR = '#D97706';
+  const STEP_COLOR = '#EA8F00';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 100 }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 100 }}>
       {/* Header — mirrors mobile's close-to-dashboard button + static title + completion badge */}
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => navigate('/dashboard')}
           style={{ width: 40, height: 40, borderRadius: 20, background: '#fff', border: 'none', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', cursor: 'pointer', color: '#1E293B', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
         <p style={{ fontSize: 20, fontWeight: 700, color: '#2D3436', margin: 0 }}>Daily Check-in</p>
-        <div style={{ background: '#FFFBEB', borderRadius: 20, padding: '6px 12px' }}>
+        <div style={{ background: '#FFF6E5', borderRadius: 20, padding: '6px 12px' }}>
           <span style={{ color: STEP_COLOR, fontSize: 12, fontWeight: 700 }}>{getCompletionProgress()}%</span>
         </div>
       </div>
@@ -328,7 +329,7 @@ export default function DailySlidersPage() {
                     onClick={() => setSelectedFactor(f.label)}
                     style={{
                       padding: '14px 16px', borderRadius: 14, border: `2px solid ${selectedFactor === f.label ? STEP_COLOR : '#DFE6E9'}`,
-                      background: selectedFactor === f.label ? '#FFFBEB' : '#F6F8F9',
+                      background: selectedFactor === f.label ? '#FFF6E5' : '#F8FAF8',
                       textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
                     }}
                   >
@@ -425,7 +426,7 @@ export default function DailySlidersPage() {
                 <div style={{ padding: 16 }}>
                   <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 15 }}>{videoTitle || "This Week's Guided Session"}</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#D97706' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#EA8F00' }}>
                       {watchedSeconds === 0 && !isVideoPlaying
                         ? `Press play above to start ${userGroup === 'cg' ? "today's weekly watch" : "today's guided session"}`
                         : `${userGroup === 'cg' ? 'Watching weekly watch' : 'Watching guided session'} — ${Math.floor(watchedSeconds / 60)}m ${(watchedSeconds % 60).toString().padStart(2, '0')}s watched`}
@@ -438,7 +439,7 @@ export default function DailySlidersPage() {
               </div>
             ) : (
               <div style={{ background: '#fff', borderRadius: 20, padding: 32, textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-                <div style={{ width: 64, height: 64, borderRadius: 32, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 28 }}>📺</div>
+                <div style={{ width: 64, height: 64, borderRadius: 32, background: '#FFF6E5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#EA8F00' }}><Tv size={28} /></div>
                 <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 16, marginBottom: 8 }}>No Video This Week</p>
                 <p style={{ color: '#636E72', fontSize: 13 }}>No guided session has been assigned for this week. You can proceed to the next step.</p>
               </div>
@@ -458,7 +459,7 @@ export default function DailySlidersPage() {
                   onClick={() => setMindfulnessPractice(v)}
                   style={{
                     flex: 1, padding: 16, borderRadius: 16, border: `2px solid ${mindfulnessPractice === v ? (v === 'yes' ? STEP_COLOR : '#EF4444') : '#DFE6E9'}`,
-                    background: mindfulnessPractice === v ? (v === 'yes' ? '#FFFBEB' : '#FEE2E2') : '#fff',
+                    background: mindfulnessPractice === v ? (v === 'yes' ? '#FFF6E5' : '#FEE2E2') : '#fff',
                     color: mindfulnessPractice === v ? (v === 'yes' ? STEP_COLOR : '#EF4444') : '#636E72',
                     fontWeight: 700, fontSize: 16, cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase',
                   }}
@@ -478,7 +479,7 @@ export default function DailySlidersPage() {
                     min="5"
                     inputMode="numeric"
                     placeholder="Min. 5 minutes"
-                    style={{ width: 140, padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 16, outline: 'none', background: '#F6F8F9' }}
+                    style={{ width: 140, padding: '10px 14px', border: '1.5px solid #DFE6E9', borderRadius: 12, fontSize: 16, outline: 'none', background: '#F8FAF8' }}
                   />
                   <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>Minimum 5 minutes</p>
                 </div>
@@ -492,7 +493,7 @@ export default function DailySlidersPage() {
                         style={{
                           padding: '8px 16px', borderRadius: 20,
                           border: `1.5px solid ${practiceLocation === p ? STEP_COLOR : '#DFE6E9'}`,
-                          background: practiceLocation === p ? '#FFFBEB' : '#fff',
+                          background: practiceLocation === p ? '#FFF6E5' : '#fff',
                           color: practiceLocation === p ? STEP_COLOR : '#636E72',
                           fontWeight: practiceLocation === p ? 700 : 500, fontSize: 13, cursor: 'pointer',
                         }}
@@ -538,7 +539,7 @@ export default function DailySlidersPage() {
           {currentStep > 0 && (
             <button
               onClick={handleBack}
-              style={{ flex: 1, padding: 14, background: '#F6F8F9', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+              style={{ flex: 1, padding: 14, background: '#F8FAF8', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
             >
               Back
             </button>

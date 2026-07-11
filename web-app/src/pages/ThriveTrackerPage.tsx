@@ -30,8 +30,8 @@ const SCALE = [
   { value: 5, label: 'All of the time' },
 ];
 
-const COLOR = '#749F82';
-const BG_COLOR = '#E6F4EA';
+const COLOR = '#0F9B71';
+const BG_COLOR = '#E7F9F1';
 const PREFIX = 'In the last 2 weeks, how often have you felt...';
 
 interface StatusData { completed?: boolean }
@@ -153,7 +153,7 @@ export default function ThriveTrackerPage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 100 }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 100 }}>
       {/* Header */}
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => qIndex > 0 ? setQIndex(p => p - 1) : setStep('intro')}
@@ -214,7 +214,7 @@ export default function ThriveTrackerPage() {
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #DFE6E9', padding: '12px 16px', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)', zIndex: 50 }}>
         <div style={{ maxWidth: 430, margin: '0 auto', display: 'flex', gap: 12 }}>
           {qIndex > 0 && (
-            <button onClick={() => setQIndex(p => p - 1)} style={{ flex: 1, padding: 14, background: '#F6F8F9', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+            <button onClick={() => setQIndex(p => p - 1)} style={{ flex: 1, padding: 14, background: '#F8FAF8', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, cursor: 'pointer' }}>Back</button>
           )}
           {qIndex < QUESTIONS.length - 1 ? (
             <button

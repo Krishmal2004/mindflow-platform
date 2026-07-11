@@ -72,7 +72,7 @@ export const JourneyIcons = {
     </svg>
   ),
 
-  Mirror: ({ size = 24, color = '#6366F1', className }: IconProps) => (
+  Mirror: ({ size = 24, color = '#3E7BFA', className }: IconProps) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <circle cx="12" cy="10" r="8" stroke={color} strokeWidth="2" fill="rgba(99, 102, 241, 0.1)" />
       <path d="M12 18V22" stroke={color} strokeWidth="2" strokeLinecap="round" />
@@ -206,7 +206,7 @@ const makeFace = (expression: string, size: number) => {
     // Sleep faces (1=Poor, 5=Great)
     'sleep-1': (
       <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="18" r="17" fill="#F3E8FF" stroke="#E9D5FF" strokeWidth="1"/>
+        <circle cx="18" cy="18" r="17" fill="#EEEAFB" stroke="#E9D5FF" strokeWidth="1"/>
         <line x1="10" y1="14" x2="14" y2="14" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round"/>
         <line x1="22" y1="14" x2="26" y2="14" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round"/>
         <path d="M13 25C15 22 21 22 23 25" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" transform="rotate(180 18 25)"/>
@@ -214,7 +214,7 @@ const makeFace = (expression: string, size: number) => {
     ),
     'sleep-2': (
       <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="18" r="17" fill="#EDE9FE" stroke="#DDD6FE" strokeWidth="1"/>
+        <circle cx="18" cy="18" r="17" fill="#E8F0FE" stroke="#DDD6FE" strokeWidth="1"/>
         <circle cx="12" cy="14" r="1.5" fill="#8B5CF6"/>
         <circle cx="24" cy="14" r="1.5" fill="#8B5CF6"/>
         <path d="M14 24C15.5 22 20.5 22 22 24" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" transform="rotate(180 18 24)"/>

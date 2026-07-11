@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GraduationCap, User, Star, CheckCircle2, Info, School, ArrowLeft, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
 import { PageShell } from '@/components/PageShell';
@@ -52,7 +54,7 @@ const FACULTY_MAJORS: Record<string, string[]> = {
   'School of Architecture': ['Architecture', 'Interior Design', 'Heritage and Cultural Tourism'],
 };
 
-const COLOR = '#749F82';
+const COLOR = '#0F9B71';
 
 interface AboutMeData {
   is_completed?: boolean;
@@ -78,11 +80,11 @@ function InfoField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function InfoCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+function InfoCard({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <div style={{ background: '#fff', borderRadius: 20, marginBottom: 16, border: '1px solid #F1F5F9', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
-        <div style={{ background: '#E6F4EA', padding: 8, borderRadius: 10, fontSize: 16, lineHeight: 1 }}>{icon}</div>
+        <div style={{ background: '#E7F9F1', padding: 8, borderRadius: 10, display: 'flex', color: '#0F9B71' }}>{icon}</div>
         <p style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>{title}</p>
       </div>
       <div style={{ padding: 20 }}>{children}</div>
@@ -208,7 +210,7 @@ export default function AboutMePage() {
   if (loading) {
     return (
       <PageShell>
-      <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#F8FAF8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 36, height: 36, border: '3px solid #E3F2FD', borderTopColor: COLOR, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -234,7 +236,7 @@ export default function AboutMePage() {
     padding: '8px 14px',
     borderRadius: 20,
     border: `1.5px solid ${active ? COLOR : '#E2E8F0'}`,
-    background: active ? '#E6F4EA' : '#F1F5F9',
+    background: active ? '#E7F9F1' : '#F1F5F9',
     color: active ? COLOR : '#334155',
     fontWeight: active ? 700 : 500,
     fontSize: 13,
@@ -244,9 +246,9 @@ export default function AboutMePage() {
 
   // STEP badge + header shared by the three grouped form cards, matching mobile's
   // groupedFormCard / formCardHeader / stepBadge pattern.
-  const FormCardHeader = ({ icon, title, subtitle, step }: { icon: string; title: string; subtitle: string; step: string }) => (
+  const FormCardHeader = ({ icon, title, subtitle, step }: { icon: ReactNode; title: string; subtitle: string; step: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFD', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
-      <div style={{ width: 38, height: 38, borderRadius: 12, background: '#E6F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{icon}</div>
+      <div style={{ width: 38, height: 38, borderRadius: 12, background: '#E7F9F1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F9B71', flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>{title}</p>
         <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{subtitle}</p>
@@ -262,10 +264,10 @@ export default function AboutMePage() {
     // the profile has already been completed.
     return (
       <PageShell>
-      <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 40 }}>
+      <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 40 }}>
         <div style={{ background: '#fff', borderBottom: '1px solid #F1F5F9' }}>
           <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button onClick={() => navigate('/dashboard')} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', color: '#1A1A2E', fontSize: 18 }}>←</button>
+            <button onClick={() => navigate('/dashboard')} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', color: '#1A1A2E', fontSize: 18 }}><ArrowLeft size={18} /></button>
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: 20, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>About Me</p>
               <p style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Your research profile</p>
@@ -275,26 +277,26 @@ export default function AboutMePage() {
         </div>
 
         <div style={{ maxWidth: 430, margin: '0 auto', padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#E6F4EA', padding: 16, borderRadius: 16, marginBottom: 16 }}>
-            <span style={{ fontSize: 22 }}>✅</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#E7F9F1', padding: 16, borderRadius: 16, marginBottom: 16 }}>
+            <CheckCircle2 size={24} color={COLOR} />
             <p style={{ color: COLOR, fontWeight: 700, fontSize: 15, margin: 0 }}>Profile Completed</p>
           </div>
 
-          <InfoCard icon="🎓" title="Academic Profile">
+          <InfoCard icon={<GraduationCap size={18} />} title="Academic Profile">
             <InfoField label="University ID" value={universityId} />
             <InfoField label="Education Level" value={educationLevel} />
             <InfoField label="Faculty" value={faculty} />
             <InfoField label="Major / Field of Study" value={major} />
           </InfoCard>
 
-          <InfoCard icon="👤" title="Personal Profile">
+          <InfoCard icon={<User size={18} />} title="Personal Profile">
             <InfoField label="Age" value={age} />
             <InfoField label="Living Situation" value={livingSituation} />
             <InfoField label="Cultural Background" value={culturalBackground === 'Other' ? culturalOther : culturalBackground} />
             <InfoField label="Family Background" value={familyBackground} />
           </InfoCard>
 
-          <InfoCard icon="⭐" title="Interests & Experience">
+          <InfoCard icon={<Star size={18} />} title="Interests & Experience">
             <InfoField label="Hobbies & Interests" value={selectedHobbies.filter(h => h !== 'Other').concat(hobbiesOther ? [hobbiesOther] : []).join(', ') || 'None Specified'} />
             <InfoField label="Personal Goals" value={personalGoals} />
             <InfoField label="Previous Experience" value={whyMindflow} />
@@ -307,11 +309,11 @@ export default function AboutMePage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 40 }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 40 }}>
       {/* Header — plain background matching mobile, not a colored banner */}
       <div style={{ background: '#fff', borderBottom: '1px solid #F1F5F9' }}>
         <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => navigate('/dashboard')} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', color: '#1A1A2E', fontSize: 18 }}>←</button>
+          <button onClick={() => navigate('/dashboard')} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: '1px solid #E2E8F0', cursor: 'pointer', color: '#1A1A2E', fontSize: 18 }}><ArrowLeft size={18} /></button>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: 20, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>About Me</p>
             <p style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>Your research profile</p>
@@ -323,7 +325,7 @@ export default function AboutMePage() {
       <div style={{ maxWidth: 430, margin: '0 auto', padding: 16 }}>
         {/* Help banner */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#EFF6FF', borderRadius: 16, padding: 14, marginBottom: 16, border: '1px solid #BFDBFE' }}>
-          <span style={{ fontSize: 20 }}>ℹ️</span>
+          <Info size={20} color="#0284C7" style={{ flexShrink: 0, marginTop: 1 }} />
           <div>
             <p style={{ fontSize: 14, fontWeight: 700, color: '#1D4ED8', margin: 0, marginBottom: 3 }}>Help us know you better</p>
             <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.4, margin: 0 }}>
@@ -334,7 +336,7 @@ export default function AboutMePage() {
 
         {/* CARD 1: ACADEMIC DETAILS */}
         <div style={{ background: '#fff', borderRadius: 20, marginBottom: 16, border: '1px solid #EEF2F7' }}>
-          <FormCardHeader icon="🎓" title="Academic Details" subtitle="Your university and area of study" step="1 / 3" />
+          <FormCardHeader icon={<GraduationCap size={18} />} title="Academic Details" subtitle="Your university and area of study" step="1 / 3" />
           <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, color: '#1A1A2E', display: 'block', marginBottom: 8 }}>University ID <span style={{ color: '#EF4444' }}>*</span></label>
@@ -369,7 +371,7 @@ export default function AboutMePage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 14, padding: 16 }}>
-                  <span style={{ fontSize: 18 }}>🏫</span>
+                  <School size={20} color="#94A3B8" style={{ flexShrink: 0 }} />
                   <p style={{ fontSize: 13, color: '#94A3B8', fontWeight: 500, margin: 0 }}>Please select a Faculty above first to choose a Major.</p>
                 </div>
               )}
@@ -379,7 +381,7 @@ export default function AboutMePage() {
 
         {/* CARD 2: PERSONAL CONTEXT */}
         <div style={{ background: '#fff', borderRadius: 20, marginBottom: 16, border: '1px solid #EEF2F7' }}>
-          <FormCardHeader icon="👤" title="Personal Profile" subtitle="Background and living details" step="2 / 3" />
+          <FormCardHeader icon={<User size={18} />} title="Personal Profile" subtitle="Background and living details" step="2 / 3" />
           <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, color: '#1A1A2E', display: 'block', marginBottom: 8 }}>Age <span style={{ color: '#EF4444' }}>*</span></label>
@@ -397,7 +399,7 @@ export default function AboutMePage() {
                       onClick={() => setLivingSituation(sit)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', cursor: 'pointer',
-                        background: isActive ? '#E6F4EA' : '#F8FAFC', border: `1.5px solid ${isActive ? COLOR : '#E2E8F0'}`,
+                        background: isActive ? '#E7F9F1' : '#F8FAFC', border: `1.5px solid ${isActive ? COLOR : '#E2E8F0'}`,
                         borderRadius: 14, padding: '12px 16px',
                       }}
                     >
@@ -436,7 +438,7 @@ export default function AboutMePage() {
 
         {/* CARD 3: GOALS & MINDFLOW JOURNEY */}
         <div style={{ background: '#fff', borderRadius: 20, marginBottom: 16, border: '1px solid #EEF2F7' }}>
-          <FormCardHeader icon="⭐" title="Goals & Hobbies" subtitle="Your interests and previous experience" step="3 / 3" />
+          <FormCardHeader icon={<Star size={18} />} title="Goals & Hobbies" subtitle="Your interests and previous experience" step="3 / 3" />
           <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ fontSize: 13, fontWeight: 700, color: '#1A1A2E', display: 'block', marginBottom: 8 }}>Hobbies & Interests <span style={{ color: '#EF4444' }}>*</span></label>
@@ -477,7 +479,7 @@ export default function AboutMePage() {
             width: 22, height: 22, borderRadius: 6, border: `2px solid ${declaration ? COLOR : '#CBD5E1'}`,
             background: declaration ? COLOR : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
-            {declaration && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+            {declaration && <Check size={14} color="#fff" strokeWidth={3} />}
           </span>
           <span style={{ fontSize: 13, color: '#1A1A2E', lineHeight: 1.4, fontWeight: 500 }}>
             I hereby confirm that all information provided above is true, accurate, and complete.

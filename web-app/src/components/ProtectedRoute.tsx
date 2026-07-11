@@ -33,7 +33,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!ready) {
     return (
       <div className="flex items-center justify-center h-screen bg-white">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#749F82' }} />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: '#0F9B71' }} />
       </div>
     );
   }

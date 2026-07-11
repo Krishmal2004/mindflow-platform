@@ -19,7 +19,7 @@ const STRENGTH_LABEL = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#749F82" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F9B71" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
     </svg>
   ) : (
@@ -114,14 +114,14 @@ export default function SignupPage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100dvh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
+    <div style={{ minHeight: '100dvh', background: '#F8FAF8', display: 'flex', flexDirection: 'column', position: 'relative', overflowX: 'hidden' }}>
       <div aria-hidden style={{ position: 'absolute', top: 0, right: 0, opacity: 0.5, pointerEvents: 'none', zIndex: 0 }} className="animate-fade-in">
-        <LeavesDecoration width={260} height={260} color="#749F82" />
+        <LeavesDecoration width={260} height={260} color="#0F9B71" />
       </div>
 
       {/* Top brand header */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 'max(env(safe-area-inset-top, 0px), 28px)', paddingBottom: 16, zIndex: 1 }} className="animate-enter">
-        <p style={{ fontSize: 12, fontWeight: 700, color: '#749F82', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 12 }}>MindFlow</p>
+        <p style={{ fontSize: 12, fontWeight: 700, color: '#0F9B71', letterSpacing: 4, textTransform: 'uppercase', marginBottom: 12 }}>MindFlow</p>
         <div style={{ width: 90, height: 86, filter: 'drop-shadow(0 6px 14px rgba(116,159,130,0.28))' }}>
           <SignupIllustration width={90} height={86} />
         </div>
@@ -143,7 +143,7 @@ export default function SignupPage() {
       } as React.CSSProperties} className="animate-enter">
         <PanelWave />
         <div style={{ textAlign: 'center', marginBottom: 20, position: 'relative', zIndex: 1 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#749F82', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>JOIN US</p>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#0F9B71', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>JOIN US</p>
           <p style={{ fontSize: 20, fontWeight: 800, color: '#2D3436', letterSpacing: 0.5 }}>Create Your Account</p>
         </div>
 
@@ -151,7 +151,7 @@ export default function SignupPage() {
 
           {/* Full Name */}
           <div style={inputBox('name')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'name' ? '#749F82' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'name' ? '#0F9B71' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
             <input
@@ -168,7 +168,7 @@ export default function SignupPage() {
 
           {/* Email */}
           <div style={inputBox('email')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'email' ? '#749F82' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'email' ? '#0F9B71' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
             </svg>
             <input
@@ -185,7 +185,7 @@ export default function SignupPage() {
 
           {/* Password */}
           <div style={inputBox('password')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'password' ? '#749F82' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'password' ? '#0F9B71' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
             </svg>
             <input
@@ -225,7 +225,7 @@ export default function SignupPage() {
 
           {/* Confirm Password */}
           <div style={inputBox('confirmPw')}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'confirmPw' ? (passwordsMatch ? '#66BB6A' : '#749F82') : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={focusedField === 'confirmPw' ? (passwordsMatch ? '#66BB6A' : '#0F9B71') : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: 'stroke 0.2s' }}>
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
             <input
@@ -260,7 +260,7 @@ export default function SignupPage() {
             type="submit"
             disabled={loading}
             style={{
-              height: 54, background: loading ? '#9EC4A8' : '#749F82', color: '#fff', border: 'none',
+              height: 54, background: loading ? '#7FC7A6' : '#0F9B71', color: '#fff', border: 'none',
               borderRadius: 30, fontSize: 15, fontWeight: 700, letterSpacing: 1.5,
               cursor: loading ? 'not-allowed' : 'pointer', marginTop: 20,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -274,7 +274,7 @@ export default function SignupPage() {
             type="button"
             onClick={() => navigate('/login')}
             style={{
-              height: 54, background: 'transparent', color: '#749F82', border: '1.5px solid rgba(116,159,130,0.5)',
+              height: 54, background: 'transparent', color: '#0F9B71', border: '1.5px solid rgba(116,159,130,0.5)',
               borderRadius: 30, fontSize: 15, fontWeight: 700, letterSpacing: 1.5, cursor: 'pointer', marginTop: 10,
             }}
           >

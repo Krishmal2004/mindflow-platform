@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, CalendarDays, Flower2, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageShell } from '@/components/PageShell';
 
@@ -11,7 +12,7 @@ interface CalendarEvent {
   is_completed?: boolean;
 }
 
-const COLOR = '#749F82';
+const COLOR = '#0F9B71';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -86,7 +87,7 @@ export default function CalendarPage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 80 }}>
       {/* Header — plain background matching mobile, not a colored banner */}
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '20px 24px 8px' }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: '#2D3436', margin: 0, marginBottom: 4 }}>Calendar</h1>
@@ -97,9 +98,9 @@ export default function CalendarPage() {
         {/* Calendar card */}
         <div style={{ background: '#fff', borderRadius: 30, padding: 20, marginBottom: 24, boxShadow: '0 6px 16px rgba(0,0,0,0.03)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <button onClick={prevMonth} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: 'none', cursor: 'pointer', fontSize: 16 }}>‹</button>
+            <button onClick={prevMonth} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={18} color="#2D3436" /></button>
             <p style={{ fontWeight: 800, fontSize: 18, color: '#2D3436', margin: 0 }}>{MONTHS[month]} {year}</p>
-            <button onClick={nextMonth} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: 'none', cursor: 'pointer', fontSize: 16 }}>›</button>
+            <button onClick={nextMonth} style={{ width: 40, height: 40, borderRadius: 20, background: '#F1F5F9', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronRight size={18} color="#2D3436" /></button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
@@ -129,17 +130,17 @@ export default function CalendarPage() {
                       position: 'relative', aspectRatio: '1', margin: '4px 0', border: 'none', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       borderRadius: 20,
-                      background: isToday ? COLOR : hasMindfulness ? '#F3E8FF' : hasEvents ? '#E0F2FE' : 'transparent',
+                      background: isToday ? COLOR : hasMindfulness ? '#EEEAFB' : hasEvents ? '#E0F2FE' : 'transparent',
                     }}
                   >
                     <span style={{
                       fontSize: 14, fontWeight: isToday || hasMindfulness ? 700 : 600,
-                      color: isToday ? '#fff' : hasMindfulness ? '#9333EA' : '#2D3436',
+                      color: isToday ? '#fff' : hasMindfulness ? '#7C5CE0' : '#2D3436',
                     }}>
                       {day}
                     </span>
                     {hasMindfulness && (
-                      <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: 4, background: '#9C27B0' }} />
+                      <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, borderRadius: 4, background: '#7C5CE0' }} />
                     )}
                     {hasEvents && !hasMindfulness && (
                       <span style={{ position: 'absolute', bottom: 4, right: 4, width: 4, height: 4, borderRadius: 2, background: '#0EA5E9' }} />
@@ -153,7 +154,7 @@ export default function CalendarPage() {
           {/* Legend */}
           <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 20, paddingTop: 16, borderTop: '1px solid #F1F5F9' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 5, background: '#9333EA', display: 'block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 5, background: '#7C5CE0', display: 'block' }} />
               <span style={{ fontSize: 12, color: '#636E72', fontWeight: 600 }}>Mindfulness</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -172,7 +173,7 @@ export default function CalendarPage() {
 
         {upcoming.length === 0 ? (
           <div style={{ background: '#fff', borderRadius: 24, padding: 32, textAlign: 'center', border: '1.5px dashed #E2E8F0' }}>
-            <span style={{ fontSize: 32, opacity: 0.4 }}>📅</span>
+            <CalendarDays size={32} color="#D1D5DB" style={{ margin: '0 auto' }} />
             <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 12, fontWeight: 600 }}>No upcoming events</p>
           </div>
         ) : (
@@ -182,14 +183,14 @@ export default function CalendarPage() {
               <div
                 key={event.id}
                 style={{
-                  display: 'flex', alignItems: 'center', background: event.is_completed ? '#E6F4EA' : '#fff',
+                  display: 'flex', alignItems: 'center', background: event.is_completed ? '#E7F9F1' : '#fff',
                   borderRadius: 24, padding: 16, marginBottom: 12,
                   border: event.is_completed ? '1.5px solid #C2E7CD' : 'none',
                   boxShadow: event.is_completed ? 'none' : '0 4px 10px rgba(0,0,0,0.03)',
                 }}
               >
-                <div style={{ width: 44, height: 44, borderRadius: 14, background: '#F3E8FF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 16, fontSize: 20, flexShrink: 0 }}>
-                  🌼
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: '#EEEAFB', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 16, flexShrink: 0 }}>
+                  <Flower2 size={22} color="#7C5CE0" />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 15, fontWeight: 700, color: '#2D3436', margin: 0 }}>{event.title}</p>
@@ -203,8 +204,8 @@ export default function CalendarPage() {
                     </p>
                   )}
                 </div>
-                <span style={{ marginLeft: 12, fontSize: 22 }}>
-                  {event.is_completed ? '✅' : <span style={{ color: '#F59E0B' }}>⭕</span>}
+                <span style={{ marginLeft: 12, flexShrink: 0 }}>
+                  {event.is_completed ? <CheckCircle2 size={22} color="#0F9B71" /> : <Circle size={22} color="#F59E0B" />}
                 </span>
               </div>
             );
@@ -223,16 +224,16 @@ export default function CalendarPage() {
               <p style={{ fontSize: 16, fontWeight: 800, color: '#2D3436', margin: 0 }}>
                 {selectedDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
               </p>
-              <button onClick={() => setSelectedDate(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 20, lineHeight: 1 }}>✕</button>
+              <button onClick={() => setSelectedDate(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', display: 'flex' }}><X size={20} /></button>
             </div>
 
             <div style={{ maxHeight: 300, overflowY: 'auto' }}>
               {selectedEvents.length > 0 ? (
                 selectedEvents.map((event, i) => (
-                  <div key={i} style={{ marginBottom: 12, background: '#F6F8F9', padding: 14, borderRadius: 20, border: '1.5px solid #E2E8F0' }}>
+                  <div key={i} style={{ marginBottom: 12, background: '#F8FAF8', padding: 14, borderRadius: 20, border: '1.5px solid #E2E8F0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <p style={{ fontSize: 15, fontWeight: 700, color: '#2D3436', margin: 0 }}>{event.title}</p>
-                      {event.is_completed && <span style={{ fontSize: 18 }}>✅</span>}
+                      {event.is_completed && <CheckCircle2 size={18} color="#0F9B71" />}
                     </div>
                     <p style={{ fontSize: 12, color: '#636E72', fontWeight: 500, margin: 0 }}>
                       {event.event_time ? event.event_time.slice(0, 5) : 'All Day'}

@@ -130,12 +130,12 @@ export default function OtpVerificationPage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       <style>{shakeKeyframes}</style>
 
       {/* Leaves */}
       <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.5, pointerEvents: 'none' }} className="animate-fade-in">
-        <LeavesDecoration width={260} height={260} color="#749F82" />
+        <LeavesDecoration width={260} height={260} color="#0F9B71" />
       </div>
 
       {/* Top */}
@@ -197,8 +197,8 @@ export default function OtpVerificationPage() {
                   fontSize: 20,
                   fontWeight: 700,
                   borderRadius: 12,
-                  border: `2px solid ${d ? '#749F82' : '#DFE6E9'}`,
-                  background: d ? '#E6F4EA' : '#fff',
+                  border: `2px solid ${d ? '#0F9B71' : '#DFE6E9'}`,
+                  background: d ? '#E7F9F1' : '#fff',
                   color: '#2D3436',
                   outline: 'none',
                   transition: 'border-color 0.2s, background 0.2s',
@@ -229,7 +229,7 @@ export default function OtpVerificationPage() {
           onClick={submitCode}
           disabled={loading}
           style={{
-            width: '100%', padding: 16, background: '#749F82', color: '#fff',
+            width: '100%', padding: 16, background: '#0F9B71', color: '#fff',
             border: 'none', borderRadius: 30, fontSize: 16, fontWeight: 700,
             letterSpacing: 1, cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.6 : 1, marginBottom: 16,
@@ -242,7 +242,7 @@ export default function OtpVerificationPage() {
           onClick={resendCode}
           disabled={resendCooldown > 0}
           style={{
-            background: 'none', border: 'none', color: resendCooldown > 0 ? '#B2BEC3' : '#749F82',
+            background: 'none', border: 'none', color: resendCooldown > 0 ? '#B2BEC3' : '#0F9B71',
             fontSize: 14, fontWeight: 600, cursor: resendCooldown > 0 ? 'default' : 'pointer',
           }}
         >

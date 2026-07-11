@@ -26,8 +26,8 @@ const SCALE = [
   { value: 5, label: 'Very Often' },
 ];
 
-const COLOR = '#E07A5F';
-const BG_COLOR = '#FFF4F2';
+const COLOR = '#E5573F';
+const BG_COLOR = '#FDEEEB';
 const PREFIX = 'In the last 1 month, how often have you...';
 
 interface StatusData { completed?: boolean }
@@ -149,7 +149,7 @@ export default function StressSnapshotPage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 100 }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 100 }}>
       {/* Header */}
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => qIndex > 0 ? setQIndex(p => p - 1) : setStep('intro')}
@@ -210,7 +210,7 @@ export default function StressSnapshotPage() {
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #DFE6E9', padding: '12px 16px', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)', zIndex: 50 }}>
         <div style={{ maxWidth: 430, margin: '0 auto', display: 'flex', gap: 12 }}>
           {qIndex > 0 && (
-            <button onClick={() => setQIndex(p => p - 1)} style={{ flex: 1, padding: 14, background: '#F6F8F9', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+            <button onClick={() => setQIndex(p => p - 1)} style={{ flex: 1, padding: 14, background: '#F8FAF8', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, cursor: 'pointer' }}>Back</button>
           )}
           {qIndex < QUESTIONS.length - 1 ? (
             <button onClick={() => { if (answers[qIndex]) setQIndex(p => p + 1); }} disabled={!answers[qIndex]}

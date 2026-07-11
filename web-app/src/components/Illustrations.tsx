@@ -27,46 +27,46 @@ interface IllustrationProps {
 
 const getColorShades = (primary?: string) => {
   const defaultShades = {
-    primary: '#749F82',
+    primary: '#0F9B71',
     light: '#94BCA1',
-    bg: '#E6F4EA',
+    bg: '#E7F9F1',
     dark: '#4B6A56',
   };
   if (!primary) return defaultShades;
 
   const p = primary.toUpperCase();
-  if (p === '#D97706' || p === 'GOLD' || p === 'AMBER') {
+  if (p === '#EA8F00' || p === 'GOLD' || p === 'AMBER') {
     return {
-      primary: '#D97706',
+      primary: '#EA8F00',
       light: '#FBBF24',
-      bg: '#FFFBEB',
+      bg: '#FFF6E5',
       dark: '#B45309',
     };
   }
-  if (p === '#6366F1' || p === 'INDIGO' || p === 'LAVENDER') {
+  if (p === '#3E7BFA' || p === 'INDIGO' || p === 'LAVENDER') {
     return {
-      primary: '#6366F1',
+      primary: '#3E7BFA',
       light: '#818CF8',
-      bg: '#EEF2FF',
+      bg: '#E8F0FE',
       dark: '#4338CA',
     };
   }
-  if (p === '#749F82' || p === 'SAGE' || p === 'GREEN') {
+  if (p === '#0F9B71' || p === 'SAGE' || p === 'GREEN') {
     return defaultShades;
   }
-  if (p === '#E07A5F' || p === 'CORAL' || p === 'TERRACOTTA') {
+  if (p === '#E5573F' || p === 'CORAL' || p === 'TERRACOTTA') {
     return {
-      primary: '#E07A5F',
+      primary: '#E5573F',
       light: '#F8A590',
-      bg: '#FFF4F2',
+      bg: '#FDEEEB',
       dark: '#B2533E',
     };
   }
-  if (p === '#0D9488' || p === 'TEAL' || p === 'OCEAN') {
+  if (p === '#7C5CE0' || p === 'TEAL' || p === 'OCEAN') {
     return {
-      primary: '#0D9488',
+      primary: '#7C5CE0',
       light: '#2DD4BF',
-      bg: '#F0FDFA',
+      bg: '#F2EEFC',
       dark: '#0F766E',
     };
   }

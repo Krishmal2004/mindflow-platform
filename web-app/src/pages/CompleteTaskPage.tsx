@@ -25,8 +25,8 @@ export default function CompleteTaskPage() {
   // Each roadmap screen passes its own accent (mirrors mobile's per-screen
   // themeColor/themeBgGrad route params) — fall back to the daily/default split
   // only when a caller doesn't specify one.
-  const color = state.themeColor || (isDaily ? '#D97706' : '#749F82');
-  const bgColor = state.themeBgColor || (isDaily ? '#FFFBEB' : '#F0FDF4');
+  const color = state.themeColor || (isDaily ? '#EA8F00' : '#0F9B71');
+  const bgColor = state.themeBgColor || (isDaily ? '#FFF6E5' : '#F0FDF4');
 
   const [scale, setScale] = useState(0.8);
 

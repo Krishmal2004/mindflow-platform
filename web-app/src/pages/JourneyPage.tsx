@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Mic, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PageShell } from '@/components/PageShell';
 import {
@@ -27,7 +29,7 @@ interface JourneyData {
 
 type Tab = 'daily' | 'questionnaire';
 
-const COLOR = '#749F82';
+const COLOR = '#0F9B71';
 
 const formatDate = (iso: string) => {
   const d = new Date(iso);
@@ -42,10 +44,10 @@ const formatDateTime = (iso: string) => {
 // Mirrors mobile/src/screens/JourneyScreen.tsx's SummaryCard — a non-interactive
 // count + latest-date summary. Mobile never passes an `entries` list on this screen,
 // so it is not an expandable accordion here either.
-function SummaryCard({ icon, title, count, latestDate }: { icon: string; title: string; count: number; latestDate?: string }) {
+function SummaryCard({ icon, title, count, latestDate }: { icon: ReactNode; title: string; count: number; latestDate?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', background: '#fff', padding: 16, borderRadius: 24, marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-      <div style={{ width: 40, height: 40, borderRadius: 20, background: '#E6F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 14, fontSize: 18, flexShrink: 0 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 20, background: '#E7F9F1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 14, color: COLOR, flexShrink: 0 }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -106,7 +108,7 @@ export default function JourneyPage() {
   if (loading) {
     return (
       <PageShell>
-      <div style={{ minHeight: '100vh', background: '#F6F8F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#F8FAF8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 36, height: 36, border: '3px solid #E3F2FD', borderTopColor: COLOR, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -116,7 +118,7 @@ export default function JourneyPage() {
 
   return (
     <PageShell>
-    <div style={{ minHeight: '100vh', background: '#F6F8F9', paddingBottom: 80 }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAF8', paddingBottom: 80 }}>
       {/* Header — plain background matching mobile, no refresh button (pull-to-refresh
           isn't a web concept, but there's no header action on mobile either) */}
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '20px 24px 8px' }}>
@@ -186,7 +188,7 @@ export default function JourneyPage() {
           <div style={{ paddingBottom: 24 }}>
             <p style={{ fontSize: 15, fontWeight: 800, color: '#2D3436', marginBottom: 16 }}>Weekly Recording Summary</p>
             <SummaryCard
-              icon="🎙️"
+              icon={<Mic size={18} />}
               title="Weekly Whispers"
               count={weeklyData.length}
               latestDate={weeklyData[0] ? formatDateTime(weeklyData[0].created_at) : undefined}
@@ -194,19 +196,19 @@ export default function JourneyPage() {
 
             <p style={{ fontSize: 15, fontWeight: 800, color: '#2D3436', marginTop: 8, marginBottom: 16 }}>Questionnaire Summary</p>
             <SummaryCard
-              icon="📄"
+              icon={<FileText size={18} />}
               title="Perceived Stress Scale (PSS-10)"
               count={pss10Data.length}
               latestDate={pss10Data[0] ? formatDateTime(pss10Data[0].created_at) : undefined}
             />
             <SummaryCard
-              icon="📄"
+              icon={<FileText size={18} />}
               title="Five Facet Mindfulness (FFMQ-15)"
               count={ffmq15Data.length}
               latestDate={ffmq15Data[0] ? formatDateTime(ffmq15Data[0].created_at) : undefined}
             />
             <SummaryCard
-              icon="📄"
+              icon={<FileText size={18} />}
               title="Mental Wellbeing (WEMWBS-14)"
               count={wemwbs14Data.length}
               latestDate={wemwbs14Data[0] ? formatDateTime(wemwbs14Data[0].created_at) : undefined}

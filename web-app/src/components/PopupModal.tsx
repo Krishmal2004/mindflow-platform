@@ -13,10 +13,10 @@ interface Props {
 }
 
 const CONFIG: Record<ModalType, { icon: string; color: string; bg: string }> = {
-  success: { icon: '✓', color: '#749F82', bg: '#E6F4EA' },
+  success: { icon: '✓', color: '#0F9B71', bg: '#E7F9F1' },
   error:   { icon: '✕', color: '#EF4444', bg: '#FEE2E2' },
   warning: { icon: '!', color: '#F59E0B', bg: '#FEF3C7' },
-  info:    { icon: 'i', color: '#8B5CF6', bg: '#EDE9FE' },
+  info:    { icon: 'i', color: '#7C5CE0', bg: '#E8F0FE' },
 };
 
 export function PopupModal({
