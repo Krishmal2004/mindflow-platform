@@ -31,6 +31,6 @@ export const getCalendarEvents = async (req: AuthenticatedRequest, res: Response
         res.json(events);
     } catch (error: any) {
         console.error('getCalendarEvents:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

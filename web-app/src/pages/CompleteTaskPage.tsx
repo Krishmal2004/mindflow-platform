@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration } from '@/components/Illustrations';
 
 interface LocationState {
   title?: string;
   message?: string;
   buttonText?: string;
   isDaily?: boolean;
+  themeColor?: string;
+  themeBgColor?: string;
 }
 
 export default function CompleteTaskPage() {
@@ -18,8 +22,11 @@ export default function CompleteTaskPage() {
   const buttonText = state.buttonText || 'Back to Dashboard';
   const isDaily = state.isDaily ?? false;
 
-  const color = isDaily ? '#D97706' : '#749F82';
-  const bgColor = isDaily ? '#FFFBEB' : '#F0FDF4';
+  // Each roadmap screen passes its own accent (mirrors mobile's per-screen
+  // themeColor/themeBgGrad route params) — fall back to the daily/default split
+  // only when a caller doesn't specify one.
+  const color = state.themeColor || (isDaily ? '#EA8F00' : '#0F9B71');
+  const bgColor = state.themeBgColor || (isDaily ? '#FFF6E5' : '#F0FDF4');
 
   const [scale, setScale] = useState(0.8);
 
@@ -29,6 +36,7 @@ export default function CompleteTaskPage() {
   }, []);
 
   return (
+    <PageShell>
     <div style={{
       minHeight: '100vh',
       background: bgColor,
@@ -37,7 +45,12 @@ export default function CompleteTaskPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: 24,
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.35, pointerEvents: 'none' }} className="animate-fade-in">
+        <LeavesDecoration width={280} height={280} color={color} />
+      </div>
       <div style={{
         background: '#fff',
         borderRadius: 28,
@@ -48,6 +61,8 @@ export default function CompleteTaskPage() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
         transform: `scale(${scale})`,
         transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+        position: 'relative',
+        zIndex: 1,
       }}>
         {/* Animated checkmark circle */}
         <div style={{
@@ -96,5 +111,6 @@ export default function CompleteTaskPage() {
         </button>
       </div>
     </div>
+    </PageShell>
   );
 }

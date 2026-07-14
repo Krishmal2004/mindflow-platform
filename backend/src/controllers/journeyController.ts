@@ -22,13 +22,22 @@ export const getJourneyStatus = async (req: AuthenticatedRequest, res: Response)
             return;
         }
 
-        const [daily, weekly, thrive, stress, mindful] = await Promise.all([
+        // allSettled instead of all: one roadmap step's status check failing (e.g. a
+        // transient Supabase blip) shouldn't 500 the whole journey view for the other four.
+        const keys = ['daily', 'weekly', 'thrive', 'stress', 'mindful'] as const;
+        const results = await Promise.allSettled([
             dailyService.getDailyStatus(req.user.id),
             weeklyService.getWeeklyStatus(req.user.id),
             thriveService.getThriveStatus(req.user.id),
             stressService.getStressStatus(req.user.id),
             mindfulService.getMindfulStatus(req.user.id),
         ]);
+
+        const [daily, weekly, thrive, stress, mindful] = results.map((result, i) => {
+            if (result.status === 'fulfilled') return result.value;
+            console.error(`getJourneyStatus: ${keys[i]} failed:`, result.reason);
+            return { completed: false, nextReset: null, error: true };
+        });
 
         res.json({ daily, weekly, thrive, stress, mindful });
     } catch (error) {
@@ -52,7 +61,7 @@ export const getJourneyData = async (req: AuthenticatedRequest, res: Response): 
             : JOURNEY_DEFAULT_LIMIT;
 
         const [dailyRes, weeklyRes, pss10Res, ffmq15Res, wemwbs14Res] = await Promise.all([
-            supabase.from('daily_sliders').select('id, user_id, mood, stress_level, sleep_quality, relaxation_level, mindfulness_practice, feelings, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
+            supabase.from('daily_sliders').select('id, user_id, calm_before, calm_after, stress_level, sleep_quality, mindfulness_practice, practice_location, feelings, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
             supabase.from('voice_recordings').select('id, user_id, week_number, year, file_url, duration, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
             supabase.from('questionnaire_pss10_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),
             supabase.from('questionnaire_ffmq15_responses').select('id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit),

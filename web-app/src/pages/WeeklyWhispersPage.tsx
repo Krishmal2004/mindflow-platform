@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Mic, BookOpen, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PopupModal } from '@/components/PopupModal';
+import { PageShell } from '@/components/PageShell';
+import { LeavesDecoration, VoiceRecordingIllustration } from '@/components/Illustrations';
 
 const PASSAGE_TEXT = `The North Wind and the Sun had a quarrel about which of them was the stronger. While they were disputing with much heat and bluster, a Traveler passed along the road wrapped in a cloak.
 
@@ -54,6 +57,10 @@ export default function WeeklyWhispersPage() {
 
   const startRecording = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setPopup({ visible: true, type: 'error', title: 'Not Supported', message: 'Voice recording isn\'t supported in this browser. Please try a different browser or device.' });
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -85,7 +92,14 @@ export default function WeeklyWhispersPage() {
         });
       }, 1000);
     } catch (err) {
-      setPopup({ visible: true, type: 'error', title: 'Microphone Error', message: 'Could not access microphone. Please allow microphone permission.' });
+      const name = err instanceof DOMException ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        setPopup({ visible: true, type: 'warning', title: 'Permission Required', message: 'Microphone permission is needed to record your voice.' });
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setPopup({ visible: true, type: 'error', title: 'No Microphone Found', message: 'We couldn\'t find a microphone on this device.' });
+      } else {
+        setPopup({ visible: true, type: 'error', title: 'Recording Error', message: 'Failed to start recording. Please try again.' });
+      }
     }
   };
 
@@ -118,7 +132,10 @@ export default function WeeklyWhispersPage() {
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'reflection.webm');
+      // Backend route is `upload.single('file')` (backend/src/routes/roadmapRoutes.ts) —
+      // a different field name here means multer never populates req.file and every
+      // upload 400s with "No file uploaded".
+      formData.append('file', audioBlob, 'reflection.webm');
       const uploadResult = await api.uploadWeeklyAudio(formData);
       await api.submitWeekly({
         duration: recordSeconds,
@@ -127,7 +144,13 @@ export default function WeeklyWhispersPage() {
       });
       navigate('/complete', {
         replace: true,
-        state: { title: 'Reflection Saved!', message: 'Your weekly voice reflection has been saved. Keep up the great work!', isDaily: false },
+        state: {
+          title: 'Reflection Saved!',
+          message: 'Your weekly voice reflection has been saved. Keep up the great work!',
+          isDaily: false,
+          themeColor: '#3E7BFA',
+          themeBgColor: '#E8F0FE',
+        },
       });
     } catch (err: unknown) {
       setPopup({ visible: true, type: 'error', title: 'Upload Failed', message: err instanceof Error ? err.message : 'Failed to save reflection.' });
@@ -136,26 +159,29 @@ export default function WeeklyWhispersPage() {
     }
   };
 
-  const STEP_COLOR = '#6366F1';
+  const STEP_COLOR = '#3E7BFA';
 
   if (step === 'loading') {
     return (
-      <div style={{ minHeight: '100vh', background: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 36, height: 36, border: '3px solid #C7D2FE', borderTopColor: '#6366F1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <PageShell>
+      <div style={{ minHeight: '100vh', background: '#E8F0FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid #BBD6FB', borderTopColor: '#3E7BFA', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      </PageShell>
     );
   }
 
   if (step === 'done') {
     return (
-      <div style={{ minHeight: '100vh', background: '#EEF2FF', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 340, width: '100%', textAlign: 'center' }}>
-          <div style={{ width: 80, height: 80, borderRadius: 40, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 36 }}>🎙️</div>
+      <PageShell>
+      <div style={{ minHeight: '100vh', background: '#E8F0FE', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ background: '#fff', borderRadius: 24, padding: 32, maxWidth: 340, width: '100%', textAlign: 'center' }} className="animate-enter">
+          <div style={{ width: 80, height: 80, borderRadius: 40, background: '#E8F0FE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#7C3AED' }}><Mic size={36} /></div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: '#2D3436', marginBottom: 8 }}>Already Submitted</h2>
           <p style={{ fontSize: 14, color: '#636E72', lineHeight: 1.6, marginBottom: 8 }}>You've completed your Weekly Whispers for this week.</p>
           {nextReset && (
-            <p style={{ fontSize: 13, color: '#6366F1', fontWeight: 600, marginBottom: 20 }}>
+            <p style={{ fontSize: 13, color: '#3E7BFA', fontWeight: 600, marginBottom: 20 }}>
               Next available: {new Date(nextReset).toLocaleDateString()}
             </p>
           )}
@@ -164,11 +190,16 @@ export default function WeeklyWhispersPage() {
           </button>
         </div>
       </div>
+      </PageShell>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#EEF2FF', paddingBottom: 80 }}>
+    <PageShell>
+    <div style={{ minHeight: '100vh', background: '#E8F0FE', paddingBottom: 80, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, opacity: 0.3, pointerEvents: 'none' }} className="animate-fade-in">
+        <LeavesDecoration width={280} height={280} color="#3E7BFA" />
+      </div>
       {/* Header */}
       <div style={{ background: STEP_COLOR, paddingTop: 'env(safe-area-inset-top, 0px)', padding: '16px 20px 20px' }}>
         <div style={{ maxWidth: 430, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -184,10 +215,13 @@ export default function WeeklyWhispersPage() {
       <div style={{ maxWidth: 430, margin: '0 auto', padding: '20px 16px' }}>
         {/* Intro step */}
         {step === 'intro' && (
-          <div>
+          <div className="animate-enter">
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <VoiceRecordingIllustration width={160} height={142} color="#3E7BFA" />
+            </div>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, marginBottom: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 20, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📖</div>
+                <div style={{ width: 40, height: 40, borderRadius: 20, background: '#E8F0FE', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED' }}><BookOpen size={20} /></div>
                 <div>
                   <p style={{ fontWeight: 700, color: '#2D3436', fontSize: 15 }}>This Week's Passage</p>
                   <p style={{ fontSize: 12, color: '#636E72' }}>Read aloud when ready</p>
@@ -207,9 +241,9 @@ export default function WeeklyWhispersPage() {
             </div>
             <button
               onClick={() => setStep('recording')}
-              style={{ width: '100%', padding: 16, background: STEP_COLOR, color: '#fff', border: 'none', borderRadius: 16, fontWeight: 700, fontSize: 16, cursor: 'pointer' }}
+              style={{ width: '100%', padding: 16, background: STEP_COLOR, color: '#fff', border: 'none', borderRadius: 16, fontWeight: 700, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
-              Let's Go 🎙️
+              Let's Go <Mic size={18} />
             </button>
           </div>
         )}
@@ -221,13 +255,13 @@ export default function WeeklyWhispersPage() {
               {/* Animated ring */}
               <div style={{
                 width: 120, height: 120, borderRadius: 60,
-                background: isRecording ? '#EDE9FE' : '#F6F8F9',
+                background: isRecording ? '#E8F0FE' : '#F8FAF8',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 margin: '0 auto 20px',
                 border: `4px solid ${isRecording ? STEP_COLOR : '#DFE6E9'}`,
                 animation: isRecording ? 'pulse 1.5s ease infinite' : 'none',
               }}>
-                <span style={{ fontSize: 48 }}>🎙️</span>
+                <Mic size={48} color={isRecording ? STEP_COLOR : '#94A3B8'} />
               </div>
               <style>{`@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 0 16px rgba(99,102,241,0); } }`}</style>
 
@@ -277,12 +311,12 @@ export default function WeeklyWhispersPage() {
         {step === 'review' && audioUrl && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ background: '#fff', borderRadius: 24, padding: 32, boxShadow: '0 4px 16px rgba(0,0,0,0.08)', marginBottom: 20 }}>
-              <div style={{ width: 80, height: 80, borderRadius: 40, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 36 }}>✅</div>
+              <div style={{ width: 80, height: 80, borderRadius: 40, background: '#E8F0FE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#7C3AED' }}><CheckCircle2 size={36} /></div>
               <p style={{ fontWeight: 800, color: '#2D3436', fontSize: 18, marginBottom: 4 }}>Recording Complete!</p>
               <p style={{ color: '#636E72', fontSize: 13, marginBottom: 20 }}>Duration: {recordSeconds}s</p>
               <audio controls src={audioUrl} style={{ width: '100%', marginBottom: 20 }} />
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={retake} style={{ flex: 1, padding: 14, background: '#F6F8F9', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={retake} style={{ flex: 1, padding: 14, background: '#F8FAF8', color: '#636E72', border: 'none', borderRadius: 16, fontWeight: 600, cursor: 'pointer' }}>
                   Retake
                 </button>
                 <button onClick={submit} disabled={submitting} style={{ flex: 2, padding: 14, background: STEP_COLOR, color: '#fff', border: 'none', borderRadius: 16, fontWeight: 700, cursor: 'pointer', opacity: submitting ? 0.6 : 1 }}>
@@ -302,5 +336,6 @@ export default function WeeklyWhispersPage() {
         onClose={() => setPopup(p => ({ ...p, visible: false }))}
       />
     </div>
+    </PageShell>
   );
 }

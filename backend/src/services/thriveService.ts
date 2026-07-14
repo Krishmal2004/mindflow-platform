@@ -28,6 +28,16 @@ export class ThriveService {
 
     /** Submit WEMWBS-14 response (validated at controller layer). */
     public async submitThriveEntry(userId: string, entry: Record<string, number>) {
+        // The 14-day lockout is otherwise client-side only (mobile/web just navigate away
+        // once `completed` comes back true) — enforce it here too so a direct API call
+        // can't insert duplicate clinical-scale data points within the window.
+        const status = await this.getThriveStatus(userId);
+        if (status.completed) {
+            const err = new Error('THRIVE_ALREADY_SUBMITTED') as any;
+            err.status = 409;
+            throw err;
+        }
+
         const questions = Array.from({ length: 14 }, (_, i) => `q${i + 1}`);
 
         const payload: Record<string, any> = {

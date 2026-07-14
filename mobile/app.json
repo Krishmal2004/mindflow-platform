@@ -13,7 +13,8 @@
       "backgroundColor": "#F0FDF4"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.brainlabs.mindflow"
     },
     "android": {
       "adaptiveIcon": {

@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getUserName } from '@/lib/auth';
 import { PopupModal } from '@/components/PopupModal';
+import { PageShell } from '@/components/PageShell';
 import appLogo from '@/assets/app-icon.png';
 
 const MINDFULNESS_QUOTES = [
@@ -36,7 +38,7 @@ interface JourneyStep {
 const JOURNEY_STEPS: JourneyStep[] = [
   {
     id: 'daily', statusKey: 'daily', title: 'Daily Sliders', subtitle: 'Track your daily mood',
-    color: '#D97706', bgColor: '#FFFBEB', route: '/dashboard/daily',
+    color: '#EA8F00', bgColor: '#FFF6E5', route: '/dashboard/daily',
     icon: (c) => (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
@@ -48,7 +50,7 @@ const JOURNEY_STEPS: JourneyStep[] = [
   },
   {
     id: 'weekly', statusKey: 'weekly', title: 'Weekly Whispers', subtitle: 'Voice reflection journal',
-    color: '#6366F1', bgColor: '#EEF2FF', route: '/dashboard/weekly',
+    color: '#3E7BFA', bgColor: '#E8F0FE', route: '/dashboard/weekly',
     icon: (c) => (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
@@ -58,7 +60,7 @@ const JOURNEY_STEPS: JourneyStep[] = [
   },
   {
     id: 'thrive', statusKey: 'thrive', title: 'Thrive Tracker', subtitle: 'WEMWBS wellbeing scale',
-    color: '#749F82', bgColor: '#E6F4EA', route: '/dashboard/thrive',
+    color: '#0F9B71', bgColor: '#E7F9F1', route: '/dashboard/thrive',
     icon: (c) => (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -67,7 +69,7 @@ const JOURNEY_STEPS: JourneyStep[] = [
   },
   {
     id: 'stress', statusKey: 'stress', title: 'Stress Snapshot', subtitle: 'PSS-10 stress assessment',
-    color: '#E07A5F', bgColor: '#FFF4F2', route: '/dashboard/stress',
+    color: '#E5573F', bgColor: '#FDEEEB', route: '/dashboard/stress',
     icon: (c) => (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" />
@@ -76,7 +78,7 @@ const JOURNEY_STEPS: JourneyStep[] = [
   },
   {
     id: 'mirror', statusKey: 'mindful', title: 'Mindful Mirror', subtitle: 'FFMQ mindfulness scale',
-    color: '#0D9488', bgColor: '#F0FDFA', route: '/dashboard/mirror',
+    color: '#7C5CE0', bgColor: '#F2EEFC', route: '/dashboard/mirror',
     icon: (c) => (
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3m8 0h3a2 2 0 002-2v-3" />
@@ -161,9 +163,20 @@ export default function DashboardPage() {
     return new Date(status.nextReset) > new Date();
   };
 
+  // Mirrors mobile DashboardScreen's renderNode: every node is hard-locked until the
+  // researcher assigns a research group, regardless of individual step completion state.
+  const isNodeLocked = (index: number) => isUnassigned || isSequenceLocked(index);
+
   const handleStepPress = (step: JourneyStep, index: number) => {
     const status = getStatusForStep(step);
 
+    if (isUnassigned) {
+      setModal({
+        visible: true, type: 'info', title: 'Group Not Yet Assigned',
+        message: 'Your researcher has not assigned you to a study group yet. Data entry will be available once your Research ID is set. In the meantime, please complete your About Me profile.',
+      });
+      return;
+    }
     if (isSequenceLocked(index)) {
       setModal({ visible: true, type: 'info', title: 'Step Locked', message: 'Complete the previous steps to unlock this one.' });
       return;
@@ -181,13 +194,14 @@ export default function DashboardPage() {
   const showQuoteCard = researchGroup !== '';
 
   const quoteGradient = researchGroup === 'cg'
-    ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
-    : 'linear-gradient(135deg, #749F82 0%, #5D856D 100%)';
+    ? 'linear-gradient(135deg, #F59E0B 0%, #EA8F00 100%)'
+    : 'linear-gradient(135deg, #0F9B71 0%, #0B7A59 100%)';
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
+    <PageShell>
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F0FDF4 0%, #F8FAFC 50%, #FFFFFF 100%)', paddingBottom: 80 }}>
       {/* Header */}
       <div style={{
@@ -203,7 +217,7 @@ export default function DashboardPage() {
             <span style={{ fontWeight: 800, fontSize: 18, color: '#2D3436', letterSpacing: -0.5 }}>MindFlow</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 18, background: '#749F82', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 18, background: '#0F9B71', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700 }}>
               {userName.substring(0, 2).toUpperCase()}
             </div>
           </div>
@@ -219,17 +233,17 @@ export default function DashboardPage() {
 
         {/* Unassigned banner */}
         {isUnassigned && (
-          <div style={{ background: '#FFFBEB', borderRadius: 16, padding: '16px 20px', marginBottom: 20, border: '1px solid #FDE68A', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ background: '#FFF6E5', borderRadius: 16, padding: '16px 20px', marginBottom: 20, border: '1px solid #FDE68A', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 20 }}>⚠️</span>
+              <AlertTriangle size={20} color="#EA8F00" />
               <div>
-                <p style={{ fontWeight: 700, color: '#D97706', fontSize: 14 }}>Research Group Pending</p>
+                <p style={{ fontWeight: 700, color: '#EA8F00', fontSize: 14 }}>Research Group Pending</p>
                 <p style={{ fontSize: 12, color: '#636E72', lineHeight: 1.5 }}>Complete your profile to get assigned to a research group.</p>
               </div>
             </div>
             <button
               onClick={() => navigate('/about-me')}
-              style={{ background: '#D97706', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' }}
+              style={{ background: '#EA8F00', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' }}
             >
               Complete About Me Profile
             </button>
@@ -267,11 +281,11 @@ export default function DashboardPage() {
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.35, pointerEvents: 'none' }} preserveAspectRatio="none" viewBox="0 0 300 520">
             <defs>
               <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#D97706" stopOpacity="0.7" />
-                <stop offset="25%" stopColor="#6366F1" stopOpacity="0.7" />
-                <stop offset="50%" stopColor="#749F82" stopOpacity="0.7" />
-                <stop offset="75%" stopColor="#E07A5F" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#0D9488" stopOpacity="0.7" />
+                <stop offset="0%" stopColor="#EA8F00" stopOpacity="0.7" />
+                <stop offset="25%" stopColor="#3E7BFA" stopOpacity="0.7" />
+                <stop offset="50%" stopColor="#0F9B71" stopOpacity="0.7" />
+                <stop offset="75%" stopColor="#E5573F" stopOpacity="0.7" />
+                <stop offset="100%" stopColor="#7C5CE0" stopOpacity="0.7" />
               </linearGradient>
             </defs>
             <path
@@ -283,8 +297,8 @@ export default function DashboardPage() {
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {JOURNEY_STEPS.map((step, index) => {
               const status = getStatusForStep(step);
-              const isCompleted = status.completed;
-              const isLocked = isSequenceLocked(index);
+              const isCompleted = status.completed && !isUnassigned;
+              const isLocked = isNodeLocked(index);
               const isRight = index % 2 === 0;
 
               return (
@@ -315,7 +329,7 @@ export default function DashboardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: isCompleted ? '#749F82' : step.bgColor,
+                      background: isCompleted ? '#0F9B71' : step.bgColor,
                       border: isCompleted ? 'none' : `3px solid ${step.color}`,
                       boxShadow: isCompleted ? '0 4px 14px rgba(116,159,130,0.4)' : `0 4px 14px ${step.color}22`,
                       transition: 'all 0.3s',
@@ -342,11 +356,11 @@ export default function DashboardPage() {
                       background: isCompleted ? '#ECFDF5' : '#fff',
                       borderRadius: 16,
                       padding: '10px 16px',
-                      border: `1px solid ${isCompleted ? '#749F82' : 'rgba(0,0,0,0.06)'}`,
+                      border: `1px solid ${isCompleted ? '#0F9B71' : 'rgba(0,0,0,0.06)'}`,
                       textAlign: isRight ? 'left' : 'right',
                     }}
                   >
-                    <p style={{ fontSize: 14, fontWeight: 700, color: isCompleted ? '#749F82' : step.color, marginBottom: 2 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: isCompleted ? '#0F9B71' : step.color, marginBottom: 2 }}>
                       {step.title}
                     </p>
                     <p style={{ fontSize: 11, color: isCompleted ? '#64C59A' : isLocked ? '#94A3B8' : '#636E72' }}>
@@ -370,5 +384,6 @@ export default function DashboardPage() {
         onClose={() => setModal(m => ({ ...m, visible: false }))}
       />
     </div>
+    </PageShell>
   );
 }

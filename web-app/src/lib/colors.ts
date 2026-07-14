@@ -1,13 +1,14 @@
-// Design System Colors — Matching Mobile App Palette
+// Design System Colors — web-app's own palette (see src/pages/*.tsx COLOR constants,
+// which are the actual source of truth per-page; this file mirrors them for reference).
 export const Colors = {
   // Light Theme Palette
-  background: '#F6F8F9',
+  background: '#F8FAF8',
   surface: '#FFFFFF',
 
-  primary: '#749F82',     // Sage Green
-  secondary: '#A8E6CF',   // Mint Green
-  accentBlue: '#A1C4FD',  // Soft Blue
-  accentPurple: '#C2E9FB', // Soft Purple/Blue
+  primary: '#0F9B71',      // Emerald
+  secondary: '#7FC7A6',    // Muted emerald (disabled/loading states)
+  accentBlue: '#3E7BFA',   // Sky blue (Weekly Whispers)
+  accentPurple: '#7C5CE0', // Violet (Mindful Mirror)
 
   textPrimary: '#2D3436',
   textSecondary: '#636E72',
@@ -16,22 +17,22 @@ export const Colors = {
   border: '#DFE6E9',
 
   // Functional
-  success: '#7ED1A6',
-  warning: '#FD79A8',
-  error: '#FF7675',
+  success: '#0F9B71',
+  warning: '#EA8F00',
+  error: '#E5573F',
 
   // Journey Step Colors
   journeyColors: {
-    daily: { color: '#F59E0B', bg: '#FEF3C7' },
-    weekly: { color: '#8B5CF6', bg: '#EDE9FE' },
-    thrive: { color: '#10B981', bg: '#D1FAE5' },
-    stress: { color: '#EF4444', bg: '#FEE2E2' },
-    mirror: { color: '#6366F1', bg: '#E0E7FF' },
+    daily: { color: '#EA8F00', bg: '#FFF6E5' },   // Amber
+    weekly: { color: '#3E7BFA', bg: '#E8F0FE' },  // Sky blue
+    thrive: { color: '#0F9B71', bg: '#E7F9F1' },  // Emerald
+    stress: { color: '#E5573F', bg: '#FDEEEB' },  // Coral
+    mirror: { color: '#7C5CE0', bg: '#F2EEFC' },  // Violet
   },
 
   gradients: {
-    primary: ['#749F82', '#5D856D'],
-    dashboard: ['#F0FDF4', '#F8FAFC', '#FFFFFF'],
-    quote: ['#667eea', '#764ba2'],
+    primary: ['#0F9B71', '#0B7A59'],
+    dashboard: ['#E7F9F1', '#F8FAF8', '#FFFFFF'],
+    quote: ['#0F9B71', '#7C5CE0'],
   },
 };

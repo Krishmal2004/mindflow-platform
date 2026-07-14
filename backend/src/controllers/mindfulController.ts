@@ -32,7 +32,7 @@ export const getMindfulStatus = async (req: AuthenticatedRequest, res: Response)
         res.json(status);
     } catch (error: any) {
         console.error('getMindfulStatus:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -49,7 +49,11 @@ export const submitMindfulEntry = async (req: AuthenticatedRequest, res: Respons
         const result = await mindfulService.submitMindfulEntry(req.user.id, validation.data);
         res.json(result);
     } catch (error: any) {
+        if (error.message === 'MINDFUL_ALREADY_SUBMITTED') {
+            res.status(409).json({ error: 'Already submitted for this period.' });
+            return;
+        }
         console.error('submitMindfulEntry:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

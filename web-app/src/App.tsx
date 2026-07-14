@@ -7,7 +7,7 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import OtpVerificationPage from '@/pages/OtpVerificationPage';
-import UserDashboard from '@/pages/UserDashboard'; // re-exports DashboardPage
+import DashboardPage from '@/pages/DashboardPage';
 import DailySlidersPage from '@/pages/DailySlidersPage';
 import WeeklyWhispersPage from '@/pages/WeeklyWhispersPage';
 import ThriveTrackerPage from '@/pages/ThriveTrackerPage';
@@ -35,7 +35,7 @@ function NotFound() {
       <h1 style={{ fontSize: 64, fontWeight: 800, color: '#DFE6E9', marginBottom: 16 }}>404</h1>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: '#2D3436', marginBottom: 8 }}>Page not found</h2>
       <p style={{ color: '#636E72', marginBottom: 32 }}>The page you're looking for doesn't exist.</p>
-      <a href="/dashboard" style={{ color: '#749F82', fontWeight: 600, fontSize: 16 }}>Go to Dashboard</a>
+      <a href="/dashboard" style={{ color: '#0F9B71', fontWeight: 600, fontSize: 16 }}>Go to Dashboard</a>
     </div>
   );
 }
@@ -52,7 +52,7 @@ export default function App() {
           <Route path="/verify-otp" element={<OtpVerificationPage />} />
 
           {/* Protected routes with BottomNav */}
-          <Route path="/dashboard" element={<ProtectedRoute><AppShell><UserDashboard /></AppShell></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><AppShell><DashboardPage /></AppShell></ProtectedRoute>} />
           <Route path="/journey" element={<ProtectedRoute><AppShell><JourneyPage /></AppShell></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute><AppShell><CalendarPage /></AppShell></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><AppShell><ProfilePage /></AppShell></ProtectedRoute>} />

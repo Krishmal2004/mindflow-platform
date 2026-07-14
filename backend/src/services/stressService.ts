@@ -28,6 +28,15 @@ export class StressService {
 
     /** Submit PSS-10 response (validated at controller layer). */
     public async submitStressEntry(userId: string, entry: Record<string, number>) {
+        // The 30-day lockout is otherwise client-side only — enforce it here too so a
+        // direct API call can't insert duplicate clinical-scale data points within the window.
+        const status = await this.getStressStatus(userId);
+        if (status.completed) {
+            const err = new Error('STRESS_ALREADY_SUBMITTED') as any;
+            err.status = 409;
+            throw err;
+        }
+
         const questions = ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10'];
 
         const payload: Record<string, any> = {

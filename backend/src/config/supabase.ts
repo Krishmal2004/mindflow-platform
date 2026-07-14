@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
+import type { WebSocketLikeConstructor } from '@supabase/realtime-js';
 import dotenv from 'dotenv';
+import WebSocket from 'ws';
 
 dotenv.config();
 
@@ -21,5 +23,11 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false,
+    },
+    // supabase-js always constructs a Realtime client internally, which needs a WebSocket
+    // implementation. Node < 22 has no native `WebSocket` global, so without this the client
+    // throws at import time on any Node 20 runtime (e.g. this repo's CI runners).
+    realtime: {
+        transport: WebSocket as unknown as WebSocketLikeConstructor,
     },
 });

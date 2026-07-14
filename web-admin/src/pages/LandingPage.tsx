@@ -12,7 +12,7 @@ const features = [
     {
         icon: BarChart2,
         title: 'Real-Time Analytics',
-        desc: 'Monitor participant engagement, mood trends, and weekly voice journals as they happen.',
+        desc: 'Monitor participant engagement, calm trends, and weekly voice journals as they happen.',
     },
     {
         icon: Shield,

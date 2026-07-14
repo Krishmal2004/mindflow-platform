@@ -27,7 +27,7 @@ export const getStressStatus = async (req: AuthenticatedRequest, res: Response):
         res.json(status);
     } catch (error: any) {
         console.error('getStressStatus:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
@@ -44,7 +44,11 @@ export const submitStressEntry = async (req: AuthenticatedRequest, res: Response
         const result = await stressService.submitStressEntry(req.user.id, validation.data);
         res.json(result);
     } catch (error: any) {
+        if (error.message === 'STRESS_ALREADY_SUBMITTED') {
+            res.status(409).json({ error: 'Already submitted for this period.' });
+            return;
+        }
         console.error('submitStressEntry:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 };

@@ -31,6 +31,15 @@ export class MindfulService {
 
     /** Submit FFMQ-15 entry with facet scoring. */
     public async submitMindfulEntry(userId: string, entry: Record<string, number>) {
+        // The 30-day lockout is otherwise client-side only — enforce it here too so a
+        // direct API call can't insert duplicate clinical-scale data points within the window.
+        const status = await this.getMindfulStatus(userId);
+        if (status.completed) {
+            const err = new Error('MINDFUL_ALREADY_SUBMITTED') as any;
+            err.status = 409;
+            throw err;
+        }
+
         const questions = Array.from({ length: 15 }, (_, i) => `q${i + 1}`);
 
         // Validate all 15 answers

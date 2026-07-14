@@ -1,11 +1,10 @@
-import { PRACTICE_TYPES, INFLUENCING_FACTORS } from '../DailySlidersScreen';
+import { PRACTICE_LOCATIONS, INFLUENCING_FACTORS } from '../DailySlidersScreen';
 
 jest.mock('react-native-webview', () => ({ WebView: () => null }));
 
-describe('Mindfulness Practice options', () => {
-    it('offers "Physical Session" instead of "Breathing Exercise"', () => {
-        expect(PRACTICE_TYPES).toContain('Physical Session');
-        expect(PRACTICE_TYPES).not.toContain('Breathing Exercise');
+describe('Mindfulness Practice location options', () => {
+    it('offers exactly At University and Outside University', () => {
+        expect(PRACTICE_LOCATIONS).toEqual(['At University', 'Outside University']);
     });
 });
 
