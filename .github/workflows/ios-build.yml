@@ -31,9 +31,6 @@ jobs:
       - name: Generate native iOS project (Expo Prebuild)
         run: npx expo prebuild --platform ios
 
-      - name: Install CocoaPods
-        run: cd ios && pod install
-
       - name: Build iOS App
         run: |
           cd ios
@@ -41,7 +38,7 @@ jobs:
             -scheme MindFlow \
             -configuration Release \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath ${{ github.workspace }}/derivedData \
             build
 
