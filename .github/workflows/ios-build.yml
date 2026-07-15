@@ -1,0 +1,54 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ "main", "tech" ]
+  pull_request:
+    branches: [ "main", "tech" ]
+
+jobs:
+  build:
+    name: Build iOS App
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./mobile
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate native iOS project (Expo Prebuild)
+        run: npx expo prebuild --platform ios
+
+      - name: Build iOS App
+        run: |
+          cd ios
+          xcodebuild -workspace MindFlow.xcworkspace \
+            -scheme MindFlow \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ${{ github.workspace }}/derivedData \
+            build
+
+      - name: Zip the App
+        run: |
+          cd ${{ github.workspace }}/derivedData/Build/Products/Release-iphonesimulator
+          zip -r MindFlow.zip MindFlow.app
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-app
+          path: derivedData/Build/Products/Release-iphonesimulator/MindFlow.zip
