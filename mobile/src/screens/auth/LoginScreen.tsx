@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard, LayoutAnimation, UIManager } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,10 +16,17 @@ import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { Notification, NotificationType } from '../../components/Notification';
 import { getPostAuthRoute } from '../../lib/postAuthRoute';
 import { AUTH_ENDPOINTS } from '../../config/api';
+import { setAuthToken } from '../../lib/apiClient';
 
 const { width, height } = Dimensions.get('window');
 
-// ── Bottom wave that sits inside the panel ─────────────────────────────────────
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Bottom wave that sits inside the panel
 function PanelWave() {
     const h = 90; const w = width;
     return (
@@ -57,8 +64,14 @@ export default function LoginScreen() {
         fadeAnim.value = withTiming(1, { duration: 800 });
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
 
-        const showSubscription = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setKeyboardVisible(true);
+        });
+        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setKeyboardVisible(false);
+        });
         return () => { showSubscription.remove(); hideSubscription.remove(); };
     }, []);
 
@@ -68,6 +81,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) { showNotification('error', 'Please enter both email and password'); return; }
+        if (!EMAIL_RE.test(email)) { showNotification('error', 'Enter a valid email address'); return; }
         setLoading(true);
         try {
             const response = await fetch(AUTH_ENDPOINTS.LOGIN, {
@@ -92,9 +106,9 @@ export default function LoginScreen() {
             }
             await AsyncStorage.setItem('isLoggedIn', 'true');
             if (result.session && result.session.access_token) {
-                await AsyncStorage.setItem('authToken', result.session.access_token);
+                await setAuthToken(result.session.access_token);
             } else if (result.token) {
-                await AsyncStorage.setItem('authToken', result.token);
+                await setAuthToken(result.token);
             }
             setLoading(false);
             showNotification('success', 'Welcome back!');
@@ -119,9 +133,9 @@ export default function LoginScreen() {
                 <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
                 <ScrollView
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40 }]}
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40, paddingBottom: insets.bottom }]}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
@@ -137,11 +151,13 @@ export default function LoginScreen() {
                         </View>
                     </Animated.View>
 
-                    {!keyboardVisible && (
-                        <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                            <MeditationIllustration width={width * 0.67} height={width * 0.67} color={Colors.primary} />
-                        </Animated.View>
-                    )}
+                    <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                        <MeditationIllustration
+                            width={width * (keyboardVisible ? 0.34 : 0.67)}
+                            height={width * (keyboardVisible ? 0.34 : 0.67)}
+                            color={Colors.primary}
+                        />
+                    </Animated.View>
 
                     {/* Bottom panel with wave inside */}
                     <Animated.View style={[styles.bottomPanel, panelStyle]}>
@@ -226,7 +242,6 @@ const styles = StyleSheet.create({
         paddingBottom: 104,   // extra space for wave
         paddingHorizontal: 24,
         alignItems: 'center',
-        flex: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.05,

@@ -10,6 +10,9 @@ dotenv.config();
 
 const app = express();
 
+// Trusts one reverse-proxy hop so express-rate-limit reads the real client IP, not the proxy's; adjust TRUST_PROXY_HOPS if that topology changes.
+app.set('trust proxy', process.env.TRUST_PROXY_HOPS ? Number(process.env.TRUST_PROXY_HOPS) : 1);
+
 // Security & Middleware
 app.use(helmet());
 app.use(cors({
@@ -72,8 +75,7 @@ app.use((_req: Request, res: Response) => {
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('[Unhandled Error]', err.stack ?? err.message);
 
-    // MulterError (e.g. LIMIT_FILE_SIZE -> "File too large") and the custom fileFilter
-    // rejection ("Only audio files...") are both client mistakes, not server failures.
+    // MulterError and the custom fileFilter rejection are both client mistakes, not server failures.
     const isFileFilterRejection = err.message?.includes('audio files');
     const isMulterError = err instanceof MulterError;
     if (isMulterError || isFileFilterRejection) {

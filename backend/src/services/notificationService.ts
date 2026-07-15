@@ -14,8 +14,7 @@ const mindfulService = new MindfulService();
 
 const expo = new Expo();
 
-// Mirrors the labels shown on the mobile DashboardScreen's roadmap nodes (JOURNEY_STEPS),
-// so the reminder text matches what the user sees in the app.
+// Mirrors the labels on the mobile DashboardScreen's roadmap nodes so reminder text matches what the user sees in-app.
 const TASK_LABELS: Record<string, string> = {
     daily: 'Daily Sliders',
     weekly: 'Weekly Whispers',
@@ -39,8 +38,7 @@ export class NotificationService {
     }
 
     public async removeToken(userId: string, token: string) {
-        // Scope to user_id too: without it, any authenticated user who obtains another
-        // device's token string could unregister push notifications for that user.
+        // Scoped to user_id too, or any authenticated user who obtains another device's token string could unregister that user's push notifications.
         const { error } = await supabase
             .from('push_tokens')
             .delete()
@@ -50,7 +48,7 @@ export class NotificationService {
         return { success: true };
     }
 
-    /** Sends the "Good morning, have you done today's tasks?" push to every registered device. */
+    // Sends the "Good morning, have you done today's tasks?" push to every registered device.
     public async sendMorningGreetings() {
         const tokensByUser = await this.getTokensByUser();
         if (tokensByUser.size === 0) return { sent: 0 };
@@ -74,7 +72,7 @@ export class NotificationService {
         return this.sendChunked(messages);
     }
 
-    /** Sends a "hurry up" nudge naming whichever of the 5 roadmap tasks are still pending. */
+    // Sends a "hurry up" nudge naming whichever of the 5 roadmap tasks are still pending.
     public async sendPendingTaskReminders() {
         const tokensByUser = await this.getTokensByUser();
         if (tokensByUser.size === 0) return { sent: 0 };
@@ -84,8 +82,7 @@ export class NotificationService {
 
         const messages: ExpoPushMessage[] = [];
         for (const userId of userIds) {
-            // One user's status lookup throwing (e.g. a bad row) must not abort the
-            // loop and silently skip reminders for every remaining user that night.
+            // One user's status lookup throwing must not abort the loop and skip reminders for every remaining user that night.
             let pending: string[];
             try {
                 pending = await this.getPendingTaskLabels(userId);

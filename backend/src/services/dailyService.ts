@@ -3,12 +3,11 @@ import { startOfToday } from '../utils/date';
 import { deriveResearchGroup } from '../utils/researchGroup';
 
 export class DailyService {
-    /** Check if user has submitted today's daily sliders. */
+    // Check if user has submitted today's daily sliders.
     public async getDailyStatus(userId: string) {
         const today = startOfToday();
 
-        // Profile lookup (for research group) and today's entry check are independent
-        // reads — run them concurrently rather than one-after-another.
+        // Profile lookup and today's entry check are independent reads, run concurrently.
         const [{ data: profile }, { data, error }] = await Promise.all([
             supabase.from('profiles').select('research_id').eq('id', userId).single(),
             supabase
@@ -23,8 +22,10 @@ export class DailyService {
 
         if (error) throw error;
 
-        const nextReset = new Date(today);
-        nextReset.setDate(today.getDate() + 1);
+        // today is already the UTC instant of Sri Lanka local midnight, so "+1 day" is a
+        // plain 24h offset — not UTC calendar-field arithmetic, which would drift since
+        // that instant doesn't fall on a UTC day boundary.
+        const nextReset = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
         const hasEntry = data && data.length > 0;
         const completed = hasEntry && data[0].stress_level !== null;
@@ -33,13 +34,12 @@ export class DailyService {
         return { completed, nextReset, videoPlaySeconds, group };
     }
 
-    /** Submit or update today's daily entry. */
+    // Submit or update today's daily entry.
     public async submitDailyEntry(userId: string, entryData: any) {
         const today = startOfToday();
 
-        // Profile lookup (for research group) and today's existing-entry check are
-        // independent reads — run them concurrently rather than one-after-another.
-        const [{ data: profile }, { data: existing }] = await Promise.all([
+        // Profile lookup and today's existing-entry check are independent reads, run concurrently.
+        const [{ data: profile }, { data: existing, error: existingError }] = await Promise.all([
             supabase.from('profiles').select('research_id').eq('id', userId).single(),
             supabase
                 .from('daily_sliders')
@@ -49,6 +49,9 @@ export class DailyService {
                 .limit(1)
                 .single(),
         ]);
+
+        // PGRST116 ("no rows") is expected; any other error must not be swallowed or it'd silently bypass the once-a-day lockout below.
+        if (existingError && existingError.code !== 'PGRST116') throw existingError;
 
         const isControlGroup = deriveResearchGroup(profile?.research_id) === 'cg';
 
@@ -73,10 +76,7 @@ export class DailyService {
             practice_location: isControlGroup ? null : (entryData.practice_location || null),
         };
 
-        // Upsert on the (user_id, entry_date) unique constraint instead of a manual
-        // select-then-insert/update: closes the race where two concurrent submits
-        // (double-tap, retry-on-timeout) both see no existing row and both insert,
-        // producing duplicate rows for the same day.
+        // Upsert on (user_id, entry_date) instead of select-then-insert/update — closes the double-submit race that would otherwise produce duplicate rows for the same day.
         const { data, error } = await supabase
             .from('daily_sliders')
             .upsert(payload, { onConflict: 'user_id,entry_date' })
@@ -87,11 +87,9 @@ export class DailyService {
         return data;
     }
 
-    /** Increment video watch seconds for today's entry. */
+    // Increment video watch seconds for today's entry.
     public async updateVideoProgress(userId: string, seconds: number) {
-        // Single atomic INSERT ... ON CONFLICT DO UPDATE via a DB function, rather than a
-        // select-then-insert/update: closes the same race as submitDailyEntry for the
-        // frequent (every few seconds) video-progress pings.
+        // Atomic INSERT ... ON CONFLICT DO UPDATE via a DB function — closes the same race as submitDailyEntry for these frequent video-progress pings.
         const { data, error } = await supabase.rpc('increment_daily_video_seconds', {
             p_user_id: userId,
             p_seconds: seconds,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard,
+    LayoutAnimation, UIManager,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +24,11 @@ const { width, height } = Dimensions.get('window');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ── Password strength ──────────────────────────────────────────────────────────
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Password strength
 type StrengthLevel = 0 | 1 | 2 | 3 | 4;
 
 function getStrength(pwd: string): StrengthLevel {
@@ -39,7 +44,7 @@ function getStrength(pwd: string): StrengthLevel {
 const STRENGTH_LABEL: Record<StrengthLevel, string> = { 0: '', 1: 'Weak', 2: 'Fair', 3: 'Good', 4: 'Strong' };
 const STRENGTH_COLOR: Record<StrengthLevel, string> = { 0: '#E0E6ED', 1: '#EF5350', 2: '#FFA726', 3: '#66BB6A', 4: '#2E7D32' };
 
-// ── Bottom wave that sits inside the panel ─────────────────────────────────────
+// Bottom wave that sits inside the panel
 function PanelWave() {
     const h = 90; const w = width;
     return (
@@ -57,7 +62,7 @@ function PanelWave() {
     );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// Component
 export default function SignupScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const insets = useSafeAreaInsets();
@@ -85,14 +90,20 @@ export default function SignupScreen() {
         fadeAnim.value = withTiming(1, { duration: 800 });
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
 
-        const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-        const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        const show = Keyboard.addListener('keyboardDidShow', () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setKeyboardVisible(true);
+        });
+        const hide = Keyboard.addListener('keyboardDidHide', () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setKeyboardVisible(false);
+        });
         return () => { show.remove(); hide.remove(); };
     }, []);
 
     const strength = getStrength(password);
 
-    // ── Validation ───────────────────────────────────────────────────────────
+    // Validation
     const validate = (field: keyof typeof errors, value: string, confirmVal?: string) => {
         let msg = '';
         switch (field) {
@@ -129,7 +140,7 @@ export default function SignupScreen() {
         return v1 && v2 && v3 && v4;
     };
 
-    // ── Submit ────────────────────────────────────────────────────────────────
+    // Submit
     const handleSignup = async () => {
         if (!allValid()) return;
         setLoading(true);
@@ -156,7 +167,7 @@ export default function SignupScreen() {
         }
     };
 
-    // ── Animated styles ───────────────────────────────────────────────────────
+    // Animated styles
     const headerStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value, transform: [{ scale: scaleAnim.value }] }));
     const illustrationStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value, transform: [{ scale: scaleAnim.value }] }));
     const panelStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value }));
@@ -172,9 +183,9 @@ export default function SignupScreen() {
                 <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
                 <ScrollView
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40 }]}
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40, paddingBottom: insets.bottom }]}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
@@ -190,11 +201,12 @@ export default function SignupScreen() {
                         </View>
                     </Animated.View>
 
-                    {!keyboardVisible && (
-                        <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                            <SignupIllustration width={width * 0.50} height={width * 0.50} />
-                        </Animated.View>
-                    )}
+                    <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                        <SignupIllustration
+                            width={width * (keyboardVisible ? 0.26 : 0.50)}
+                            height={width * (keyboardVisible ? 0.26 : 0.50)}
+                        />
+                    </Animated.View>
 
                     {/* Bottom panel with wave inside */}
                     <Animated.View style={[styles.bottomPanel, panelStyle]}>
@@ -331,7 +343,7 @@ export default function SignupScreen() {
     );
 }
 
-// ── Requirement row ────────────────────────────────────────────────────────────
+// Requirement row
 function Requirement({ met, label }: { met: boolean; label: string }) {
     return (
         <View style={reqStyles.row}>
@@ -347,7 +359,7 @@ const reqStyles = StyleSheet.create({
     label: { fontSize: 11 },
 });
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
+// Styles
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F6F8F9' },
     decorationContainer: { position: 'absolute', top: 0, left: 0, right: 0 },
@@ -370,7 +382,6 @@ const styles = StyleSheet.create({
         paddingBottom: 104,   // extra space for wave
         paddingHorizontal: 24,
         alignItems: 'center',
-        flex: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.05,

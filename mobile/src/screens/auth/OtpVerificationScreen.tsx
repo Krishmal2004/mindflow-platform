@@ -5,6 +5,7 @@ import {
     NativeSyntheticEvent, TextInputKeyPressEventData,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,19 +19,18 @@ import { VerifyIllustration } from '../../components/VerifyIllustration';
 import { Notification, NotificationType } from '../../components/Notification';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { getPostAuthRoute } from '../../lib/postAuthRoute';
+import { setAuthToken } from '../../lib/apiClient';
 
 const { width, height } = Dimensions.get('window');
 const CODE_LENGTH = 8;
 
-// Each box width: full panel content width minus gaps, divided by 8
-// Panel is full width, paddingHorizontal 24 each side → content = width - 48
-// 8 boxes with 7 gaps of 6px → boxW = (width - 48 - 7*6) / 8
+// Box width: panel content width (screen width minus 48 for horizontal padding) minus 7 gaps of 6px, divided across 8 boxes.
 const BOX_W = Math.floor((width - 48 - 42) / 8);
 const BOX_H = Math.round(BOX_W * 1.22);   // taller than wide so digits never clip
 
 type OtpScreenRouteProp = RouteProp<RootStackParamList, 'OtpVerification'>;
 
-// ── Wave (same as Login/Signup) ────────────────────────────────────────────────
+// Wave (same as Login/Signup)
 function PanelWave() {
     const h = 90; const w = width;
     return (
@@ -49,11 +49,12 @@ function PanelWave() {
     );
 }
 
-// ── Screen ─────────────────────────────────────────────────────────────────────
+// Screen
 export default function OtpVerificationScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<OtpScreenRouteProp>();
     const email = route.params?.email || '';
+    const insets = useSafeAreaInsets();
 
     const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
     const [loading, setLoading] = useState(false);
@@ -94,7 +95,7 @@ export default function OtpVerificationScreen() {
         );
     };
 
-    // ── Box handlers ──────────────────────────────────────────────────────────
+    // Box handlers
     const handleChange = (text: string, index: number) => {
         const digit = text.replace(/[^0-9]/g, '').slice(-1);
         const next = [...digits];
@@ -126,7 +127,7 @@ export default function OtpVerificationScreen() {
         }
     };
 
-    // ── Verify ────────────────────────────────────────────────────────────────
+    // Verify
     const submitCode = async (code: string) => {
         if (loading) return;
         if (code.length !== CODE_LENGTH) {
@@ -144,7 +145,7 @@ export default function OtpVerificationScreen() {
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Verification failed');
             showNotification('success', 'Email Verified Successfully!');
-            if (result.session?.access_token) await AsyncStorage.setItem('authToken', result.session.access_token);
+            if (result.session?.access_token) await setAuthToken(result.session.access_token);
             await AsyncStorage.setItem('isLoggedIn', 'true');
             if (result.user?.user_metadata?.full_name) await AsyncStorage.setItem('userName', result.user.user_metadata.full_name);
             const dest = await getPostAuthRoute();
@@ -166,7 +167,7 @@ export default function OtpVerificationScreen() {
         setTimeout(() => inputRefs.current[0]?.focus(), 50);
     };
 
-    // ── Resend ────────────────────────────────────────────────────────────────
+    // Resend
     const handleResend = async () => {
         if (!email || resendCooldown > 0) return;
         try {
@@ -202,9 +203,9 @@ export default function OtpVerificationScreen() {
                 <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
                 <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
@@ -343,7 +344,6 @@ const styles = StyleSheet.create({
         paddingBottom: 104,
         paddingHorizontal: 24,
         alignItems: 'center',
-        flex: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.05,

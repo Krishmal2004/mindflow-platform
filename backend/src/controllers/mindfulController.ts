@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const mindfulService = new MindfulService();
 
-/** FFMQ-15 answer schema: 15 questions, each 1–5. */
+// FFMQ-15 answer schema: 15 questions, each 1–5.
 const mindfulSchema = z.object({
     q1: z.number().int().min(1).max(5),
     q2: z.number().int().min(1).max(5),

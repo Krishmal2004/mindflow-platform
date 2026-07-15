@@ -6,11 +6,7 @@ interface Props {
     height?: number;
 }
 
-/**
- * "New Journey" illustration for the signup screen.
- * A blooming plant with layered leaves and a lotus-style flower,
- * surrounded by floating sparkles — representing growth and new beginnings.
- */
+// "New Journey" illustration for the signup screen: a blooming plant and lotus-style flower representing growth and new beginnings.
 export function SignupIllustration({ width = 220, height = 210 }: Props) {
     const W = 220; const H = 210;
     const cx = W / 2;        // 110

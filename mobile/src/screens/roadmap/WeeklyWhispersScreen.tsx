@@ -16,11 +16,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Circle, Path, G, Defs, LinearGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 
 import { Colors as GlobalColors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
+import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
 import { VoiceRecordingIllustration } from '../../components/MeditationIllustration';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { PopupModal } from '../../components/PopupModal';
@@ -116,20 +116,10 @@ export default function WeeklyWhispersScreen() {
             const { status } = await Audio.requestPermissionsAsync();
             setPermissionGranted(status === 'granted');
 
-            const token = await AsyncStorage.getItem('authToken');
-            const response = await fetch(`${API_URL}/api/roadmap/weekly/status`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.completed || data.submitted) {
-                    setAlreadySubmitted(true);
-                    if (data.nextReset) setNextReset(new Date(data.nextReset));
-                }
+            const { ok, data } = await apiFetch<{ completed?: boolean; submitted?: boolean; nextReset?: string }>('/api/roadmap/weekly/status');
+            if (ok && data && (data.completed || data.submitted)) {
+                setAlreadySubmitted(true);
+                if (data.nextReset) setNextReset(new Date(data.nextReset));
             }
         } catch (error) {
             console.log('Status check failed');
@@ -256,7 +246,7 @@ export default function WeeklyWhispersScreen() {
 
         setUploading(true);
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await getAuthToken();
             if (!token) throw new Error('Not authenticated');
 
             // 1. Create FormData for file upload
@@ -307,6 +297,9 @@ export default function WeeklyWhispersScreen() {
                 const errorData = await submitResponse.json();
                 throw new Error(errorData.error || 'Submission failed');
             }
+
+            clearApiCache('/api/roadmap/weekly');
+            clearApiCache('/api/journey');
 
             showPopup('success', 'Success!', 'Your voice recording has been submitted successfully.', () => {
                 navigation.dispatch(

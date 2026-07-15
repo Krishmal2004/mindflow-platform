@@ -27,9 +27,9 @@ Five Facet Mindfulness Questionnaire, 15 items, 1–5 Likert, with computed face
 
 ## Study-group-aware experience (`.ex` vs `.cg`)
 
-A participant's study arm is the suffix of `profiles.research_id` (`.ex` experimental / `.cg` control; no suffix fails open as experimental). Several surfaces branch on it:
+A participant's study arm is the suffix of `profiles.research_id` (`.ex` experimental / `.cg` control; no suffix is its own "unassigned" state — it is never treated as `.ex`, since a participant must not see either condition's messaging before a researcher actually assigns their group). Several surfaces branch on it:
 
-- **Dashboard**: the `.ex` group sees rotating mindfulness quotes; the `.cg` group sees a rotating non-mindfulness fun-fact card instead (same slot, orange theme) — `.cg` is never just left with an empty space. The "what would you like to do" header copy also branches (mindful framing vs. neutral).
+- **Dashboard**: the `.ex` group sees rotating mindfulness quotes; the `.cg` group sees a rotating non-mindfulness fun-fact card instead (same slot, orange theme) — `.cg` is never just left with an empty space. Unassigned participants see neither card, plus a "Waiting for Group Assignment" banner. The "what would you like to do" header copy also branches (mindful framing vs. neutral).
 - **Calendar**: `.cg` users never see "Mindfulness Session"-titled events, filtered server-side in `calendarService`.
 - **Daily Sliders guided video**: `weekly_recordings.target_group` can target a specific arm for a given week, falling back to a group-agnostic video if none is set.
 

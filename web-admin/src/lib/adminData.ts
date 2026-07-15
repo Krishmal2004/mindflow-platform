@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import type { TableConfig } from '@/lib/tableConfig';
 
 export interface OverviewMetrics {
     profilesCount: number;
@@ -75,6 +76,84 @@ export async function fetchTablePage(
         .from(tableName)
         .select('*', { count: 'exact' })
         .order(primaryKey, { ascending: false })
+        .range(from, to);
+
+    if (error) throw error;
+    return { rows: data || [], total: count ?? 0 };
+}
+
+export interface TableFilters {
+    /** Raw search box text. */
+    searchQuery?: string;
+    /** user_id values whose profile username matched searchQuery (resolved client-side
+     * against the already-loaded profiles list — cheap, since that list is small). */
+    searchUserIds?: string[];
+    startDate?: string;
+    endDate?: string;
+    /** Restrict to these user_id values (from the cg/ex group filter), or null for no restriction. */
+    groupUserIds?: string[] | null;
+}
+
+/** Escapes characters that are syntactically meaningful inside a PostgREST `.or()`
+ * filter string, so search text can't break out of the intended filter clause. */
+function escapeOrValue(v: string): string {
+    return v.replace(/[,()]/g, '\\$&');
+}
+
+/**
+ * Paginated table fetch with search/date/group filtering applied at the database query
+ * level (via count: 'exact' + .range()) instead of client-side on an already-paginated
+ * page. Fixes the earlier bug where searching or filtering only ever matched the 50 rows
+ * already loaded for the current page — records elsewhere in the table were invisible.
+ */
+export async function fetchFilteredTablePage(
+    config: TableConfig,
+    page: number,
+    pageSize: number,
+    filters: TableFilters
+): Promise<{ rows: Record<string, unknown>[]; total: number }> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase.from(config.name).select('*', { count: 'exact' });
+
+    if (config.hasUserId) {
+        let ids: string[] | null = filters.groupUserIds ?? null;
+        let rawIdPattern: string | null = null;
+
+        if (filters.searchQuery) {
+            const matched = filters.searchUserIds ?? [];
+            if (matched.length > 0) {
+                ids = ids ? ids.filter((id) => matched.includes(id)) : matched;
+            } else {
+                // No username matched — fall back to a raw user_id substring match
+                // (e.g. an admin pasted a partial UUID) via an explicit ::text cast,
+                // since Postgres has no ilike operator for uuid directly.
+                rawIdPattern = filters.searchQuery;
+            }
+        }
+
+        if (ids !== null && ids.length === 0) {
+            // Group/username filter matched nobody — short-circuit rather than send
+            // `user_id=in.()`, which PostgREST rejects.
+            return { rows: [], total: 0 };
+        }
+        if (rawIdPattern !== null) query = query.filter('user_id::text', 'ilike', `%${rawIdPattern}%`);
+        if (ids) query = query.in('user_id', ids);
+    } else if (filters.searchQuery) {
+        if (config.name === 'profiles') {
+            const q = escapeOrValue(filters.searchQuery);
+            query = query.or(`username.ilike.%${q}%,research_id.ilike.%${q}%`);
+        } else {
+            query = query.ilike(config.searchColumn, `%${filters.searchQuery}%`);
+        }
+    }
+
+    if (filters.startDate) query = query.gte('created_at', filters.startDate);
+    if (filters.endDate) query = query.lte('created_at', `${filters.endDate}T23:59:59.999Z`);
+
+    const { data, error, count } = await query
+        .order(config.primaryKey, { ascending: false })
         .range(from, to);
 
     if (error) throw error;

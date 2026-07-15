@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const thriveService = new ThriveService();
 
-/** WEMWBS-14 answer schema: 14 questions, each 1–5. */
+// WEMWBS-14 answer schema: 14 questions, each 1–5.
 const thriveSchema = z.object({
     q1: z.number().int().min(1).max(5),
     q2: z.number().int().min(1).max(5),

@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const weeklyService = new WeeklyService();
 
-/** Schema for weekly voice submission metadata. */
+// Schema for weekly voice submission metadata.
 const weeklyEntrySchema = z.object({
     file_url: z.string().url(),
     file_key: z.string().min(1),

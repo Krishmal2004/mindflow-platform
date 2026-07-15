@@ -24,9 +24,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
         autoRefreshToken: false,
         persistSession: false,
     },
-    // supabase-js always constructs a Realtime client internally, which needs a WebSocket
-    // implementation. Node < 22 has no native `WebSocket` global, so without this the client
-    // throws at import time on any Node 20 runtime (e.g. this repo's CI runners).
+    // Polyfills WebSocket for supabase-js's internal Realtime client, which Node < 22 lacks natively.
     realtime: {
         transport: WebSocket as unknown as WebSocketLikeConstructor,
     },

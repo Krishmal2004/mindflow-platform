@@ -62,7 +62,7 @@ interface SummaryCardProps {
     count: number;
     latestLabel?: string;
     latestDate?: string;
-    /** All submission dates; when provided, the card becomes tappable to reveal the full list. */
+    // All submission dates; when provided, the card becomes tappable to reveal the full list.
     entries?: SummaryCardEntry[];
 }
 

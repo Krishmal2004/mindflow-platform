@@ -6,13 +6,7 @@ interface ScaleIconProps {
     size?: number;
 }
 
-/**
- * Neutral bars-filled frequency meter — used for Stress Snapshot (PSS-10). PSS-10 mixes
- * negatively- and positively-worded items sharing this same "Never..Very Often" scale,
- * so a directional icon (e.g. calm→distressed face) would misleadingly flip meaning
- * depending on item wording. Bar count alone communicates intensity without implying
- * good/bad, and doubles as a literal "frequency" visual for this scale.
- */
+// Neutral bar-filled meter for PSS-10: a directional face icon would misleadingly flip meaning across the scale's mixed positive/negative-worded items.
 export const FrequencyMeter = ({ level, color }: { level: number; color: string }) => (
     <View style={styles.frequencyMeter}>
         {[1, 2, 3, 4, 5].map((bar) => (
@@ -27,10 +21,7 @@ export const FrequencyMeter = ({ level, color }: { level: number; color: string 
     </View>
 );
 
-// ===== GROWTH ICONS (1-5, Seed to Full Bloom) =====
-// Used for Thrive Tracker (WEMWBS-14). Every WEMWBS-14 item is positively worded (no
-// reverse scoring), so unlike PSS-10/FFMQ-15, "more" is always genuinely better here —
-// safe to use a directionally meaningful icon rather than a neutral one.
+// Growth icons (seed to full bloom), for Thrive Tracker: every WEMWBS-14 item is positively worded, so a directional icon is safe here unlike PSS-10/FFMQ-15.
 
 export const GrowthLevel1 = ({ size = 40 }: ScaleIconProps) => (
     <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -88,12 +79,7 @@ export const GrowthLevel5 = ({ size = 40 }: ScaleIconProps) => (
 
 export const GrowthIcons = [GrowthLevel1, GrowthLevel2, GrowthLevel3, GrowthLevel4, GrowthLevel5];
 
-// ===== FOCUS RING ICONS (1-5, Single Point to Full Awareness) =====
-// Used for Mindful Mirror (FFMQ-15). FFMQ-15, like PSS-10, mixes negatively-worded items
-// (e.g. "I rush through activities without being attentive") with positively-worded ones
-// (e.g. "I pay attention to sensations"), so — same as the frequency meter — this stays a
-// neutral intensity indicator (concentric rings) rather than a directional one, while still
-// looking distinct from Stress Snapshot's bars and tying into the "mirror/reflection" theme.
+// Focus ring icons (single point to full awareness), for Mindful Mirror: FFMQ-15 mixes worded directions like PSS-10, so this also stays a neutral intensity indicator.
 
 const FocusRing = ({ size = 40, rings, color }: { size?: number; rings: number; color: string }) => {
     const radii = [4, 8, 12, 16];

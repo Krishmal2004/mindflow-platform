@@ -224,17 +224,40 @@ CREATE INDEX IF NOT EXISTS idx_daily_sliders_created_at ON daily_sliders(created
 
 -- Prevents duplicate daily entries per user per day when concurrent submits race
 -- (e.g. double-tap or a client retry-on-timeout hitting submitDailyEntry/updateVideoProgress twice).
--- Cast goes through `AT TIME ZONE 'UTC'` (fixed-offset, therefore IMMUTABLE) rather than
--- a bare `created_at::date`, which Postgres rejects in generated columns because casting
--- a timestamptz straight to date is session-TimeZone-dependent (STABLE, not IMMUTABLE).
+-- Cast goes through `AT TIME ZONE '+05:30'` (Sri Lanka Standard Time — the study cohort's
+-- home timezone; fixed offset, no DST, therefore IMMUTABLE) rather than a bare
+-- `created_at::date`, which Postgres rejects in generated columns because casting a
+-- timestamptz straight to date is session-TimeZone-dependent (STABLE, not IMMUTABLE).
+-- "+05:30" here follows ISO-8601 sign convention (positive = ahead of UTC), not the
+-- flipped POSIX convention used for named "Etc/GMT+n" zones.
 ALTER TABLE daily_sliders
-    ADD COLUMN IF NOT EXISTS entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE 'UTC')::date) STORED;
+    ADD COLUMN IF NOT EXISTS entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE '+05:30')::date) STORED;
 
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'daily_sliders_user_entry_date_unique'
     ) THEN
+        ALTER TABLE daily_sliders
+            ADD CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date);
+    END IF;
+END $$;
+
+-- Migrates a database provisioned before the switch above from UTC-midnight to Sri Lanka
+-- local-midnight reset boundaries: the generated expression on an existing entry_date
+-- column can't be altered in place, so this drops and recreates it (STORED, so every row
+-- is recomputed from its real created_at — no data loss, just correct reclassification).
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'daily_sliders' AND column_name = 'entry_date'
+          AND generation_expression ILIKE '%UTC%'
+    ) THEN
+        ALTER TABLE daily_sliders DROP CONSTRAINT IF EXISTS daily_sliders_user_entry_date_unique;
+        ALTER TABLE daily_sliders DROP COLUMN entry_date;
+        ALTER TABLE daily_sliders
+            ADD COLUMN entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE '+05:30')::date) STORED;
         ALTER TABLE daily_sliders
             ADD CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date);
     END IF;
@@ -318,6 +341,20 @@ CREATE POLICY "Admins manage all voice recordings"
 CREATE INDEX IF NOT EXISTS idx_voice_recordings_user_id ON voice_recordings(user_id);
 CREATE INDEX IF NOT EXISTS idx_voice_recordings_week_year ON voice_recordings(week_number, year);
 
+-- Prevents duplicate weekly recordings per user per ISO week when concurrent submits race
+-- (e.g. double-tap or a client retry-on-timeout hitting submitWeeklyEntry twice) — mirrors
+-- daily_sliders_user_entry_date_unique above. WeeklyService#submitWeeklyEntry upserts on
+-- this constraint instead of a plain insert.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'voice_recordings_user_week_year_unique'
+    ) THEN
+        ALTER TABLE voice_recordings
+            ADD CONSTRAINT voice_recordings_user_week_year_unique UNIQUE (user_id, week_number, year);
+    END IF;
+END $$;
+
 -- ------------------------------------------------------------------------------
 -- Table: weekly_recordings
 -- Purpose: Curated content (e.g., Youtube videos) distributed weekly to users.
@@ -397,6 +434,39 @@ CREATE POLICY "Admins manage PSS10"
 -- Index
 CREATE INDEX IF NOT EXISTS idx_pss10_user_id ON questionnaire_pss10_responses(user_id);
 
+-- Function: submit_stress_entry
+-- Purpose: Atomically enforces the 30-day PSS-10 lockout and inserts the response in one
+-- transaction. The lockout window is rolling (not a fixed calendar period like
+-- daily/weekly), so it can't be enforced with a UNIQUE constraint alone — an
+-- advisory lock scoped to this user+instrument serializes concurrent submits so two
+-- requests can no longer both pass the "not yet submitted" check before either inserts.
+CREATE OR REPLACE FUNCTION public.submit_stress_entry(
+    p_user_id UUID,
+    p_q1 INTEGER, p_q2 INTEGER, p_q3 INTEGER, p_q4 INTEGER, p_q5 INTEGER,
+    p_q6 INTEGER, p_q7 INTEGER, p_q8 INTEGER, p_q9 INTEGER, p_q10 INTEGER,
+    p_duration INTEGER DEFAULT NULL
+)
+RETURNS questionnaire_pss10_responses AS $$
+DECLARE
+    v_result questionnaire_pss10_responses;
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('stress:' || p_user_id::text));
+
+    IF EXISTS (
+        SELECT 1 FROM questionnaire_pss10_responses
+        WHERE user_id = p_user_id AND created_at >= NOW() - INTERVAL '30 days'
+    ) THEN
+        RAISE EXCEPTION 'STRESS_ALREADY_SUBMITTED';
+    END IF;
+
+    INSERT INTO questionnaire_pss10_responses (user_id, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, duration)
+    VALUES (p_user_id, p_q1, p_q2, p_q3, p_q4, p_q5, p_q6, p_q7, p_q8, p_q9, p_q10, p_duration)
+    RETURNING * INTO v_result;
+
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
 
 -- ------------------------------------------------------------------------------
 -- Table: questionnaire_ffmq15_responses
@@ -456,6 +526,49 @@ CREATE POLICY "Admins manage FFMQ15"
 -- Index
 CREATE INDEX IF NOT EXISTS idx_ffmq15_user_id ON questionnaire_ffmq15_responses(user_id);
 
+-- Function: submit_mindful_entry
+-- Purpose: Atomically enforces the 30-day FFMQ-15 lockout and inserts the response (with
+-- facet scores computed application-side, same as before) in one transaction. See
+-- submit_stress_entry above for why an advisory lock is used instead of a UNIQUE
+-- constraint for these rolling-window instruments.
+CREATE OR REPLACE FUNCTION public.submit_mindful_entry(
+    p_user_id UUID,
+    p_q1 INTEGER, p_q2 INTEGER, p_q3 INTEGER, p_q4 INTEGER, p_q5 INTEGER,
+    p_q6 INTEGER, p_q7 INTEGER, p_q8 INTEGER, p_q9 INTEGER, p_q10 INTEGER,
+    p_q11 INTEGER, p_q12 INTEGER, p_q13 INTEGER, p_q14 INTEGER, p_q15 INTEGER,
+    p_observing_score INTEGER, p_describing_score INTEGER, p_awareness_score INTEGER,
+    p_non_judging_score INTEGER, p_non_reactivity_score INTEGER,
+    p_duration INTEGER DEFAULT NULL
+)
+RETURNS questionnaire_ffmq15_responses AS $$
+DECLARE
+    v_result questionnaire_ffmq15_responses;
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('mindful:' || p_user_id::text));
+
+    IF EXISTS (
+        SELECT 1 FROM questionnaire_ffmq15_responses
+        WHERE user_id = p_user_id AND created_at >= NOW() - INTERVAL '30 days'
+    ) THEN
+        RAISE EXCEPTION 'MINDFUL_ALREADY_SUBMITTED';
+    END IF;
+
+    INSERT INTO questionnaire_ffmq15_responses (
+        user_id, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15,
+        observing_score, describing_score, awareness_score, non_judging_score, non_reactivity_score,
+        duration
+    )
+    VALUES (
+        p_user_id, p_q1, p_q2, p_q3, p_q4, p_q5, p_q6, p_q7, p_q8, p_q9, p_q10, p_q11, p_q12, p_q13, p_q14, p_q15,
+        p_observing_score, p_describing_score, p_awareness_score, p_non_judging_score, p_non_reactivity_score,
+        p_duration
+    )
+    RETURNING * INTO v_result;
+
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
 
 -- ------------------------------------------------------------------------------
 -- Table: questionnaire_wemwbs14_responses
@@ -505,6 +618,38 @@ CREATE POLICY "Admins manage WEMWBS14"
 
 -- Index
 CREATE INDEX IF NOT EXISTS idx_wemwbs14_user_id ON questionnaire_wemwbs14_responses(user_id);
+
+-- Function: submit_thrive_entry
+-- Purpose: Atomically enforces the 14-day WEMWBS-14 lockout and inserts the response in
+-- one transaction. See submit_stress_entry above for why an advisory lock is used
+-- instead of a UNIQUE constraint for these rolling-window instruments.
+CREATE OR REPLACE FUNCTION public.submit_thrive_entry(
+    p_user_id UUID,
+    p_q1 INTEGER, p_q2 INTEGER, p_q3 INTEGER, p_q4 INTEGER, p_q5 INTEGER,
+    p_q6 INTEGER, p_q7 INTEGER, p_q8 INTEGER, p_q9 INTEGER, p_q10 INTEGER,
+    p_q11 INTEGER, p_q12 INTEGER, p_q13 INTEGER, p_q14 INTEGER,
+    p_duration INTEGER DEFAULT NULL
+)
+RETURNS questionnaire_wemwbs14_responses AS $$
+DECLARE
+    v_result questionnaire_wemwbs14_responses;
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('thrive:' || p_user_id::text));
+
+    IF EXISTS (
+        SELECT 1 FROM questionnaire_wemwbs14_responses
+        WHERE user_id = p_user_id AND created_at >= NOW() - INTERVAL '14 days'
+    ) THEN
+        RAISE EXCEPTION 'THRIVE_ALREADY_SUBMITTED';
+    END IF;
+
+    INSERT INTO questionnaire_wemwbs14_responses (user_id, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, duration)
+    VALUES (p_user_id, p_q1, p_q2, p_q3, p_q4, p_q5, p_q6, p_q7, p_q8, p_q9, p_q10, p_q11, p_q12, p_q13, p_q14, p_duration)
+    RETURNING * INTO v_result;
+
+    RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
 
 
 -- ==============================================================================

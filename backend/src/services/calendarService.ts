@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase';
 import { deriveResearchGroup } from '../utils/researchGroup';
 
 export class CalendarService {
-    /** Fetch calendar events within a date range (shared events, filtered for the control group). */
+    // Fetch calendar events within a date range (shared events, filtered for the control group).
     public async getCalendarEvents(userId: string, startDate: string, endDate: string) {
         const { data: profile } = await supabase
             .from('profiles')
@@ -22,8 +22,7 @@ export class CalendarService {
         if (error) throw error;
         const events = data || [];
 
-        // Control group must not see mindfulness-themed sessions — same "Mindfulness Session"
-        // title convention mobile/src/screens/CalendarScreen.tsx already uses for highlighting.
+        // Control group must not see mindfulness-themed sessions (same "Mindfulness Session" title convention the mobile app highlights on).
         if (group === 'cg') {
             return events.filter((e: { title: string }) => !e.title.startsWith('Mindfulness Session'));
         }

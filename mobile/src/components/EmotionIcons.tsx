@@ -6,7 +6,7 @@ interface EmotionIconProps {
     color?: string;
 }
 
-// ===== STRESS LEVEL ICONS (1-5, Low to High) =====
+// STRESS LEVEL ICONS (1-5, Low to High)
 
 export const StressLevel1 = ({ size = 40 }: EmotionIconProps) => (
     <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -54,55 +54,7 @@ export const StressLevel5 = ({ size = 40 }: EmotionIconProps) => (
     </Svg>
 );
 
-// ===== MOOD LEVEL ICONS (1-5, Bad to Good) =====
-
-export const MoodLevel1 = ({ size = 40 }: EmotionIconProps) => (
-    <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Circle cx="20" cy="20" r="18" fill="#DBEAFE" stroke="#3B82F6" strokeWidth="2" />
-        <Circle cx="14" cy="16" r="2.5" fill="#3B82F6" />
-        <Circle cx="26" cy="16" r="2.5" fill="#3B82F6" />
-        <Path d="M12 29 Q20 22, 28 29" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-        <Ellipse cx="14" cy="22" rx="1.5" ry="2.5" fill="#60A5FA" />
-    </Svg>
-);
-
-export const MoodLevel2 = ({ size = 40 }: EmotionIconProps) => (
-    <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Circle cx="20" cy="20" r="18" fill="#E0E7FF" stroke="#6366F1" strokeWidth="2" />
-        <Circle cx="14" cy="16" r="2.5" fill="#6366F1" />
-        <Circle cx="26" cy="16" r="2.5" fill="#6366F1" />
-        <Path d="M13 27 Q20 24, 27 27" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-    </Svg>
-);
-
-export const MoodLevel3 = ({ size = 40 }: EmotionIconProps) => (
-    <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Circle cx="20" cy="20" r="18" fill="#FEF3C7" stroke="#F59E0B" strokeWidth="2" />
-        <Circle cx="14" cy="16" r="2.5" fill="#F59E0B" />
-        <Circle cx="26" cy="16" r="2.5" fill="#F59E0B" />
-        <Path d="M13 26 L27 26" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
-    </Svg>
-);
-
-export const MoodLevel4 = ({ size = 40 }: EmotionIconProps) => (
-    <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Circle cx="20" cy="20" r="18" fill="#E6F4EA" stroke="#94BCA1" strokeWidth="2" />
-        <Circle cx="14" cy="16" r="2.5" fill="#94BCA1" />
-        <Circle cx="26" cy="16" r="2.5" fill="#94BCA1" />
-        <Path d="M13 24 Q20 29, 27 24" stroke="#94BCA1" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-    </Svg>
-);
-
-export const MoodLevel5 = ({ size = 40 }: EmotionIconProps) => (
-    <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <Circle cx="20" cy="20" r="18" fill="#E6F4EA" stroke="#749F82" strokeWidth="2" />
-        <Path d="M11 16 Q14 13, 17 16" stroke="#749F82" strokeWidth="2" strokeLinecap="round" fill="none" />
-        <Path d="M23 16 Q26 13, 29 16" stroke="#749F82" strokeWidth="2" strokeLinecap="round" fill="none" />
-        <Path d="M12 24 Q20 32, 28 24" stroke="#749F82" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-    </Svg>
-);
-
-// ===== SLEEP QUALITY ICONS (1-5, Poor to Great) =====
+// SLEEP QUALITY ICONS (1-5, Poor to Great)
 
 export const SleepLevel1 = ({ size = 40 }: EmotionIconProps) => (
     <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -152,7 +104,7 @@ export const SleepLevel5 = ({ size = 40 }: EmotionIconProps) => (
     </Svg>
 );
 
-// ===== RELAXATION LEVEL ICONS (1-5, Tense to Calm) =====
+// RELAXATION LEVEL ICONS (1-5, Tense to Calm)
 
 export const RelaxationLevel1 = ({ size = 40 }: EmotionIconProps) => (
     <Svg width={size} height={size} viewBox="0 0 40 40" fill="none">
@@ -205,6 +157,5 @@ export const RelaxationLevel5 = ({ size = 40 }: EmotionIconProps) => (
 
 // Export arrays for easy mapping
 export const StressIcons = [StressLevel1, StressLevel2, StressLevel3, StressLevel4, StressLevel5];
-export const MoodIcons = [MoodLevel1, MoodLevel2, MoodLevel3, MoodLevel4, MoodLevel5];
 export const SleepIcons = [SleepLevel1, SleepLevel2, SleepLevel3, SleepLevel4, SleepLevel5];
 export const RelaxationIcons = [RelaxationLevel1, RelaxationLevel2, RelaxationLevel3, RelaxationLevel4, RelaxationLevel5];

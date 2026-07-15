@@ -11,7 +11,6 @@ import { Colors } from '../constants/colors';
 
 const Tab = createBottomTabNavigator();
 
-
 export default function TabNavigator() {
     const insets = useSafeAreaInsets();
 
@@ -22,33 +21,23 @@ export default function TabNavigator() {
                 tabBarStyle: [
                     styles.tabBar,
                     {
-                        height: 70 + insets.bottom,
-                        paddingBottom: insets.bottom > 0 ? insets.bottom : 15,
+                        height: 64 + insets.bottom,
+                        paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
                     }
                 ],
                 tabBarActiveTintColor: Colors.primary,
-                tabBarInactiveTintColor: '#94A3B8',
+                tabBarInactiveTintColor: '#9AA5B1',
                 tabBarLabelStyle: styles.tabLabel,
                 tabBarItemStyle: styles.tabItem,
                 tabBarIcon: ({ focused, color }) => {
-                    const iconProps = {
-                        width: 28,  // Increased size
-                        height: 28, // Increased size
-                        color: color,
-                        strokeWidth: focused ? 2.5 : 2
-                    };
+                    const iconProps = { width: 24, height: 24, color, strokeWidth: focused ? 2.4 : 2 };
 
                     switch (route.name) {
-                        case 'Home':
-                            return <NavigationIcons.Home {...iconProps} />;
-                        case 'Journey':
-                            return <NavigationIcons.History {...iconProps} />;
-                        case 'Calendar':
-                            return <NavigationIcons.Calendar {...iconProps} />;
-                        case 'You':
-                            return <NavigationIcons.User {...iconProps} />;
-                        default:
-                            return <NavigationIcons.Home {...iconProps} />;
+                        case 'Home': return <NavigationIcons.Home {...iconProps} />;
+                        case 'Journey': return <NavigationIcons.History {...iconProps} />;
+                        case 'Calendar': return <NavigationIcons.Calendar {...iconProps} />;
+                        case 'You': return <NavigationIcons.User {...iconProps} />;
+                        default: return <NavigationIcons.Home {...iconProps} />;
                     }
                 },
             })}
@@ -80,32 +69,25 @@ export default function TabNavigator() {
 const styles = StyleSheet.create({
     tabBar: {
         backgroundColor: '#FFFFFF',
-        // Height and paddingBottom are now dynamic based on safe area insets
-        borderTopWidth: 0, // Removed border
-        elevation: 10, // Added shadow for Android
-        shadowColor: '#000', // Shadow for iOS
-        shadowOffset: {
-            width: 0,
-            height: -4,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        position: 'absolute', // Floating effect to allow shadow to show
+        borderTopWidth: 1,
+        borderTopColor: '#EEF1F0',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        position: 'absolute',
         left: 0,
         right: 0,
         bottom: 0,
-        paddingTop: 10, // Move content down slightly inside the larger bar
-        borderTopLeftRadius: 20, // Rounded top corners
-        borderTopRightRadius: 20,
+        paddingTop: 10,
     },
-    tabItem: {
-        // paddingVertical: 5, // Simplified padding
-    },
+    tabItem: {},
     tabLabel: {
-        fontSize: 12, // Slightly larger font
+        fontSize: 11,
         fontWeight: '600',
-        letterSpacing: 0.3,
-        marginTop: 4,
-        marginBottom: Platform.OS === 'ios' ? 0 : 4,
+        letterSpacing: 0.2,
+        marginTop: 3,
+        marginBottom: Platform.OS === 'ios' ? 0 : 2,
     },
 });

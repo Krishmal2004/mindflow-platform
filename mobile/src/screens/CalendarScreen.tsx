@@ -52,7 +52,7 @@ export default function CalendarScreen() {
         }, [currentDate])
     );
 
-    const fetchCalendarEvents = async () => {
+    const fetchCalendarEvents = async (force = false) => {
         try {
             setIsLoadingEvents(true);
             const year = currentDate.getFullYear();
@@ -71,7 +71,8 @@ export default function CalendarScreen() {
             const endStr = endDate.toISOString().split('T')[0];
 
             const { ok, data } = await apiFetch<CalendarEvent[]>(
-                `/api/calendar/events?start=${startStr}&end=${endStr}`
+                `/api/calendar/events?start=${startStr}&end=${endStr}`,
+                { force }
             );
             if (ok && data) setCalendarEvents(data);
         } catch (error) {
@@ -83,7 +84,8 @@ export default function CalendarScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchCalendarEvents();
+        // Force-bypasses the response cache, or pull-to-refresh would silently serve the same cached data and appear to do nothing.
+        await fetchCalendarEvents(true);
         setRefreshing(false);
     };
 

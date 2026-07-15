@@ -24,6 +24,7 @@ import YoutubePlayer from 'react-native-youtube-iframe';
 
 import { Colors as GlobalColors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
+import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
 import { StressIcons, SleepIcons, RelaxationIcons } from '../../components/EmotionIcons';
 import { PopupModal } from '../../components/PopupModal';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
@@ -35,8 +36,7 @@ const THEME_BG = '#FFFBEB';
 
 const { width } = Dimensions.get('window');
 
-// Player grows while actively playing so the video is the visual focus, then
-// shrinks back once paused/stopped so the surrounding step content has room.
+// Player grows while playing (visual focus), shrinks back when paused so the surrounding content has room.
 const VIDEO_HEIGHT_PAUSED = 200;
 const VIDEO_HEIGHT_PLAYING = 260;
 
@@ -83,6 +83,13 @@ const WAKE_TIMES = [
     '2:00 AM', '2:30 AM', '3:00 AM', '3:30 AM', '4:00 AM', '4:30 AM', '5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM'
 ];
 
+// Local (not UTC) day key, scoping this client-side draft to "today" from the participant's own perspective, distinct from the backend's UTC entry_date boundary.
+const DAILY_DRAFT_KEY = 'dailySlidersDraft';
+const todayDraftKey = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+};
+
 export default function DailySlidersScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -113,6 +120,8 @@ export default function DailySlidersScreen() {
     // UI state
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
+    // Guards the draft-persist effect below from firing before restoreDraft() has run once on mount.
+    const [draftRestored, setDraftRestored] = useState(false);
 
     // Popup Modal state
     const [popup, setPopup] = useState<{
@@ -134,25 +143,44 @@ export default function DailySlidersScreen() {
     useEffect(() => {
         checkDailyStatus();
         fetchWeeklyVideo();
+        restoreDraft();
     }, []);
 
-    const getAuthToken = async () => {
-        return await AsyncStorage.getItem('authToken');
+    // Restores whatever was last saved for today, so a backgrounded/killed app mid-wizard doesn't lose everything answered so far.
+    const restoreDraft = async () => {
+        try {
+            const raw = await AsyncStorage.getItem(DAILY_DRAFT_KEY);
+            if (raw) {
+                const draft = JSON.parse(raw);
+                if (draft.dateKey === todayDraftKey()) {
+                    if (draft.currentStep !== undefined) setCurrentStep(draft.currentStep);
+                    if (draft.mindfulnessPractice !== undefined) setMindfulnessPractice(draft.mindfulnessPractice);
+                    if (draft.practiceDuration !== undefined) setPracticeDuration(draft.practiceDuration);
+                    if (draft.practiceLocation !== undefined) setPracticeLocation(draft.practiceLocation);
+                    if (draft.stressLevel !== undefined) setStressLevel(draft.stressLevel);
+                    if (draft.calmBefore !== undefined) setCalmBefore(draft.calmBefore);
+                    if (draft.calmAfter !== undefined) setCalmAfter(draft.calmAfter);
+                    if (draft.sleepQuality !== undefined) setSleepQuality(draft.sleepQuality);
+                    if (draft.selectedFactor !== undefined) setSelectedFactor(draft.selectedFactor);
+                    if (draft.sleepStart !== undefined) setSleepStart(draft.sleepStart);
+                    if (draft.wakeUp !== undefined) setWakeUp(draft.wakeUp);
+                } else {
+                    // Stale draft from a previous day — today's entry is a fresh form.
+                    await AsyncStorage.removeItem(DAILY_DRAFT_KEY);
+                }
+            }
+        } catch (error) {
+            console.log('Failed to restore daily check-in draft', error);
+        } finally {
+            setDraftRestored(true);
+        }
     };
 
     const fetchWeeklyVideo = async () => {
         try {
-            const token = await getAuthToken();
-            const response = await fetch(`${API_URL}/api/roadmap/weekly/video`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.youtube_id) {
-                    setWeeklyVideoId(data.youtube_id);
-                }
+            const { ok, data } = await apiFetch<{ youtube_id?: string }>('/api/roadmap/weekly/video');
+            if (ok && data?.youtube_id) {
+                setWeeklyVideoId(data.youtube_id);
             }
         } catch (error) {
             console.log('Failed to fetch weekly video', error);
@@ -161,20 +189,14 @@ export default function DailySlidersScreen() {
 
     const checkDailyStatus = async () => {
         try {
-            const token = await getAuthToken();
-            const response = await fetch(`${API_URL}/api/roadmap/daily/status`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const { ok, data } = await apiFetch<{ group?: string; completed?: boolean; videoPlaySeconds?: number }>('/api/roadmap/daily/status');
 
-            if (response.ok) {
-                const data = await response.json();
+            if (ok && data) {
                 if (data.group) {
                     setUserGroup(data.group);
                 }
                 if (data.completed) {
+                    await AsyncStorage.removeItem(DAILY_DRAFT_KEY);
                     navigation.replace('CompleteTask', {
                         title: 'Great Job Today!',
                         message: 'You have successfully done the Daily Task. See you tomorrow again!',
@@ -211,9 +233,7 @@ export default function DailySlidersScreen() {
         }
     };
 
-    // Tracks watch time only while the video step is on screen AND the video is actually
-    // playing (not just loaded/paused); flushes to the backend every few seconds (and on
-    // cleanup) so a closed app doesn't lose more than a few seconds of progress.
+    // Tracks watch time only while the video step is visible and actively playing; flushes to the backend every few seconds so a closed app loses little progress.
     useEffect(() => {
         if (currentStep !== 2 || !weeklyVideoId || !isVideoPlaying) return;
 
@@ -236,6 +256,32 @@ export default function DailySlidersScreen() {
             }
         };
     }, [currentStep, weeklyVideoId, isVideoPlaying]);
+
+    // Debounced draft save, skipped until restoreDraft() has run once so it can't clobber a just-restored draft with blank state.
+    useEffect(() => {
+        if (!draftRestored) return;
+        const draft = {
+            dateKey: todayDraftKey(),
+            currentStep,
+            mindfulnessPractice,
+            practiceDuration,
+            practiceLocation,
+            stressLevel,
+            calmBefore,
+            calmAfter,
+            sleepQuality,
+            selectedFactor,
+            sleepStart,
+            wakeUp,
+        };
+        const t = setTimeout(() => {
+            AsyncStorage.setItem(DAILY_DRAFT_KEY, JSON.stringify(draft)).catch(() => {});
+        }, 300);
+        return () => clearTimeout(t);
+    }, [
+        draftRestored, currentStep, mindfulnessPractice, practiceDuration, practiceLocation,
+        stressLevel, calmBefore, calmAfter, sleepQuality, selectedFactor, sleepStart, wakeUp,
+    ]);
 
     const handleVideoStateChange = (state: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -356,6 +402,10 @@ export default function DailySlidersScreen() {
                 const error = await response.json();
                 throw new Error(error.error || 'Submission failed');
             }
+
+            await AsyncStorage.removeItem(DAILY_DRAFT_KEY);
+            clearApiCache('/api/roadmap/daily');
+            clearApiCache('/api/journey');
 
             showPopup('success', 'Great Job Today!', 'You have successfully done the Daily Task. See you tomorrow again!', () => {
                 navigation.replace('CompleteTask', {

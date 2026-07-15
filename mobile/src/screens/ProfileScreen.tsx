@@ -20,7 +20,7 @@ import { AUTH_ENDPOINTS } from '../config/api';
 const { width } = Dimensions.get('window');
 const OTP_LENGTH = 8;
 
-// ── Password strength (same logic as SignupScreen) ─────────────────────────
+// Password strength (same logic as SignupScreen)
 type StrengthLevel = 0 | 1 | 2 | 3 | 4;
 function getStrength(pwd: string): StrengthLevel {
     if (!pwd) return 0;
@@ -36,7 +36,7 @@ const STRENGTH_COLOR: Record<StrengthLevel, string> = {
     0: '#E0E6ED', 1: '#EF5350', 2: '#FFA726', 3: '#66BB6A', 4: '#2E7D32',
 };
 
-// ── Component ──────────────────────────────────────────────────────────────
+// Component
 export default function ProfileScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [loading, setLoading] = useState(true);
@@ -44,11 +44,11 @@ export default function ProfileScreen() {
         username: string; research_id: string | null; email: string | null;
     } | null>(null);
 
-    // ── Modals ───────────────────────────────────────────────────────────────
+    // Modals
     const [showSignOutModal, setShowSignOutModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-    // ── Password-reset wizard ─────────────────────────────────────────────
+    // Password-reset wizard
     const [resetVisible, setResetVisible] = useState(false);
     const [resetStep, setResetStep] = useState<1 | 2>(1);
 
@@ -68,7 +68,7 @@ export default function ProfileScreen() {
     const [submitting, setSubmitting] = useState(false);
     const [pwError, setPwError] = useState('');
 
-    // ── Data ──────────────────────────────────────────────────────────────
+    // Data
     useFocusEffect(useCallback(() => { fetchProfile(); }, []));
 
     const fetchProfile = async () => {
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
         }
     };
 
-    // ── Sign-out ──────────────────────────────────────────────────────────
+    // Sign-out
     const handleSignOut = async () => {
         try {
             await clearAuthStorage();
@@ -94,7 +94,7 @@ export default function ProfileScreen() {
         }
     };
 
-    // ── Reset-password helpers ────────────────────────────────────────────
+    // Reset-password helpers
     const openResetModal = () => {
         setResetStep(1);
         setOtpDigits(Array(OTP_LENGTH).fill(''));
@@ -417,7 +417,7 @@ export default function ProfileScreen() {
                                         <Ionicons name="mail-outline" size={30} color={Colors.primary} />
                                     </View>
                                     <Text style={styles.resetSubtitle}>
-                                        We'll send an 8-digit verification code to:
+                                        {"We'll send an 8-digit verification code to:"}
                                     </Text>
                                     <View style={styles.emailBox}>
                                         <Ionicons name="at" size={16} color={Colors.primary} />

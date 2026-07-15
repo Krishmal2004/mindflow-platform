@@ -2,8 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { loginSchema, otpSchema, resendOtpSchema, resetPasswordSchema, confirmResetSchema, signupSchema } from '../validation/authSchemas';
 
-/** Derives a display name from email if full_name is absent. Guarantees the
- * DB's `username_length` CHECK (>= 3 chars) even for short local-parts like "ab". */
+// Derives a display name from email if full_name is absent; guarantees the DB's username_length CHECK (>= 3 chars).
 const getDisplayName = (email: string, fullName?: string): string => {
     if (fullName) return fullName;
     const local = email.split('@')[0];
@@ -11,7 +10,7 @@ const getDisplayName = (email: string, fullName?: string): string => {
     return base.length >= 3 ? base : base.padEnd(3, '0');
 };
 
-/** Suffixes a username with a short slice of the user id to resolve a UNIQUE collision. */
+// Suffixes a username with a short slice of the user id to resolve a UNIQUE collision.
 const getFallbackUsername = (base: string, userId: string): string => `${base}_${userId.slice(0, 6)}`;
 
 export const signup = async (req: Request, res: Response) => {
@@ -30,10 +29,7 @@ export const signup = async (req: Request, res: Response) => {
 
         if (error) throw error;
 
-        // Sync profile table with display name (always create the row, even without a full_name).
-        // A missed upsert here permanently orphans the user from downstream profile lookups
-        // (display name, research group), so on a UNIQUE collision (e.g. two different emails
-        // sharing a local-part) retry once with an id-suffixed username instead of just logging.
+        // Always creates the profiles row (even without full_name); on a UNIQUE username collision, retry once with an id-suffixed username rather than orphaning the user.
         let profileWarning: string | undefined;
         if (data.user) {
             const displayName = getDisplayName(email, full_name);

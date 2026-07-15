@@ -11,6 +11,7 @@ import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-nati
 import { RootStackParamList } from '../types/navigation';
 import { API_URL } from '../config/api';
 import { getPostAuthRoute } from '../lib/postAuthRoute';
+import { getAuthToken, removeAuthToken } from '../lib/apiClient';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const AppIcon = require('../../assets/app-icon.png');
@@ -32,7 +33,7 @@ const P = {
 
 const { width: SW } = Dimensions.get('window');
 
-// ── Upper birds + leaves decoration ───────────────────────────────────────────
+// Upper birds + leaves decoration
 function UpperDecorations() {
     return (
         <Svg
@@ -76,7 +77,7 @@ function UpperDecorations() {
     );
 }
 
-// ── ECG pulse ─────────────────────────────────────────────────────────────────
+// ECG pulse
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const ECG = 'M 0 19 L 48 19 L 55 13 L 60 25 L 65 3 L 71 35 L 77 19 L 118 19 L 124 13 L 130 25 L 135 19 L 220 19';
 const DASH = 360;
@@ -104,7 +105,7 @@ function PulseWave() {
     );
 }
 
-// ── Bottom wave ────────────────────────────────────────────────────────────────
+// Bottom wave
 function BottomWave() {
     const h = 220; const w = SW;
     return (
@@ -123,7 +124,7 @@ function BottomWave() {
     );
 }
 
-// ── Screen ────────────────────────────────────────────────────────────────────
+// Screen
 export default function SplashScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -142,11 +143,18 @@ export default function SplashScreen() {
         partnerOpacity.value = withDelay(700, withTiming(1, { duration: 700 }));
         partnerY.value       = withDelay(700, withTiming(0, { duration: 700, easing: Easing.out(Easing.quad) }));
 
+        // Only waits out whatever's left of this minimum (enough for the entrance animation above) once validation is already done, instead of a flat sleep before it even starts.
+        const MIN_SPLASH_MS = 1600;
+        const startedAt = Date.now();
+        const waitForMinDuration = async () => {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < MIN_SPLASH_MS) await new Promise(resolve => setTimeout(resolve, MIN_SPLASH_MS - elapsed));
+        };
+
         const validateSession = async () => {
             try {
-                await new Promise(resolve => setTimeout(resolve, 5000));
                 const isLoggedIn      = await AsyncStorage.getItem('isLoggedIn');
-                const token           = await AsyncStorage.getItem('authToken');
+                const token           = await getAuthToken();
                 const alreadyLaunched = await AsyncStorage.getItem('alreadyLaunched');
 
                 if (isLoggedIn === 'true' && token) {
@@ -155,19 +163,29 @@ export default function SplashScreen() {
                             method: 'GET', headers: { Authorization: `Bearer ${token}` },
                         });
                         if (res.ok) {
-                            navigation.replace(await getPostAuthRoute());
+                            const route = await getPostAuthRoute();
+                            await waitForMinDuration();
+                            navigation.replace(route);
                         } else {
-                            await AsyncStorage.multiRemove(['isLoggedIn', 'authToken', 'user']);
+                            await removeAuthToken();
+                            await AsyncStorage.multiRemove(['isLoggedIn', 'user']);
+                            await waitForMinDuration();
                             navigation.replace('Login');
                         }
-                    } catch { navigation.replace('Login'); }
+                    } catch {
+                        await waitForMinDuration();
+                        navigation.replace('Login');
+                    }
                 } else if (alreadyLaunched === null) {
+                    await waitForMinDuration();
                     navigation.replace('Onboarding');
                 } else {
+                    await waitForMinDuration();
                     navigation.replace('Login');
                 }
             } catch (err) {
                 console.error('Splash Error', err);
+                await waitForMinDuration();
                 navigation.replace('Login');
             }
         };

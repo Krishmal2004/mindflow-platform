@@ -5,9 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const profileService = new ProfileService();
 
-/** Mirrors mobile AboutMeScreen's required-field validation (screens/AboutMeScreen.tsx#save)
- * as a server-side check, so a client can't mark onboarding complete while skipping fields
- * or submit a wrong-typed value that would otherwise bubble up as a raw Postgres 500. */
+// Server-side mirror of AboutMeScreen's required-field validation, so a client can't mark onboarding complete while skipping fields.
 const aboutMeSchema = z.object({
     university_id: z.string().trim().max(200).optional().nullable(),
     education_level: z.string().trim().max(200).optional().nullable(),

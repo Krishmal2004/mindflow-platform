@@ -18,8 +18,8 @@ import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/api';
+import { apiFetch, clearApiCache, getAuthToken } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { PopupModal } from '../components/PopupModal';
 import { JourneyIcons } from '../components/JourneyIcons';
@@ -150,35 +150,23 @@ export default function AboutMeScreen() {
         }
     }, [data.hobbies_interests]);
 
-    const getAuthToken = async () => {
-        return await AsyncStorage.getItem('authToken');
-    };
-
     const fetchData = async () => {
         try {
             setLoading(true);
-            const token = await getAuthToken();
-            if (!token) return;
+            const { ok, data: profile } = await apiFetch<Record<string, any>>('/api/profile/about-me');
 
-            const response = await fetch(`${API_URL}/api/profile/about-me`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const profile = await response.json();
-                if (profile) {
-                    // Handle cultural background special logic
-                    if (profile.cultural_background && !culturalBackgrounds.includes(profile.cultural_background)) {
-                        setOtherCultural(profile.cultural_background);
-                    }
-
-                    setData(prev => ({
-                        ...prev,
-                        ...profile,
-                        age: profile.age ? Number(profile.age) : null
-                    }));
-                    if (profile.is_completed) setDeclarationChecked(true);
+            if (ok && profile) {
+                // Handle cultural background special logic
+                if (profile.cultural_background && !culturalBackgrounds.includes(profile.cultural_background)) {
+                    setOtherCultural(profile.cultural_background);
                 }
+
+                setData(prev => ({
+                    ...prev,
+                    ...profile,
+                    age: profile.age ? Number(profile.age) : null
+                }));
+                if (profile.is_completed) setDeclarationChecked(true);
             }
         } catch (error) {
             console.log('Error fetching about me', error);
@@ -205,7 +193,7 @@ export default function AboutMeScreen() {
             Alert.alert("Required Field", "Please select your Major.");
             return;
         }
-        if (!data.age || isNaN(data.age) || data.age <= 0) {
+        if (!data.age || isNaN(data.age) || data.age <= 0 || data.age > 120) {
             Alert.alert("Required Field", "Please enter a valid Age.");
             return;
         }
@@ -265,6 +253,7 @@ export default function AboutMeScreen() {
             });
 
             if (response.ok) {
+                clearApiCache('/api/profile/about-me');
                 setShowSuccessModal(true);
                 setData(prev => ({ ...prev, is_completed: true }));
             } else {
@@ -561,7 +550,11 @@ export default function AboutMeScreen() {
                                     <TextInput
                                         style={[styles.input, { width: 100 }, focusedInput === 'age' && styles.inputFocused]}
                                         value={data.age?.toString() || ''}
-                                        onChangeText={t => update('age', t ? parseInt(t) : null)}
+                                        onChangeText={t => {
+                                            // Strips non-digits before parsing so a stray character can't produce NaN and render back as the literal text "NaN".
+                                            const digits = t.replace(/[^0-9]/g, '');
+                                            update('age', digits ? parseInt(digits, 10) : null);
+                                        }}
                                         placeholder="e.g. 21"
                                         placeholderTextColor="#94A3B8"
                                         keyboardType="numeric"

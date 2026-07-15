@@ -3,11 +3,7 @@ import { NotificationService } from '../services/notificationService';
 
 const notificationService = new NotificationService();
 
-/**
- * Daily reminder jobs, on the server's local timezone:
- *  - 8:00 AM: morning greeting to every registered device.
- *  - 7:00 PM: "hurry up" nudge naming whichever roadmap tasks are still pending.
- */
+// Cron jobs run on the server's local timezone: 8am morning greeting, 7pm pending-task nudge.
 export function startReminderScheduler(): void {
     cron.schedule('0 8 * * *', async () => {
         try {

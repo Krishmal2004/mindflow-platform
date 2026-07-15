@@ -13,10 +13,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../types/navigation';
 
 import { API_URL } from '../../config/api';
+import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
 import { Colors as GlobalColors } from '../../constants/colors';
 import { MirrorIllustration } from '../../components/MeditationIllustration';
 import { PopupModal } from '../../components/PopupModal';
@@ -94,31 +94,12 @@ export default function MindfulMirrorScreen() {
         };
     }, []);
 
-    const getAuthToken = async () => {
-        return await AsyncStorage.getItem('authToken');
-    };
-
     const checkStatus = async () => {
         try {
-            const token = await getAuthToken();
-            const response = await fetch(`${API_URL}/api/roadmap/mindful/status`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.completed) {
-                    navigation.replace('CompleteTask', {
-                        title: 'Great Job!',
-                        message: 'You have successfully completed the Mindful Mirror. See you in 1 month!',
-                        buttonText: 'Back to Journey',
-                        themeColor: Colors.primary,
-                        themeBgGrad: [THEME_BG, '#E6F2F0', '#FFFFFF']
-                    });
-                    return;
-                }
+            const { ok, data } = await apiFetch<{ completed: boolean; nextReset?: string }>('/api/roadmap/mindful/status');
+            if (ok && data?.completed) {
+                setAlreadySubmitted(true);
+                if (data.nextReset) setNextReset(new Date(data.nextReset));
             }
         } catch (error) {
             console.error('Error checking status:', error);
@@ -133,15 +114,22 @@ export default function MindfulMirrorScreen() {
         setCurrentQuestionIndex(0);
     };
 
+    // Cancels any pending auto-advance before a manual Back/Next tap, or the 250ms timeout could also fire and skip a question.
+    const goToQuestion = (index: number) => {
+        if (advanceTimeoutRef.current) {
+            clearTimeout(advanceTimeoutRef.current);
+            advanceTimeoutRef.current = null;
+        }
+        setCurrentQuestionIndex(index);
+    };
+
     const handleSelect = (value: number) => {
         setAnswers(prev => ({
             ...prev,
             [`q${currentQuestionIndex + 1}`]: value
         }));
 
-        // Small delay for smooth transition feel, auto advance to next question.
-        // Clear any pending advance first so rapid re-taps on the same question
-        // reset the timer instead of stacking multiple advances.
+        // Auto-advances after a short delay; clears any pending advance first so rapid re-taps reset the timer instead of stacking.
         if (advanceTimeoutRef.current) {
             clearTimeout(advanceTimeoutRef.current);
             advanceTimeoutRef.current = null;
@@ -191,11 +179,14 @@ export default function MindfulMirrorScreen() {
                 throw new Error(error.error || 'Submission failed');
             }
 
+            clearApiCache('/api/roadmap/mindful');
+            clearApiCache('/api/journey');
+
             showPopup('success', 'Reflection Saved!', 'Thank you for taking a moment to reflect on your mindfulness journey.', () => {
                 navigation.replace('CompleteTask', {
                     title: 'Great Job!',
                     message: 'You have successfully completed the Mindful Mirror. See you in 1 month!',
-                    buttonText: 'Back to Journey',
+                    buttonText: 'Back to Dashboard',
                     themeColor: Colors.primary,
                     themeBgGrad: [THEME_BG, '#E6F2F0', '#FFFFFF']
                 });
@@ -225,7 +216,7 @@ export default function MindfulMirrorScreen() {
                 <StatusBar style="dark" />
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
                     </TouchableOpacity>
                     <Text style={styles.title}>Mindful Mirror</Text>
@@ -246,9 +237,9 @@ export default function MindfulMirrorScreen() {
 
                     <TouchableOpacity
                         style={styles.homeButton}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => navigation.navigate('MainTabs')}
                     >
-                        <Text style={styles.homeButtonText}>Back to Journey</Text>
+                        <Text style={styles.homeButtonText}>Back to Dashboard</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -271,7 +262,7 @@ export default function MindfulMirrorScreen() {
                     themeColor={Colors.primary}
                 />
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
                     </TouchableOpacity>
                     <Text style={styles.title}>Mindful Mirror</Text>
@@ -333,11 +324,11 @@ export default function MindfulMirrorScreen() {
             <View style={styles.header}>
                 <TouchableOpacity
                     onPress={() => {
-                        if (currentQuestionIndex > 0) {
-                            setCurrentQuestionIndex(prev => prev - 1);
-                        } else {
-                            setCurrentStep('intro');
+                        if (advanceTimeoutRef.current) {
+                            clearTimeout(advanceTimeoutRef.current);
+                            advanceTimeoutRef.current = null;
                         }
+                        navigation.navigate('MainTabs');
                     }}
                     style={styles.backButton}
                 >
@@ -411,7 +402,7 @@ export default function MindfulMirrorScreen() {
                     {currentQuestionIndex > 0 ? (
                         <TouchableOpacity
                             style={styles.navButtonSecondary}
-                            onPress={() => setCurrentQuestionIndex(prev => prev - 1)}
+                            onPress={() => goToQuestion(currentQuestionIndex - 1)}
                             activeOpacity={0.7}
                         >
                             <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
@@ -428,7 +419,7 @@ export default function MindfulMirrorScreen() {
                                 !isCurrentQuestionAnswered && styles.navButtonDisabled
                             ]}
                             disabled={!isCurrentQuestionAnswered}
-                            onPress={() => setCurrentQuestionIndex(prev => prev + 1)}
+                            onPress={() => goToQuestion(currentQuestionIndex + 1)}
                             activeOpacity={0.7}
                         >
                             <Text style={styles.navButtonTextPrimary}>Next</Text>
