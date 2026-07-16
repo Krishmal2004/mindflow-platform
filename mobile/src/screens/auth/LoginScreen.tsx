@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard, LayoutAnimation, UIManager } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard, LayoutAnimation, UIManager, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -7,13 +7,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
 import { MeditationIllustration } from '../../components/MeditationIllustration';
-import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { Notification, NotificationType } from '../../components/Notification';
+import { PanelWave } from '../../components/PanelWave';
+import { LogoBlock } from '../../components/LogoBlock';
 import { getPostAuthRoute } from '../../lib/postAuthRoute';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { setAuthToken } from '../../lib/apiClient';
@@ -26,39 +26,34 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Bottom wave that sits inside the panel
-function PanelWave() {
-    const h = 90; const w = width;
-    return (
-        <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', bottom: 0, left: 0 }} pointerEvents="none">
-            <Defs>
-                <SvgGradient id="lwg" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0"   stopColor="#A7D7C5" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#7FD9D1" stopOpacity="1" />
-                    <Stop offset="1"   stopColor="#63C9D9" stopOpacity="1" />
-                </SvgGradient>
-            </Defs>
-            <Path d={`M0 ${h*0.4} C${w*0.25} ${h*0.1} ${w*0.5} ${h*0.7} ${w*0.75} ${h*0.3} C${w*0.88} ${h*0.1} ${w} ${h*0.4} ${w} ${h*0.4} L${w} ${h} L0 ${h} Z`} fill="url(#lwg)" opacity={0.22} />
-            <Path d={`M0 ${h*0.6} C${w*0.22} ${h*0.35} ${w*0.5} ${h*0.82} ${w*0.72} ${h*0.5} C${w*0.86} ${h*0.3} ${w} ${h*0.58} ${w} ${h*0.58} L${w} ${h} L0 ${h} Z`} fill="url(#lwg)" opacity={0.14} />
-        </Svg>
-    );
-}
+
 
 export default function LoginScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const insets = useSafeAreaInsets();
+    const scrollRef = useRef<ScrollView>(null);
+    const passwordRef = useRef<TextInput>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-
+ 
     const fadeAnim = useSharedValue(0);
     const scaleAnim = useSharedValue(0.9);
-
+ 
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
     const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [headerHeight, setHeaderHeight] = useState(0);
+    const activeOffsetRef = useRef(0);
+
+    const handleFocus = (offset: number) => {
+        activeOffsetRef.current = offset;
+        if (keyboardVisible) {
+            scrollRef.current?.scrollTo({ y: headerHeight + offset, animated: true });
+        }
+    };
 
     useEffect(() => {
         fadeAnim.value = withTiming(1, { duration: 800 });
@@ -67,13 +62,17 @@ export default function LoginScreen() {
         const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(true);
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: headerHeight + activeOffsetRef.current, animated: true });
+            }, 100);
         });
         const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(false);
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
         });
         return () => { showSubscription.remove(); hideSubscription.remove(); };
-    }, []);
+    }, [headerHeight, keyboardVisible]);
 
     const showNotification = (type: NotificationType, message: string) => {
         setNotificationType(type); setNotificationMessage(message); setNotificationVisible(true);
@@ -127,40 +126,43 @@ export default function LoginScreen() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="dark" />
+            <StatusBar style="dark" translucent backgroundColor="transparent" />
 
-            <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
+            {/* Fixed Background Header (doesn't move) */}
+            <View 
+                pointerEvents="none"
+                onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+                style={[styles.fixedHeader, { paddingTop: insets.top > 0 ? insets.top + 5 : 24 }]}
+            >
+                <Animated.View style={headerStyle}>
+                    <LogoBlock />
+                </Animated.View>
+
+                <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                    <MeditationIllustration
+                        width={width * 0.70}
+                        height={width * 0.70}
+                        color={Colors.primary}
+                    />
+                </Animated.View>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
                 <ScrollView
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40, paddingBottom: insets.bottom }]}
+                    ref={scrollRef}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
+                    contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                 >
-                    <Animated.View style={[styles.logoBlock, headerStyle]}>
-                        <View style={styles.logoRow}>
-                            <Text style={styles.logoThin}>Mind</Text>
-                            <Text style={styles.logoBold}>Flow</Text>
-                        </View>
-                        <View style={styles.taglineRow}>
-                            <View style={styles.taglineDot} />
-                            <Text style={styles.tagline}>Find your inner peace</Text>
-                            <View style={styles.taglineDot} />
-                        </View>
-                    </Animated.View>
-
-                    <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                        <MeditationIllustration
-                            width={width * (keyboardVisible ? 0.34 : 0.67)}
-                            height={width * (keyboardVisible ? 0.34 : 0.67)}
-                            color={Colors.primary}
-                        />
-                    </Animated.View>
+                    {/* Spacer matching fixed header height */}
+                    <View style={{ height: headerHeight }} />
 
                     {/* Bottom panel with wave inside */}
-                    <Animated.View style={[styles.bottomPanel, panelStyle]}>
+                    <Animated.View 
+                        style={[styles.bottomPanel, panelStyle, { minHeight: height - headerHeight, paddingBottom: insets.bottom }]}
+                    >
                         <Text style={styles.panelTitle}>WELCOME BACK</Text>
                         <Text style={styles.panelSubtitle}>LOGIN TO CONTINUE</Text>
 
@@ -174,17 +176,24 @@ export default function LoginScreen() {
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
                                     keyboardType="email-address"
+                                    onFocus={() => handleFocus(0)}
+                                    returnKeyType="next"
+                                    onSubmitEditing={() => passwordRef.current?.focus()}
                                 />
                             </View>
 
                             <View style={[styles.inputWrapper, { flexDirection: 'row', alignItems: 'center', paddingRight: 12 }]}>
                                 <TextInput
+                                    ref={passwordRef}
                                     style={[styles.input, { flex: 1 }]}
                                     placeholder="Password"
                                     placeholderTextColor="#90A4AE"
                                     value={password}
                                     onChangeText={setPassword}
                                     secureTextEntry={!showPassword}
+                                    onFocus={() => handleFocus(80)}
+                                    returnKeyType="done"
+                                    onSubmitEditing={handleLogin}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={{ padding: 4 }}>
                                     <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#90A4AE" />
@@ -196,7 +205,11 @@ export default function LoginScreen() {
                                 onPress={handleLogin}
                                 disabled={loading}
                             >
-                                <Text style={styles.loginButtonText}>{loading ? 'LOGGING IN...' : 'LOG IN'}</Text>
+                                {loading ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <Text style={styles.loginButtonText}>LOG IN</Text>
+                                )}
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={styles.switchButton}>
@@ -222,17 +235,17 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F6F8F9' },
-    decorationContainer: { position: 'absolute', top: 0, left: 0, right: 0 },
     keyboardView: { flex: 1 },
-    scrollContent: { flexGrow: 1, justifyContent: 'space-between', alignItems: 'center', paddingTop: 40 },
-    logoBlock: { alignItems: 'center', marginBottom: 8 },
-    logoRow: { flexDirection: 'row', alignItems: 'baseline' },
-    logoThin: { fontSize: 34, fontWeight: '300', color: '#3A3A3A', letterSpacing: 2 },
-    logoBold: { fontSize: 34, fontWeight: '800', color: Colors.primary, letterSpacing: 2 },
-    taglineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5 },
-    taglineDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#7FD9D1', opacity: 0.80 },
-    tagline: { fontSize: 11, color: '#7A8285', letterSpacing: 3, textTransform: 'uppercase', fontWeight: '600' },
-    illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
+    fixedHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 0,
+    },
+    scrollContent: { flexGrow: 1, alignItems: 'center' },
+    illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
     bottomPanel: {
         backgroundColor: '#E3F2FD',
         width: '100%',

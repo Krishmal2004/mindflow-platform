@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
-import { loginSchema, otpSchema, resendOtpSchema, resetPasswordSchema, confirmResetSchema, signupSchema } from '../validation/authSchemas';
+import { loginSchema, otpSchema, resendOtpSchema, resetPasswordSchema, confirmResetSchema, signupSchema, refreshTokenSchema } from '../validation/authSchemas';
 
 // Derives a display name from email if full_name is absent; guarantees the DB's username_length CHECK (>= 3 chars).
 const getDisplayName = (email: string, fullName?: string): string => {
@@ -177,5 +177,28 @@ export const confirmPasswordReset = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Confirm Reset Error:', error.message);
         return res.status(400).json({ error: error.message || 'Password reset failed' });
+    }
+};
+
+// Exchanges a long-lived refresh_token for a new access_token, so the mobile client can
+// stay signed in past the short-lived access token's expiry without the user re-entering
+// their password. Only a truly invalid/revoked refresh_token (expired session, explicit
+// sign-out, password change) should ever force the client back to the login screen.
+export const refreshToken = async (req: Request, res: Response) => {
+    const parsed = refreshTokenSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Invalid input', details: parsed.error.issues });
+    }
+    const { refresh_token } = parsed.data;
+
+    try {
+        const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+        if (error) throw error;
+        if (!data.session) throw new Error('No session returned');
+
+        return res.status(200).json({ session: data.session, user: data.user });
+    } catch (error: any) {
+        console.error('Refresh Token Error:', error.message);
+        return res.status(401).json({ error: 'Session expired. Please log in again.' });
     }
 };

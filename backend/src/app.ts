@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import { MulterError } from 'multer';
 
 dotenv.config();
@@ -15,6 +16,7 @@ app.set('trust proxy', process.env.TRUST_PROXY_HOPS ? Number(process.env.TRUST_P
 
 // Security & Middleware
 app.use(helmet());
+app.use(compression());
 app.use(cors({
     origin: process.env.CORS_ORIGINS
         ? process.env.CORS_ORIGINS.split(',')
@@ -72,7 +74,7 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Global error handler — prevents raw stack traces leaking to clients
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('[Unhandled Error]', err.stack ?? err.message);
 
     // MulterError and the custom fileFilter rejection are both client mistakes, not server failures.
@@ -83,6 +85,17 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
             ? (err.code === 'LIMIT_FILE_SIZE' ? 'Audio file is too large (max 10MB).' : err.message)
             : err.message;
         res.status(400).json({ error: message });
+        return;
+    }
+
+    // body-parser (express.json) errors: oversized body or malformed JSON are client mistakes,
+    // not server failures — surface their real status instead of a generic 500.
+    if (err.type === 'entity.too.large' || err.status === 413) {
+        res.status(413).json({ error: 'Request body too large.' });
+        return;
+    }
+    if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
+        res.status(400).json({ error: 'Malformed JSON in request body.' });
         return;
     }
 

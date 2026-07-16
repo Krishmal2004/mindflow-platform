@@ -9,9 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { RootStackParamList } from '../types/navigation';
-import { API_URL } from '../config/api';
 import { getPostAuthRoute } from '../lib/postAuthRoute';
-import { getAuthToken, removeAuthToken } from '../lib/apiClient';
+import { getAuthToken, removeAuthToken, apiFetch } from '../lib/apiClient';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const AppIcon = require('../../assets/app-icon.png');
@@ -159,10 +158,12 @@ export default function SplashScreen() {
 
                 if (isLoggedIn === 'true' && token) {
                     try {
-                        const res = await fetch(`${API_URL}/api/profile`, {
-                            method: 'GET', headers: { Authorization: `Bearer ${token}` },
-                        });
-                        if (res.ok) {
+                        // apiFetch transparently retries once via the refresh_token on a 401 —
+                        // an expired access token (the common case after >1h since last login)
+                        // is not a sign-out, so this only lands in the `else` branch below when
+                        // the refresh_token itself is missing/invalid/revoked.
+                        const { ok } = await apiFetch('/api/profile', { force: true });
+                        if (ok) {
                             const route = await getPostAuthRoute();
                             await waitForMinDuration();
                             navigation.replace(route);

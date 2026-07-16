@@ -1,7 +1,8 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { onSessionExpired } from '../lib/apiClient';
 import SplashScreen from '../screens/SplashScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -20,9 +21,23 @@ import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export default function AppNavigator() {
+    // A genuinely expired/revoked session (refresh_token failed, not just a short-lived
+    // access token — apiFetch already recovers from that silently) can surface from any
+    // screen's API call, not just app launch. Reset straight to Login rather than leaving
+    // the participant stuck on a screen that will keep 401ing.
+    useEffect(() => {
+        return onSessionExpired(() => {
+            if (navigationRef.isReady()) {
+                navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }
+        });
+    }, []);
+
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
                 initialRouteName="Splash"
                 screenOptions={{

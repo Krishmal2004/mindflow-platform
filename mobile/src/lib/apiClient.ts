@@ -3,8 +3,26 @@ import * as SecureStore from 'expo-secure-store';
 import { API_URL } from '../config/api';
 
 const AUTH_TOKEN_KEY = 'authToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
 
 const DEFAULT_TTL_MS = 30_000;
+
+// Fired when the refresh token itself is invalid/revoked (not just an expired access
+// token, which apiFetch recovers from silently) — the only case that should ever force
+// a participant back to the login screen mid-session. AppNavigator subscribes to reset
+// the stack; kept as a plain pub/sub (not a React import) so this module has no
+// dependency on the navigation tree.
+type SessionExpiredListener = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+export function onSessionExpired(listener: SessionExpiredListener): () => void {
+    sessionExpiredListeners.add(listener);
+    return () => sessionExpiredListeners.delete(listener);
+}
+
+function notifySessionExpired(): void {
+    sessionExpiredListeners.forEach((listener) => listener());
+}
 
 type CacheEntry = { data: unknown; expiresAt: number };
 
@@ -46,9 +64,60 @@ export async function setAuthToken(token: string): Promise<void> {
     await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
 }
 
+async function getRefreshToken(): Promise<string | null> {
+    return SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+}
+
+// Persists both halves of a Supabase session. The refresh_token is what lets the app
+// stay signed in across days without re-prompting for a password — only losing it
+// (explicit sign-out, or the device/app data being wiped) should require a fresh login.
+export async function setSession(session: { access_token: string; refresh_token?: string }): Promise<void> {
+    await SecureStore.setItemAsync(AUTH_TOKEN_KEY, session.access_token);
+    if (session.refresh_token) {
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, session.refresh_token);
+    }
+}
+
 export async function removeAuthToken(): Promise<void> {
     await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+// Exchanges the stored refresh_token for a new access_token via the backend. Concurrent
+// callers (several requests 401'ing around the same moment) share one in-flight refresh
+// instead of each racing Supabase's token-rotation endpoint.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function performTokenRefresh(): Promise<string | null> {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+        const response = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (!response.ok) return null;
+
+        const body = await response.json();
+        if (!body?.session?.access_token) return null;
+
+        await setSession(body.session);
+        return body.session.access_token as string;
+    } catch {
+        return null;
+    }
+}
+
+function refreshAccessTokenOnce(): Promise<string | null> {
+    if (!refreshInFlight) {
+        refreshInFlight = performTokenRefresh().finally(() => {
+            refreshInFlight = null;
+        });
+    }
+    return refreshInFlight;
 }
 
 export type ApiFetchOptions = RequestInit & {
@@ -60,7 +129,8 @@ export type ApiFetchOptions = RequestInit & {
 // Cached fetch for GET requests; mutations should call clearApiCache() after success.
 export async function apiFetch<T = unknown>(
     path: string,
-    options: ApiFetchOptions = {}
+    options: ApiFetchOptions = {},
+    _isRetry = false
 ): Promise<{ ok: boolean; status: number; data: T | null }> {
     const { force = false, ttlMs = DEFAULT_TTL_MS, ...init } = options;
     const url = path.startsWith('http') ? path : `${API_URL}${path}`;
@@ -84,6 +154,20 @@ export async function apiFetch<T = unknown>(
     }
 
     const response = await fetch(url, { ...init, headers });
+
+    // A 401 on a request that carried a token means the access token expired (it's
+    // short-lived by design), not that the user is logged out — try one silent refresh
+    // before giving up. Only a failed refresh (invalid/revoked refresh_token) is a real
+    // session end.
+    if (response.status === 401 && token && !_isRetry) {
+        const newToken = await refreshAccessTokenOnce();
+        if (newToken) {
+            return apiFetch<T>(path, options, true);
+        }
+        await clearAuthStorage();
+        notifySessionExpired();
+    }
+
     let data: T | null = null;
     try {
         data = await response.json();

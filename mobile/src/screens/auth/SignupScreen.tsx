@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard,
-    LayoutAnimation, UIManager,
+    LayoutAnimation, UIManager, ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,14 +11,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
 import { SignupIllustration } from '../../components/SignupIllustration';
-import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { Notification, NotificationType } from '../../components/Notification';
+import { PanelWave } from '../../components/PanelWave';
+import { LogoBlock } from '../../components/LogoBlock';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,28 +44,16 @@ function getStrength(pwd: string): StrengthLevel {
 const STRENGTH_LABEL: Record<StrengthLevel, string> = { 0: '', 1: 'Weak', 2: 'Fair', 3: 'Good', 4: 'Strong' };
 const STRENGTH_COLOR: Record<StrengthLevel, string> = { 0: '#E0E6ED', 1: '#EF5350', 2: '#FFA726', 3: '#66BB6A', 4: '#2E7D32' };
 
-// Bottom wave that sits inside the panel
-function PanelWave() {
-    const h = 90; const w = width;
-    return (
-        <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ position: 'absolute', bottom: 0, left: 0 }} pointerEvents="none">
-            <Defs>
-                <SvgGradient id="swg" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0"   stopColor="#A7D7C5" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#7FD9D1" stopOpacity="1" />
-                    <Stop offset="1"   stopColor="#63C9D9" stopOpacity="1" />
-                </SvgGradient>
-            </Defs>
-            <Path d={`M0 ${h*0.4} C${w*0.25} ${h*0.1} ${w*0.5} ${h*0.7} ${w*0.75} ${h*0.3} C${w*0.88} ${h*0.1} ${w} ${h*0.4} ${w} ${h*0.4} L${w} ${h} L0 ${h} Z`} fill="url(#swg)" opacity={0.22} />
-            <Path d={`M0 ${h*0.6} C${w*0.22} ${h*0.35} ${w*0.5} ${h*0.82} ${w*0.72} ${h*0.5} C${w*0.86} ${h*0.3} ${w} ${h*0.58} ${w} ${h*0.58} L${w} ${h} L0 ${h} Z`} fill="url(#swg)" opacity={0.14} />
-        </Svg>
-    );
-}
+
 
 // Component
 export default function SignupScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const insets = useSafeAreaInsets();
+    const scrollRef = useRef<ScrollView>(null);
+    const emailRef = useRef<TextInput>(null);
+    const passwordRef = useRef<TextInput>(null);
+    const confirmRef = useRef<TextInput>(null);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -82,6 +70,15 @@ export default function SignupScreen() {
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
+    const [headerHeight, setHeaderHeight] = useState(0);
+    const activeOffsetRef = useRef(0);
+
+    const handleFocus = (offset: number) => {
+        activeOffsetRef.current = offset;
+        if (keyboardVisible) {
+            scrollRef.current?.scrollTo({ y: headerHeight + offset, animated: true });
+        }
+    };
 
     const fadeAnim = useSharedValue(0);
     const scaleAnim = useSharedValue(0.9);
@@ -93,13 +90,17 @@ export default function SignupScreen() {
         const show = Keyboard.addListener('keyboardDidShow', () => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(true);
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: headerHeight + activeOffsetRef.current, animated: true });
+            }, 100);
         });
         const hide = Keyboard.addListener('keyboardDidHide', () => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(false);
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
         });
         return () => { show.remove(); hide.remove(); };
-    }, []);
+    }, [headerHeight, keyboardVisible]);
 
     const strength = getStrength(password);
 
@@ -177,39 +178,42 @@ export default function SignupScreen() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="dark" />
+            <StatusBar style="dark" translucent backgroundColor="transparent" />
 
-            <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
+            {/* Fixed Background Header (doesn't move) */}
+            <View 
+                pointerEvents="none"
+                onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+                style={[styles.fixedHeader, { paddingTop: insets.top > 0 ? insets.top + 5 : 24 }]}
+            >
+                <Animated.View style={headerStyle}>
+                    <LogoBlock />
+                </Animated.View>
+
+                <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
+                    <SignupIllustration
+                        width={width * 0.56}
+                        height={width * 0.50}
+                    />
+                </Animated.View>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
                 <ScrollView
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 40, paddingBottom: insets.bottom }]}
+                    ref={scrollRef}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
+                    contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                 >
-                    <Animated.View style={[styles.logoBlock, headerStyle]}>
-                        <View style={styles.logoRow}>
-                            <Text style={styles.logoThin}>Mind</Text>
-                            <Text style={styles.logoBold}>Flow</Text>
-                        </View>
-                        <View style={styles.taglineRow}>
-                            <View style={styles.taglineDot} />
-                            <Text style={styles.tagline}>Find your inner peace</Text>
-                            <View style={styles.taglineDot} />
-                        </View>
-                    </Animated.View>
-
-                    <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                        <SignupIllustration
-                            width={width * (keyboardVisible ? 0.26 : 0.50)}
-                            height={width * (keyboardVisible ? 0.26 : 0.50)}
-                        />
-                    </Animated.View>
+                    {/* Spacer matching fixed header height */}
+                    <View style={{ height: headerHeight }} />
 
                     {/* Bottom panel with wave inside */}
-                    <Animated.View style={[styles.bottomPanel, panelStyle]}>
+                    <Animated.View 
+                        style={[styles.bottomPanel, panelStyle, { minHeight: height - headerHeight, paddingBottom: insets.bottom }]}
+                    >
                         <Text style={styles.panelTitle}>NEW ACCOUNT</Text>
                         <Text style={styles.panelSubtitle}>START YOUR JOURNEY</Text>
 
@@ -225,6 +229,9 @@ export default function SignupScreen() {
                                         value={name}
                                         onChangeText={v => { setName(v); if (touched.name) validate('name', v); }}
                                         onBlur={() => touchField('name', name)}
+                                        onFocus={() => handleFocus(0)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => emailRef.current?.focus()}
                                     />
                                 </View>
                                 {touched.name && errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
@@ -234,6 +241,7 @@ export default function SignupScreen() {
                             <View>
                                 <View style={[styles.inputWrapper, inputBorder('email')]}>
                                     <TextInput
+                                        ref={emailRef}
                                         style={styles.input}
                                         placeholder="Email Address"
                                         placeholderTextColor="#90A4AE"
@@ -243,6 +251,9 @@ export default function SignupScreen() {
                                         autoCapitalize="none"
                                         keyboardType="email-address"
                                         autoComplete="email"
+                                        onFocus={() => handleFocus(80)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => passwordRef.current?.focus()}
                                     />
                                 </View>
                                 {touched.email && errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
@@ -252,6 +263,7 @@ export default function SignupScreen() {
                             <View>
                                 <View style={[styles.inputWrapper, inputBorder('password')]}>
                                     <TextInput
+                                        ref={passwordRef}
                                         style={[styles.input, { flex: 1 }]}
                                         placeholder="Password"
                                         placeholderTextColor="#90A4AE"
@@ -259,6 +271,9 @@ export default function SignupScreen() {
                                         onChangeText={v => { setPassword(v); if (touched.password) validate('password', v); }}
                                         onBlur={() => touchField('password', password)}
                                         secureTextEntry={!showPassword}
+                                        onFocus={() => handleFocus(160)}
+                                        returnKeyType="next"
+                                        onSubmitEditing={() => confirmRef.current?.focus()}
                                     />
                                     <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeButton}>
                                         <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#90A4AE" />
@@ -294,6 +309,7 @@ export default function SignupScreen() {
                             <View>
                                 <View style={[styles.inputWrapper, inputBorder('confirm')]}>
                                     <TextInput
+                                        ref={confirmRef}
                                         style={[styles.input, { flex: 1 }]}
                                         placeholder="Confirm Password"
                                         placeholderTextColor="#90A4AE"
@@ -301,6 +317,9 @@ export default function SignupScreen() {
                                         onChangeText={v => { setConfirmPassword(v); if (touched.confirm) validate('confirm', v, password); }}
                                         onBlur={() => touchField('confirm', confirmPassword, password)}
                                         secureTextEntry={!showConfirm}
+                                        onFocus={() => handleFocus(240)}
+                                        returnKeyType="done"
+                                        onSubmitEditing={handleSignup}
                                     />
                                     <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={styles.eyeButton}>
                                         <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={22} color="#90A4AE" />
@@ -315,11 +334,15 @@ export default function SignupScreen() {
                             </View>
 
                             <TouchableOpacity
-                                style={[styles.signupButton, loading && styles.signupButtonDisabled]}
+                                style={[styles.signupButton, loading && { opacity: 0.6 }]}
                                 onPress={handleSignup}
                                 disabled={loading}
                             >
-                                <Text style={styles.signupButtonText}>{loading ? 'CREATING...' : 'SIGN UP'}</Text>
+                                {loading ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <Text style={styles.signupButtonText}>SIGN UP</Text>
+                                )}
                             </TouchableOpacity>
 
                             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.switchButton}>
@@ -362,24 +385,24 @@ const reqStyles = StyleSheet.create({
 // Styles
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F6F8F9' },
-    decorationContainer: { position: 'absolute', top: 0, left: 0, right: 0 },
     keyboardView: { flex: 1 },
-    scrollContent: { flexGrow: 1, justifyContent: 'space-between', alignItems: 'center', paddingTop: 30 },
-    logoBlock: { alignItems: 'center', marginBottom: 6 },
-    logoRow: { flexDirection: 'row', alignItems: 'baseline' },
-    logoThin: { fontSize: 30, fontWeight: '300', color: '#3A3A3A', letterSpacing: 2 },
-    logoBold: { fontSize: 30, fontWeight: '800', color: Colors.primary, letterSpacing: 2 },
-    taglineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-    taglineDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#7FD9D1', opacity: 0.80 },
-    tagline: { fontSize: 10, color: '#7A8285', letterSpacing: 3, textTransform: 'uppercase', fontWeight: '600' },
-    illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+    fixedHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 0,
+    },
+    scrollContent: { flexGrow: 1, alignItems: 'center' },
+    illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
     bottomPanel: {
         backgroundColor: '#E3F2FD',
         width: '100%',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         paddingTop: 20,
-        paddingBottom: 104,   // extra space for wave
+        paddingBottom: 0,   // extra space for wave
         paddingHorizontal: 24,
         alignItems: 'center',
         shadowColor: '#000',
@@ -389,8 +412,8 @@ const styles = StyleSheet.create({
         elevation: 10,
         overflow: 'hidden',   // clip wave inside panel
     },
-    panelTitle: { fontSize: 14, fontWeight: '600', color: '#636E72', letterSpacing: 2, marginBottom: 5 },
-    panelSubtitle: { fontSize: 18, fontWeight: 'bold', color: '#2D3436', letterSpacing: 1, marginBottom: 15 },
+    panelTitle: { fontSize: 13, fontWeight: '600', color: '#636E72', letterSpacing: 2, marginBottom: 2 },
+    panelSubtitle: { fontSize: 17, fontWeight: 'bold', color: '#2D3436', letterSpacing: 1, marginBottom: 10 },
     formContainer: { width: '100%', gap: 8 },
     inputWrapper: {
         backgroundColor: '#FFFFFF',

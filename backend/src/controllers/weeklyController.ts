@@ -36,6 +36,10 @@ export const submitWeeklyEntry = async (req: AuthenticatedRequest, res: Response
         const result = await weeklyService.submitWeeklyEntry(req.user.id, validation.data);
         res.json(result);
     } catch (error: any) {
+        if (error.message === 'WEEKLY_FILE_KEY_MISMATCH') {
+            res.status(400).json({ error: 'Uploaded file does not match this week\'s submission.' });
+            return;
+        }
         console.error('submitWeeklyEntry:', error);
         res.status(500).json({ error: 'Internal server error' });
     }

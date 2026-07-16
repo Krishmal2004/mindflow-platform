@@ -1,0 +1,40 @@
+# Soak/endurance test: moderate constant load sustained for a long duration to
+# surface memory leaks, connection leaks, or degrading response times.
+# Default duration below is a short (10 min) sanity run; for a real soak run
+# for hours, override the duration without editing this file:
+#   npx artillery run --overrides '{"config":{"phases":[{"duration":7200,"arrivalRate":10,"name":"sustained-moderate-load"}]}}' loadtest/soak.yml
+# While this runs, watch the server process's RSS memory and event-loop lag
+# (see loadtest/README.md) — response times/error rate alone won't show a leak.
+config:
+  target: "{{ $processEnvironment.BASE_URL }}"
+  phases:
+    - name: sustained-moderate-load
+      duration: 600
+      arrivalRate: 10
+  variables:
+    authToken: "{{ $processEnvironment.AUTH_TOKEN }}"
+  ensure:
+    p95: 1000
+    maxErrorRate: 2
+
+scenarios:
+  - name: Steady mixed read traffic
+    flow:
+      - get:
+          url: "/health"
+      - get:
+          url: "/api/dashboard/summary"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - get:
+          url: "/api/journey/status"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - get:
+          url: "/api/roadmap/weekly/status"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - get:
+          url: "/api/roadmap/thrive/status"
+          headers:
+            Authorization: "Bearer {{ authToken }}"

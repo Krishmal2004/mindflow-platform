@@ -31,3 +31,7 @@ export const confirmResetSchema = z.object({
     token: z.string().min(4).max(10),
     newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 });
+
+export const refreshTokenSchema = z.object({
+    refresh_token: z.string().min(1, 'refresh_token is required'),
+});
