@@ -5,16 +5,16 @@ import {
     TextInput, KeyboardAvoidingView, Platform,
     NativeSyntheticEvent, TextInputKeyPressEventData,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import { cardShadow, cardShadowElevated } from '../styles/shared';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { apiFetch, clearAuthStorage } from '../lib/apiClient';
 import { PopupModal } from '../components/PopupModal';
-import { LeavesDecoration } from '../components/LeavesDecoration';
 import { AUTH_ENDPOINTS } from '../config/api';
 
 const { width } = Dimensions.get('window');
@@ -239,14 +239,8 @@ export default function ProfileScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <LeavesDecoration width={width} height={width} />
 
-            <SafeAreaView edges={['top', 'left', 'right']}>
-                <View style={styles.headerContainer}>
-                    <Text style={styles.title}>My Account</Text>
-                    <Text style={styles.subtitle}>Manage your profile & security</Text>
-                </View>
-            </SafeAreaView>
+            <ScreenHeader title="My Account" subtitle="Manage your profile & security" />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
                 {/* Profile Hero */}
@@ -264,7 +258,7 @@ export default function ProfileScreen() {
                     <View style={styles.infoCard}>
                         <View style={styles.infoRow}>
                             <View style={styles.infoIcon}>
-                                <Ionicons name="person-outline" size={20} color="#64748B" />
+                                <Ionicons name="person-outline" size={20} color={Colors.iconMuted} />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Username</Text>
@@ -273,7 +267,7 @@ export default function ProfileScreen() {
                         </View>
                         <View style={styles.infoRow}>
                             <View style={styles.infoIcon}>
-                                <Ionicons name="id-card-outline" size={20} color="#64748B" />
+                                <Ionicons name="id-card-outline" size={20} color={Colors.iconMuted} />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Research ID</Text>
@@ -289,7 +283,7 @@ export default function ProfileScreen() {
                         </View>
                         <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
                             <View style={styles.infoIcon}>
-                                <Ionicons name="mail-outline" size={20} color="#64748B" />
+                                <Ionicons name="mail-outline" size={20} color={Colors.iconMuted} />
                             </View>
                             <View style={styles.infoContent}>
                                 <Text style={styles.infoLabel}>Email</Text>
@@ -312,7 +306,7 @@ export default function ProfileScreen() {
                                 <Text style={styles.actionSubtext}>View or update your details</Text>
                             </View>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+                        <Ionicons name="chevron-forward" size={20} color={Colors.iconMuted} />
                     </TouchableOpacity>
                 </View>
 
@@ -334,7 +328,7 @@ export default function ProfileScreen() {
                                 <Text style={styles.actionSubtext}>Verify via a one-time code</Text>
                             </View>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+                        <Ionicons name="chevron-forward" size={20} color={Colors.iconMuted} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -389,7 +383,7 @@ export default function ProfileScreen() {
                             <View style={styles.resetHeaderLeft}>
                                 {resetStep === 2 && (
                                     <TouchableOpacity onPress={() => setResetStep(1)} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                                        <Ionicons name="arrow-back" size={20} color="#64748B" />
+                                        <Ionicons name="arrow-back" size={20} color={Colors.iconMuted} />
                                     </TouchableOpacity>
                                 )}
                                 <Text style={styles.resetTitle}>
@@ -397,7 +391,7 @@ export default function ProfileScreen() {
                                 </Text>
                             </View>
                             <TouchableOpacity onPress={closeResetModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                                <Ionicons name="close" size={22} color="#64748B" />
+                                <Ionicons name="close" size={22} color={Colors.iconMuted} />
                             </TouchableOpacity>
                         </View>
 
@@ -589,49 +583,46 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F6F8F9' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F6F8F9' },
-    headerContainer: { paddingVertical: 12, paddingHorizontal: 24 },
-    title: { fontSize: 28, fontWeight: '800', color: '#2D3436', marginBottom: 4 },
-    subtitle: { fontSize: 15, color: '#636E72' },
+    container: { flex: 1, backgroundColor: Colors.background },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
     content: { paddingTop: 20, paddingBottom: 120 },
 
     profileCard: {
-        marginHorizontal: 24, backgroundColor: '#FFFFFF', borderRadius: 30,
+        marginHorizontal: 24, backgroundColor: Colors.surface, borderRadius: 30,
         paddingVertical: 28, alignItems: 'center',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 4, marginBottom: 8,
+        ...cardShadowElevated, marginBottom: 8,
     },
     avatarCircle: {
-        width: 84, height: 84, borderRadius: 42, backgroundColor: '#E6F4EA',
+        width: 84, height: 84, borderRadius: 42, backgroundColor: Colors.primaryTint,
         justifyContent: 'center', alignItems: 'center', marginBottom: 14, borderWidth: 3, borderColor: '#C2E7CD',
     },
-    userName: { fontSize: 22, fontWeight: '800', color: '#2D3436' },
+    userName: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
     userEmail: { fontSize: 14, color: Colors.primary, marginTop: 4, fontWeight: '600' },
 
     section: { marginTop: 24, paddingHorizontal: 24 },
-    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, paddingLeft: 4 },
+    sectionTitle: { fontSize: 12, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, paddingLeft: 4 },
 
     infoCard: {
-        backgroundColor: '#FFFFFF', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2,
+        backgroundColor: Colors.surface, borderRadius: 24, paddingHorizontal: 20, paddingVertical: 8,
+        ...cardShadow,
     },
-    infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderColor: '#F1F5F9' },
-    infoIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderColor: Colors.surfaceMuted },
+    infoIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.surfaceMuted, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
     infoContent: { flex: 1 },
-    infoLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginBottom: 2 },
-    infoValue: { fontSize: 15, color: '#2D3436', fontWeight: '700' },
+    infoLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600', marginBottom: 2 },
+    infoValue: { fontSize: 15, color: Colors.textPrimary, fontWeight: '700' },
     pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
     pendingText: { fontSize: 13, color: '#D97706', fontWeight: '600', fontStyle: 'italic' },
 
     actionButton: {
-        backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: Colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         padding: 16, borderRadius: 24,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2,
+        ...cardShadow,
     },
     actionLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     iconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-    actionText: { fontSize: 15, fontWeight: '700', color: '#2D3436' },
-    actionSubtext: { fontSize: 12, color: '#636E72', marginTop: 2 },
+    actionText: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+    actionSubtext: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
     dangerButton: { marginTop: 0, borderWidth: 1.5, borderColor: '#FEE2E2' },
     dangerText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
     dangerSubText: { fontSize: 12, color: '#F87171', marginTop: 2 },
@@ -639,21 +630,21 @@ const styles = StyleSheet.create({
     // Sign-out modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     alertModal: {
-        backgroundColor: '#FFFFFF', borderRadius: 30, padding: 28, width: '85%', alignItems: 'center',
+        backgroundColor: Colors.surface, borderRadius: 30, padding: 28, width: '85%', alignItems: 'center',
         shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10,
     },
     alertIconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-    alertTitle: { fontSize: 20, fontWeight: '800', color: '#2D3436', marginBottom: 8 },
-    alertMessage: { fontSize: 15, color: '#636E72', textAlign: 'center', marginBottom: 28, lineHeight: 22, fontWeight: '500' },
+    alertTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8 },
+    alertMessage: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', marginBottom: 28, lineHeight: 22, fontWeight: '500' },
     alertActions: { flexDirection: 'row', gap: 12, width: '100%' },
-    alertCancel: { flex: 1, paddingVertical: 16, backgroundColor: '#F1F5F9', borderRadius: 30, alignItems: 'center' },
-    alertCancelText: { fontSize: 16, fontWeight: '700', color: '#636E72' },
+    alertCancel: { flex: 1, paddingVertical: 16, backgroundColor: Colors.surfaceMuted, borderRadius: 30, alignItems: 'center' },
+    alertCancelText: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary },
     alertConfirm: { flex: 1, paddingVertical: 16, backgroundColor: '#EF4444', borderRadius: 30, alignItems: 'center' },
-    alertConfirmText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+    alertConfirmText: { fontSize: 16, fontWeight: '700', color: Colors.surface },
 
     // Reset password sheet
     resetSheet: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderTopLeftRadius: 32, borderTopRightRadius: 32,
         width: '100%',
         maxHeight: '92%',
@@ -665,37 +656,37 @@ const styles = StyleSheet.create({
     resetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
     resetHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     backBtn: { padding: 4 },
-    resetTitle: { fontSize: 18, fontWeight: '800', color: '#2D3436' },
+    resetTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
     stepRow: { flexDirection: 'row', gap: 6, marginBottom: 20 },
-    stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0' },
+    stepDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: Colors.borderLight },
     stepDotActive: { backgroundColor: Colors.primary },
     resetBody: { gap: 4 },
     resetIconCircle: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginBottom: 16 },
-    resetSubtitle: { fontSize: 14, color: '#636E72', textAlign: 'center', lineHeight: 22 },
+    resetSubtitle: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
     emailBox: {
         flexDirection: 'row', alignItems: 'center', gap: 8,
         backgroundColor: '#F0FFF4', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12,
         borderWidth: 1, borderColor: '#C2E7CD', alignSelf: 'center', marginTop: 8,
     },
-    emailBoxText: { fontSize: 14, fontWeight: '700', color: '#2D3436' },
-    resetHint: { fontSize: 12, color: '#94A3B8', lineHeight: 18, textAlign: 'center', marginVertical: 8 },
+    emailBoxText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+    resetHint: { fontSize: 12, color: Colors.textMuted, lineHeight: 18, textAlign: 'center', marginVertical: 8 },
     primaryBtn: {
         backgroundColor: Colors.primary, borderRadius: 30, paddingVertical: 16,
         alignItems: 'center', marginTop: 8,
         shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
     },
     primaryBtnDisabled: { opacity: 0.55 },
-    primaryBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+    primaryBtnText: { color: Colors.surface, fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
 
     // OTP in modal
-    fieldLabel: { fontSize: 12, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 4 },
+    fieldLabel: { fontSize: 12, fontWeight: '800', color: Colors.iconMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 4 },
     otpRow: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
     otpBox: {
         width: (width - 48 - 56 - 7 * 6) / 8,
         aspectRatio: 1,
         borderRadius: 10, borderWidth: 1.5, borderColor: '#CBD5E0',
         backgroundColor: '#F7FAFC',
-        textAlign: 'center', fontSize: 18, fontWeight: 'bold', color: '#2D3436',
+        textAlign: 'center', fontSize: 18, fontWeight: 'bold', color: Colors.textPrimary,
     },
     otpBoxFilled: { borderColor: Colors.primary, backgroundColor: '#F0FFF4' },
     otpBoxGap: { marginRight: 6 },
@@ -706,10 +697,10 @@ const styles = StyleSheet.create({
     // Password fields
     pwWrapper: {
         flexDirection: 'row', alignItems: 'center',
-        backgroundColor: '#F7FAFC', borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0',
+        backgroundColor: '#F7FAFC', borderRadius: 14, borderWidth: 1.5, borderColor: Colors.borderLight,
         paddingHorizontal: 16, paddingVertical: 10,
     },
-    pwInput: { flex: 1, fontSize: 15, color: '#2D3436' },
+    pwInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
     eyeBtn: { paddingLeft: 8 },
     eyeText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
     matchText: { fontSize: 11, marginTop: 4, fontWeight: '500' },
@@ -724,5 +715,5 @@ const styles = StyleSheet.create({
 
     resendBtn: { paddingVertical: 12, alignItems: 'center' },
     resendText: { color: Colors.primary, fontWeight: '600', fontSize: 13 },
-    resendDisabled: { color: '#B2BEC3' },
+    resendDisabled: { color: Colors.textPlaceholder },
 });

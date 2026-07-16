@@ -12,7 +12,6 @@ import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
 import { apiFetch } from '../lib/apiClient';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
-import { LeavesDecoration } from '../components/LeavesDecoration';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
 
@@ -344,23 +343,23 @@ const RoadmapNode = ({
                         shadowRadius: 10,
                         borderWidth: 0,
                     } : {
-                        backgroundColor: locked ? '#F1F5F9' : bgColor,
+                        backgroundColor: locked ? Colors.surfaceMuted : bgColor,
                         borderColor: locked ? '#CBD5E1' : color
                     }
                 ]}>
                     {completed ? (
-                        <Ionicons name="checkmark" size={id === 5 ? 30 : 26} color="#FFFFFF" />
+                        <Ionicons name="checkmark" size={id === 5 ? 30 : 26} color={Colors.surface} />
                     ) : locked ? (
-                        <Ionicons name="lock-closed" size={id === 5 ? 24 : 20} color="#94A3B8" />
+                        <Ionicons name="lock-closed" size={id === 5 ? 24 : 20} color={Colors.textMuted} />
                     ) : (
                         <Icon width={id === 5 ? 32 : 28} height={id === 5 ? 32 : 28} color={color} />
                     )}
                 </View>
-                
+
                 {/* Step Index Badge */}
                 <View style={[
                     styles.stepNumberBadge,
-                    { backgroundColor: locked ? '#94A3B8' : color }
+                    { backgroundColor: locked ? Colors.textMuted : color }
                 ]}>
                     <Text style={styles.stepNumberText}>{id}</Text>
                 </View>
@@ -377,7 +376,7 @@ const RoadmapNode = ({
                 isActive && !completed ? {
                     borderColor: color,
                     borderWidth: 1.5,
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: Colors.surface,
                     shadowColor: color,
                     shadowOpacity: 0.15,
                     shadowRadius: 8,
@@ -387,14 +386,14 @@ const RoadmapNode = ({
             ]}>
                 <Text style={[
                     styles.nodeLabelText,
-                    { color: locked ? '#64748B' : color }
+                    { color: locked ? Colors.iconMuted : color }
                 ]}>
                     {title}
                 </Text>
                 <Text style={[
                     styles.nodeSubtext,
                     completed && { color: color, fontWeight: '700' },
-                    locked && { color: '#94A3B8' }
+                    locked && { color: Colors.textMuted }
                 ]}>
                     {statusText}
                 </Text>
@@ -649,12 +648,6 @@ export default function DashboardScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-
-            {/* Ambient background decoration */}
-            <View style={styles.pageDecoration} pointerEvents="none">
-                <LeavesDecoration width={width * 1.4} height={width * 2.6} color={Colors.primary} />
-            </View>
-
             <ScrollView
                 contentContainerStyle={[
                     styles.scrollContent,
@@ -848,7 +841,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
     },
     pageDecoration: {
         position: 'absolute',
@@ -903,7 +896,7 @@ const styles = StyleSheet.create({
     greetingText: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#64748B',
+        color: Colors.iconMuted,
         letterSpacing: 0.8,
         marginTop: 16,
         marginBottom: 6,
@@ -1012,7 +1005,7 @@ const styles = StyleSheet.create({
     },
     roadmapSubtitle: {
         fontSize: 12,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         fontWeight: '500',
         marginBottom: 16,
     },
@@ -1053,7 +1046,7 @@ const styles = StyleSheet.create({
     },
     progressHeroSubtitle: {
         fontSize: 12,
-        color: '#64748B',
+        color: Colors.iconMuted,
         lineHeight: 17,
     },
     // Map Container
@@ -1099,7 +1092,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
     },
     nodeCircleCompleted: {
         backgroundColor: Colors.primary,
@@ -1124,15 +1117,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: '#FFFFFF',
+        borderColor: Colors.surface,
     },
     stepNumberText: {
-        color: '#FFFFFF',
+        color: Colors.surface,
         fontSize: 9,
         fontWeight: 'bold',
     },
     nodeLabel: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
@@ -1146,18 +1139,18 @@ const styles = StyleSheet.create({
     nodeLabelCompleted: {
         borderWidth: 1,
         borderColor: Colors.primary,
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
     },
     nodeLabelLocked: {
         backgroundColor: '#F8FAFC',
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         borderWidth: 1,
         opacity: 0.7,
     },
     nodeLabelActive: {
         borderColor: Colors.primary,
         borderWidth: 1.5,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         shadowColor: Colors.primary,
         shadowOpacity: 0.15,
         shadowRadius: 8,
@@ -1169,7 +1162,7 @@ const styles = StyleSheet.create({
     },
     nodeSubtext: {
         fontSize: 10,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         marginTop: 2,
     },
     // Pending-assignment banner

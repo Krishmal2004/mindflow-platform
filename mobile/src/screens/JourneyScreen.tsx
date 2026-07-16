@@ -9,14 +9,19 @@ import {
     RefreshControl,
     ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { apiFetch, clearApiCache } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
+import { cardShadow } from '../styles/shared';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
-import { LeavesDecoration } from '../components/LeavesDecoration';
+
+// Distinct from Calendar's sky accent / Profile's brand green — matches the
+// Weekly Whispers roadmap color on the Dashboard, since this screen is the
+// aggregate view across all roadmap activities.
+const JOURNEY_ACCENT = '#6366F1';
 
 const { width } = Dimensions.get('window');
 
@@ -78,7 +83,7 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
             onPress={() => setExpanded(prev => !prev)}
         >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
+                <View style={[styles.listIcon, { backgroundColor: Colors.primaryTint }]}>
                     <Ionicons name={icon} size={20} color={Colors.primary} />
                 </View>
                 <View style={styles.listContent}>
@@ -95,7 +100,7 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
                     )}
                 </View>
                 {isExpandable && (
-                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#94A3B8" />
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
                 )}
             </View>
             {isExpandable && expanded && (
@@ -201,9 +206,9 @@ export default function JourneyScreen() {
                 width={width - 72}
                 height={200}
                 chartConfig={{
-                    backgroundColor: '#ffffff',
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
+                    backgroundColor: Colors.surface,
+                    backgroundGradientFrom: Colors.surface,
+                    backgroundGradientTo: Colors.surface,
                     decimalPlaces: 0,
                     color: (opacity = 1) => color,
                     labelColor: (opacity = 1) => `rgba(45, 52, 54, ${opacity})`,
@@ -219,14 +224,11 @@ export default function JourneyScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <LeavesDecoration width={width} height={width} />
 
-            <SafeAreaView edges={['top', 'left', 'right']}>
-                <View style={styles.headerContainer}>
-                    <Text style={styles.title}>Your Journey</Text>
-                    <Text style={styles.subtitle}>Track your comprehensive progress</Text>
-                </View>
-            </SafeAreaView>
+            <ScreenHeader
+                title="Your Journey"
+                subtitle="Track your comprehensive progress"
+            />
 
             <ScrollView
                 style={styles.content}
@@ -330,21 +332,7 @@ export default function JourneyScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F8F9',
-    },
-    headerContainer: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#2D3436',
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 15,
-        color: '#636E72',
+        backgroundColor: Colors.background,
     },
     content: {
         flex: 1,
@@ -358,16 +346,12 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     statCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: Colors.surface,
         borderRadius: 24,
         padding: 16,
         flex: 1,
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+        ...cardShadow,
     },
     statValue: {
         fontSize: 18,
@@ -376,7 +360,7 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 11,
-        color: '#636E72',
+        color: Colors.textSecondary,
         marginTop: 6,
         fontWeight: '700',
         textAlign: 'center',
@@ -392,15 +376,15 @@ const styles = StyleSheet.create({
     },
     activeTab: {
         borderBottomWidth: 3,
-        borderBottomColor: Colors.primary,
+        borderBottomColor: JOURNEY_ACCENT,
     },
     tabText: {
         fontSize: 16,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         fontWeight: '700',
     },
     activeTabText: {
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     section: {
         paddingHorizontal: 24,
@@ -409,46 +393,38 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 15,
         fontWeight: '800',
-        color: '#2D3436',
+        color: Colors.textPrimary,
         marginBottom: 16,
     },
     noDataText: {
         fontStyle: 'italic',
-        color: '#94A3B8',
+        color: Colors.textMuted,
         textAlign: 'center',
         marginVertical: 16,
         fontWeight: '500',
     },
     metricCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: Colors.surface,
         borderRadius: 30,
         padding: 16,
         marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 12,
-        elevation: 2,
+        ...cardShadow,
     },
     cardHeader: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#2D3436',
+        color: Colors.textPrimary,
         marginBottom: 8,
         marginLeft: 4,
     },
     listItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: Colors.surface,
         padding: 16,
         borderRadius: 24,
         marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+        ...cardShadow,
     },
     listIcon: {
         width: 40,
@@ -464,11 +440,11 @@ const styles = StyleSheet.create({
     listTitle: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     listTime: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         marginTop: 4,
         fontWeight: '500',
     },
@@ -482,7 +458,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+        borderTopColor: Colors.surfaceMuted,
     },
     entryRow: {
         flexDirection: 'row',
@@ -491,7 +467,7 @@ const styles = StyleSheet.create({
     },
     entryText: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         fontWeight: '500',
     },
 });
