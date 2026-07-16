@@ -15,7 +15,9 @@ import ThriveTrackerScreen from '../screens/roadmap/ThriveTrackerScreen';
 import StressSnapshotScreen from '../screens/roadmap/StressSnapshotScreen';
 import MindfulMirrorScreen from '../screens/roadmap/MindfulMirrorScreen';
 import CompleteTaskScreen from '../screens/CompleteTaskScreen';
-import AboutMeScreen from '../screens/AboutMeScreen';
+import AboutMeFrontScreen from '../screens/aboutMe/AboutMe-Front';
+import AboutMeQuestionnaireScreen from '../screens/aboutMe/AboutMe-Questionnaire';
+import AboutMeViewScreen from '../screens/aboutMe/AboutMe-View';
 
 import { RootStackParamList } from '../types/navigation';
 
@@ -62,7 +64,9 @@ export default function AppNavigator() {
                 <Stack.Screen name="MindfulMirror" component={MindfulMirrorScreen} options={{ animation: 'slide_from_right' }} />
 
                 <Stack.Screen name="CompleteTask" component={CompleteTaskScreen} options={{ animation: 'fade' }} />
-                <Stack.Screen name="AboutMe" component={AboutMeScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="AboutMe" component={AboutMeFrontScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="AboutMeQuestionnaire" component={AboutMeQuestionnaireScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="AboutMeView" component={AboutMeViewScreen} options={{ animation: 'slide_from_right' }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

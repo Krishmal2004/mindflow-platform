@@ -20,4 +20,6 @@ export type RootStackParamList = {
         themeBgGrad?: readonly string[];
     };
     AboutMe: undefined;
+    AboutMeQuestionnaire: undefined;
+    AboutMeView: undefined;
 };
