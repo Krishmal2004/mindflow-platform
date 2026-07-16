@@ -97,7 +97,9 @@ export interface TableFilters {
 /** Escapes characters that are syntactically meaningful inside a PostgREST `.or()`
  * filter string, so search text can't break out of the intended filter clause. */
 function escapeOrValue(v: string): string {
-    return v.replace(/[,()]/g, '\\$&');
+    return v
+        .replace(/\\/g, '\\\\')
+        .replace(/[,()]/g, '\\$&');
 }
 
 /**
