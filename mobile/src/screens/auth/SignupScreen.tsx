@@ -179,8 +179,8 @@ export default function SignupScreen() {
 
                 <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
                     <SignupIllustration
-                        width={width * 0.56}
-                        height={width * 0.50}
+                        width={width * 0.42}
+                        height={width * 0.37}
                     />
                 </Animated.View>
             </View>

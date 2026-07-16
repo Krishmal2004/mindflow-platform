@@ -62,15 +62,15 @@ export default function CompleteTaskScreen() {
                 <LeavesDecoration width={width} height={width * 0.8} color={themeColor} />
             </View>
 
-            <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 }]} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.header}>
                     <Animated.View style={[styles.illustrationContainer, animatedIconStyle]}>
                         <Image
                             source={require('../../assets/greatJob.png')}
                             style={{
-                                width: width * 0.85,
-                                height: (width * 0.85 * 609) / 1026,
+                                width: width * 0.55,
+                                height: (width * 0.55 * 609) / 1026,
                                 resizeMode: 'contain',
                             }}
                         />
@@ -93,8 +93,6 @@ export default function CompleteTaskScreen() {
                         <Text style={styles.homeButtonText}>{buttonText}</Text>
                     </TouchableOpacity>
                 </Animated.View>
-
-                <View style={{ height: 40 }} />
             </ScrollView>
         </LinearGradient>
     );
@@ -111,39 +109,41 @@ const styles = StyleSheet.create({
         right: 0,
     },
     scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
         paddingHorizontal: 30,
         alignItems: 'center',
     },
     header: {
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 22,
     },
     textCenter: {
         alignItems: 'center',
     },
     illustrationContainer: {
-        marginBottom: 20,
+        marginBottom: 14,
         alignItems: 'center',
         justifyContent: 'center',
     },
     title: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#1E293B',
-        marginBottom: 10,
+        marginBottom: 8,
         textAlign: 'center',
     },
     message: {
-        fontSize: 16,
+        fontSize: 15,
         color: '#64748B',
         textAlign: 'center',
-        lineHeight: 24,
+        lineHeight: 22,
         paddingHorizontal: 16,
     },
     homeButton: {
-        paddingVertical: 18,
+        paddingVertical: 16,
         paddingHorizontal: 40,
-        borderRadius: 30,
+        borderRadius: 26,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.2,
         shadowRadius: 10,

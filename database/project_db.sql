@@ -1,8 +1,14 @@
 -- ==============================================================================
 -- Mindfulness Research App Database Schema
 -- ==============================================================================
--- This script sets up the complete database schema for the application.
--- It includes User Management, Core Features, Questionnaire System, and Calendar.
+-- This script rebuilds the entire database schema from scratch: section 0 drops
+-- every table/trigger/function this file owns, then sections 1-7 recreate
+-- everything fresh. It includes User Management, Core Features, Questionnaire
+-- System, Calendar, Push Notifications, and Permissions.
+--
+-- !! Running this script deletes all existing data in these tables. See the
+-- warning at the top of section 0 before running it against anything but a
+-- database you intend to fully rebuild. !!
 --
 -- GUIDELINES:
 -- 1. All tables have RLS enabled.
@@ -11,7 +17,51 @@
 -- 4. Shared functions and extensions are defined first.
 
 -- ==============================================================================
--- 0. EXTENSIONS & SHARED FUNCTIONS
+-- 0. RESET — DROP EVERYTHING THIS SCRIPT OWNS
+-- ==============================================================================
+-- !! DESTRUCTIVE !! Running this section deletes every row in every table below,
+-- permanently. This whole file is meant to be run against a database you intend to
+-- rebuild from scratch (fresh project, or a dev/test database you're OK wiping) —
+-- NOT pasted into a production SQL Editor without a backup/export first.
+--
+-- Scoped deliberately to only what the rest of this file creates: our own `public`
+-- tables/functions, plus the two triggers we attach to Supabase's `auth.users` table.
+-- `auth.users` (and the rest of the `auth`/`storage` schemas) belongs to Supabase's
+-- own Auth/Storage services and is never touched here — dropping it would break
+-- login for every existing account.
+--
+-- DROP TABLE ... CASCADE also removes that table's own triggers, RLS policies, and
+-- indexes automatically, so they don't need separate DROP statements.
+
+-- Triggers we placed on auth.users (auth.users itself is NOT dropped)
+DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_created_about_me ON auth.users;
+
+-- Our own tables (CASCADE clears their triggers/policies/indexes with them)
+DROP TABLE IF EXISTS push_tokens CASCADE;
+DROP TABLE IF EXISTS calendar_events CASCADE;
+DROP TABLE IF EXISTS questionnaire_wemwbs14_responses CASCADE;
+DROP TABLE IF EXISTS questionnaire_ffmq15_responses CASCADE;
+DROP TABLE IF EXISTS questionnaire_pss10_responses CASCADE;
+DROP TABLE IF EXISTS weekly_recordings CASCADE;
+DROP TABLE IF EXISTS voice_recordings CASCADE;
+DROP TABLE IF EXISTS daily_sliders CASCADE;
+DROP TABLE IF EXISTS about_me_profiles CASCADE;
+DROP TABLE IF EXISTS admins CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
+
+-- Standalone functions (trigger functions + RPCs). Names are unique in this schema,
+-- so no parameter-type list is needed; CASCADE covers anything still referencing them.
+DROP FUNCTION IF EXISTS public.submit_thrive_entry CASCADE;
+DROP FUNCTION IF EXISTS public.submit_mindful_entry CASCADE;
+DROP FUNCTION IF EXISTS public.submit_stress_entry CASCADE;
+DROP FUNCTION IF EXISTS public.increment_daily_video_seconds CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user_about_me CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user_profile CASCADE;
+DROP FUNCTION IF EXISTS public.update_updated_at_column CASCADE;
+
+-- ==============================================================================
+-- 1. EXTENSIONS & SHARED FUNCTIONS
 -- ==============================================================================
 
 -- Enable UUID extension for generating unique identifiers
@@ -28,7 +78,7 @@ END;
 $$ language 'plpgsql';
 
 -- ==============================================================================
--- 1. USER MANAGEMENT
+-- 2. USER MANAGEMENT
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -45,9 +95,28 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Trigger: Update updated_at
 DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
-CREATE TRIGGER update_profiles_updated_at 
-    BEFORE UPDATE ON profiles 
+CREATE TRIGGER update_profiles_updated_at
+    BEFORE UPDATE ON profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger: Auto-create a bare profiles row (blank username, blank research_id) on
+-- signup — a safety net so a user is never left without a profiles row even if the
+-- app-level upsert in authController.signup fails for some reason. authController
+-- fills in a real username via upsert immediately after (ON CONFLICT (id) DO UPDATE,
+-- so it updates this same row rather than inserting a second one); research_id stays
+-- NULL/blank until a researcher assigns it via the admin portal — signup never sets it.
+CREATE OR REPLACE FUNCTION public.handle_new_user_profile()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id) VALUES (new.id) ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_profile ON auth.users;
+CREATE TRIGGER on_auth_user_created_profile
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user_profile();
 
 -- RLS: profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -55,18 +124,18 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users see own, Admins see all" ON profiles;
 DROP POLICY IF EXISTS "Users can only access their own profile" ON profiles;
 
-CREATE POLICY "Users see own, Admins see all" 
-    ON profiles 
-    FOR SELECT 
+CREATE POLICY "Users see own, Admins see all"
+    ON profiles
+    FOR SELECT
     USING (
-        id = auth.uid() 
-        OR 
+        id = auth.uid()
+        OR
         EXISTS (SELECT 1 FROM admins WHERE id = auth.uid())
     );
 
-CREATE POLICY "Users can update own profile" 
-    ON profiles 
-    FOR UPDATE 
+CREATE POLICY "Users can update own profile"
+    ON profiles
+    FOR UPDATE
     USING (id = auth.uid());
 
 CREATE POLICY "Users can insert own profile"
@@ -128,8 +197,8 @@ CREATE TABLE IF NOT EXISTS about_me_profiles (
 
 -- Trigger: Update updated_at
 DROP TRIGGER IF EXISTS update_about_me_updated_at ON about_me_profiles;
-CREATE TRIGGER update_about_me_updated_at 
-    BEFORE UPDATE ON about_me_profiles 
+CREATE TRIGGER update_about_me_updated_at
+    BEFORE UPDATE ON about_me_profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger: Auto-create mostly empty about_me_profile on user signup
@@ -152,9 +221,9 @@ ALTER TABLE about_me_profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can only access their own about me profile" ON about_me_profiles;
 DROP POLICY IF EXISTS "Users see own, Admins see all" ON about_me_profiles;
 
-CREATE POLICY "Users see own, Admins see all" 
-    ON about_me_profiles 
-    FOR ALL 
+CREATE POLICY "Users see own, Admins see all"
+    ON about_me_profiles
+    FOR ALL
     USING (
         id = auth.uid()
         OR
@@ -162,7 +231,7 @@ CREATE POLICY "Users see own, Admins see all"
     );
 
 -- ==============================================================================
--- 2. CORE FEATURES (Mindfulness & Tracking)
+-- 3. CORE FEATURES (Mindfulness & Tracking)
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -174,7 +243,6 @@ CREATE TABLE IF NOT EXISTS daily_sliders (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     mindfulness_practice TEXT CHECK (mindfulness_practice IN ('yes', 'no')),
     practice_duration INTEGER,
-    practice_log TEXT,
     practice_location TEXT CHECK (practice_location IN ('At University', 'Outside University')),
     stress_level INTEGER CHECK (stress_level >= 1 AND stress_level <= 5),
     calm_before INTEGER CHECK (calm_before >= 1 AND calm_before <= 5),
@@ -184,7 +252,18 @@ CREATE TABLE IF NOT EXISTS daily_sliders (
     wake_up_time TEXT,
     sleep_quality INTEGER CHECK (sleep_quality >= 1 AND sleep_quality <= 5),
     video_play_seconds INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- One row per user per Sri Lanka calendar day (the study cohort's home timezone).
+    -- Cast goes through `AT TIME ZONE '+05:30'` (fixed offset, no DST, therefore
+    -- IMMUTABLE) rather than a bare `created_at::date`, which Postgres rejects in
+    -- generated columns because casting a timestamptz straight to date is
+    -- session-TimeZone-dependent (STABLE, not IMMUTABLE). "+05:30" follows ISO-8601
+    -- sign convention (positive = ahead of UTC), not the flipped POSIX convention
+    -- used for named "Etc/GMT+n" zones.
+    entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE '+05:30')::date) STORED,
+    -- Prevents duplicate daily entries per user per day when concurrent submits race
+    -- (e.g. double-tap or a client retry-on-timeout hitting submitDailyEntry/updateVideoProgress twice).
+    CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date)
 );
 
 -- RLS: daily_sliders
@@ -193,18 +272,18 @@ ALTER TABLE daily_sliders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can only access their own daily sliders data" ON daily_sliders;
 DROP POLICY IF EXISTS "Users see own, Admins see all" ON daily_sliders;
 
-CREATE POLICY "Users see own, Admins see all" 
-    ON daily_sliders 
-    FOR SELECT 
+CREATE POLICY "Users see own, Admins see all"
+    ON daily_sliders
+    FOR SELECT
     USING (
-        user_id = auth.uid() 
-        OR 
+        user_id = auth.uid()
+        OR
         EXISTS (SELECT 1 FROM admins WHERE id = auth.uid())
     );
 
-CREATE POLICY "Users can insert own daily sliders" 
-    ON daily_sliders 
-    FOR INSERT 
+CREATE POLICY "Users can insert own daily sliders"
+    ON daily_sliders
+    FOR INSERT
     WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "Users can update own daily sliders"
@@ -221,56 +300,6 @@ CREATE POLICY "Admins manage all daily sliders"
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_daily_sliders_user_id ON daily_sliders(user_id);
 CREATE INDEX IF NOT EXISTS idx_daily_sliders_created_at ON daily_sliders(created_at);
-
--- Prevents duplicate daily entries per user per day when concurrent submits race
--- (e.g. double-tap or a client retry-on-timeout hitting submitDailyEntry/updateVideoProgress twice).
--- Cast goes through `AT TIME ZONE '+05:30'` (Sri Lanka Standard Time — the study cohort's
--- home timezone; fixed offset, no DST, therefore IMMUTABLE) rather than a bare
--- `created_at::date`, which Postgres rejects in generated columns because casting a
--- timestamptz straight to date is session-TimeZone-dependent (STABLE, not IMMUTABLE).
--- "+05:30" here follows ISO-8601 sign convention (positive = ahead of UTC), not the
--- flipped POSIX convention used for named "Etc/GMT+n" zones.
-ALTER TABLE daily_sliders
-    ADD COLUMN IF NOT EXISTS entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE '+05:30')::date) STORED;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'daily_sliders_user_entry_date_unique'
-    ) THEN
-        ALTER TABLE daily_sliders
-            ADD CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date);
-    END IF;
-END $$;
-
--- Migrates a database provisioned before the switch above from UTC-midnight to Sri Lanka
--- local-midnight reset boundaries: the generated expression on an existing entry_date
--- column can't be altered in place, so this drops and recreates it (STORED, so every row
--- is recomputed from its real created_at — no data loss, just correct reclassification).
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'daily_sliders' AND column_name = 'entry_date'
-          AND generation_expression ILIKE '%UTC%'
-    ) THEN
-        ALTER TABLE daily_sliders DROP CONSTRAINT IF EXISTS daily_sliders_user_entry_date_unique;
-        ALTER TABLE daily_sliders DROP COLUMN entry_date;
-        ALTER TABLE daily_sliders
-            ADD COLUMN entry_date DATE GENERATED ALWAYS AS ((created_at AT TIME ZONE '+05:30')::date) STORED;
-        ALTER TABLE daily_sliders
-            ADD CONSTRAINT daily_sliders_user_entry_date_unique UNIQUE (user_id, entry_date);
-    END IF;
-END $$;
-
--- Replaces the separate mood/relaxation_level questions with a single "Right now I feel
--- calm" item asked twice (before and after the mindfulness practice step), and replaces
--- the free-text "what did you practice" picker with a two-option practice location.
-ALTER TABLE daily_sliders DROP COLUMN IF EXISTS mood;
-ALTER TABLE daily_sliders DROP COLUMN IF EXISTS relaxation_level;
-ALTER TABLE daily_sliders ADD COLUMN IF NOT EXISTS calm_before INTEGER CHECK (calm_before >= 1 AND calm_before <= 5);
-ALTER TABLE daily_sliders ADD COLUMN IF NOT EXISTS calm_after INTEGER CHECK (calm_after >= 1 AND calm_after <= 5);
-ALTER TABLE daily_sliders ADD COLUMN IF NOT EXISTS practice_location TEXT CHECK (practice_location IN ('At University', 'Outside University'));
 
 -- Function: increment_daily_video_seconds
 -- Purpose: Atomically inserts-or-increments today's video_play_seconds in a single
@@ -297,13 +326,18 @@ CREATE TABLE IF NOT EXISTS voice_recordings (
     file_url TEXT,          -- Public/Signed URL
     duration INTEGER,       -- Duration in seconds
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- Prevents duplicate weekly recordings per user per ISO week when concurrent
+    -- submits race (e.g. double-tap or a client retry-on-timeout hitting
+    -- submitWeeklyEntry twice). WeeklyService#submitWeeklyEntry upserts on this
+    -- constraint instead of a plain insert.
+    CONSTRAINT voice_recordings_user_week_year_unique UNIQUE (user_id, week_number, year)
 );
 
 -- Trigger: Update updated_at
 DROP TRIGGER IF EXISTS update_voice_recordings_updated_at ON voice_recordings;
-CREATE TRIGGER update_voice_recordings_updated_at 
-    BEFORE UPDATE ON voice_recordings 
+CREATE TRIGGER update_voice_recordings_updated_at
+    BEFORE UPDATE ON voice_recordings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- RLS: voice_recordings
@@ -312,18 +346,18 @@ ALTER TABLE voice_recordings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can only access their own voice recordings" ON voice_recordings;
 DROP POLICY IF EXISTS "Users see own, Admins see all" ON voice_recordings;
 
-CREATE POLICY "Users see own, Admins see all" 
-    ON voice_recordings 
-    FOR SELECT 
+CREATE POLICY "Users see own, Admins see all"
+    ON voice_recordings
+    FOR SELECT
     USING (
-        user_id = auth.uid() 
-        OR 
+        user_id = auth.uid()
+        OR
         EXISTS (SELECT 1 FROM admins WHERE id = auth.uid())
     );
 
-CREATE POLICY "Users can insert own recordings" 
-    ON voice_recordings 
-    FOR INSERT 
+CREATE POLICY "Users can insert own recordings"
+    ON voice_recordings
+    FOR INSERT
     WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "Users can update own recordings"
@@ -341,20 +375,6 @@ CREATE POLICY "Admins manage all voice recordings"
 CREATE INDEX IF NOT EXISTS idx_voice_recordings_user_id ON voice_recordings(user_id);
 CREATE INDEX IF NOT EXISTS idx_voice_recordings_week_year ON voice_recordings(week_number, year);
 
--- Prevents duplicate weekly recordings per user per ISO week when concurrent submits race
--- (e.g. double-tap or a client retry-on-timeout hitting submitWeeklyEntry twice) — mirrors
--- daily_sliders_user_entry_date_unique above. WeeklyService#submitWeeklyEntry upserts on
--- this constraint instead of a plain insert.
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'voice_recordings_user_week_year_unique'
-    ) THEN
-        ALTER TABLE voice_recordings
-            ADD CONSTRAINT voice_recordings_user_week_year_unique UNIQUE (user_id, week_number, year);
-    END IF;
-END $$;
-
 -- ------------------------------------------------------------------------------
 -- Table: weekly_recordings
 -- Purpose: Curated content (e.g., Youtube videos) distributed weekly to users.
@@ -365,13 +385,11 @@ CREATE TABLE IF NOT EXISTS weekly_recordings (
     title TEXT NOT NULL,
     youtube_id TEXT NOT NULL,
     description TEXT,
+    -- Which study arm this video is for ('ex'/'cg'), or NULL to show to everyone.
+    target_group TEXT CHECK (target_group IN ('ex', 'cg')),
     published_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- target_group: which study arm this video is for ('ex'/'cg'), or NULL to show to everyone.
-ALTER TABLE weekly_recordings
-ADD COLUMN IF NOT EXISTS target_group TEXT CHECK (target_group IN ('ex', 'cg'));
 
 -- RLS: weekly_recordings
 ALTER TABLE weekly_recordings ENABLE ROW LEVEL SECURITY;
@@ -381,12 +399,11 @@ CREATE POLICY "Users can access weekly recordings" ON weekly_recordings FOR SELE
 
 -- Index: week_no is the leading column, so this also covers plain week_no lookups.
 -- At most one video per group per week (NULL/group-agnostic rows are exempt, e.g. legacy Week 1 entry).
-DROP INDEX IF EXISTS idx_weekly_recordings_week_no;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_recordings_week_group ON weekly_recordings(week_no, target_group);
 
 
 -- ==============================================================================
--- 3. QUESTIONNAIRE SYSTEM (Specific Research Instruments)
+-- 4. QUESTIONNAIRE SYSTEM (Specific Research Instruments)
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -492,16 +509,15 @@ CREATE TABLE IF NOT EXISTS questionnaire_ffmq15_responses (
     q14 INTEGER NOT NULL CHECK (q14 BETWEEN 1 AND 5),
     q15 INTEGER NOT NULL CHECK (q15 BETWEEN 1 AND 5),
     duration INTEGER,
+    -- Facet scores computed application-side (mindfulService#submitMindfulEntry) at
+    -- submission time and stored directly here — never recomputed on read.
+    observing_score INTEGER,
+    describing_score INTEGER,
+    awareness_score INTEGER,
+    non_judging_score INTEGER,
+    non_reactivity_score INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
-ALTER TABLE questionnaire_ffmq15_responses
-ADD COLUMN IF NOT EXISTS observing_score INTEGER,
-ADD COLUMN IF NOT EXISTS describing_score INTEGER,
-ADD COLUMN IF NOT EXISTS awareness_score INTEGER,
-ADD COLUMN IF NOT EXISTS non_judging_score INTEGER,
-ADD COLUMN IF NOT EXISTS non_reactivity_score INTEGER;
-
 
 -- RLS: FFMQ-15
 ALTER TABLE questionnaire_ffmq15_responses ENABLE ROW LEVEL SECURITY;
@@ -653,7 +669,7 @@ $$ LANGUAGE plpgsql;
 
 
 -- ==============================================================================
--- 4. CALENDAR SYSTEM
+-- 5. CALENDAR SYSTEM
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -673,24 +689,16 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 
 -- Trigger: Update updated_at
 DROP TRIGGER IF EXISTS update_calendar_events_updated_at ON calendar_events;
-CREATE TRIGGER update_calendar_events_updated_at 
-    BEFORE UPDATE ON calendar_events 
+CREATE TRIGGER update_calendar_events_updated_at
+    BEFORE UPDATE ON calendar_events
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- RLS: calendar_events
+-- Global/shared events (no user_id column on this table — every participant sees the
+-- same calendar), so read access is intentionally unrestricted; only admins can write.
 ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
 
--- DROP POLICY IF EXISTS "All users can access calendar events" ON calendar_events;
--- DROP POLICY IF EXISTS "Authenticated users can insert events" ON calendar_events;
--- DROP POLICY IF EXISTS "Authenticated users can update their events" ON calendar_events;
--- DROP POLICY IF EXISTS "Authenticated users can delete their events" ON calendar_events;
-
--- Strict Policy: Public access (or restrict as needed later)
--- CREATE POLICY "Users manage own events" 
---     ON calendar_events 
---     FOR ALL 
---     USING (true);
-
+DROP POLICY IF EXISTS "Allow read access" ON calendar_events;
 CREATE POLICY "Allow read access"
     ON calendar_events
     FOR SELECT
@@ -707,7 +715,7 @@ CREATE INDEX IF NOT EXISTS idx_calendar_events_event_date ON calendar_events(eve
 
 
 -- ==============================================================================
--- 5. PUSH NOTIFICATIONS
+-- 6. PUSH NOTIFICATIONS
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
@@ -744,7 +752,7 @@ CREATE POLICY "Users manage own push tokens"
 CREATE INDEX IF NOT EXISTS idx_push_tokens_user_id ON push_tokens(user_id);
 
 -- ==============================================================================
--- 6. PERMISSIONS
+-- 7. PERMISSIONS
 -- ==============================================================================
 
 -- Grant Usage Permissions
@@ -754,7 +762,7 @@ GRANT ALL ON TABLE daily_sliders TO authenticated;
 GRANT ALL ON TABLE voice_recordings TO authenticated;
 GRANT ALL ON TABLE weekly_recordings TO authenticated;
 
--- New Questionnaire Tables
+-- Questionnaire Tables
 GRANT ALL ON TABLE questionnaire_pss10_responses TO authenticated;
 GRANT ALL ON TABLE questionnaire_ffmq15_responses TO authenticated;
 GRANT ALL ON TABLE questionnaire_wemwbs14_responses TO authenticated;
@@ -767,7 +775,6 @@ GRANT USAGE, SELECT ON SEQUENCE daily_sliders_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE voice_recordings_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE weekly_recordings_id_seq TO authenticated;
 
--- New Sequences
 GRANT USAGE, SELECT ON SEQUENCE questionnaire_pss10_responses_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE questionnaire_ffmq15_responses_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE questionnaire_wemwbs14_responses_id_seq TO authenticated;

@@ -23,8 +23,8 @@ Detailed onboarding questionnaire, one row per user.
 
 ### `daily_sliders`
 One row per daily check-in.
-- `id`, `user_id`, `mindfulness_practice` (`yes`/`no`), `practice_duration`, `practice_log` (free text, not an enum), `stress_level`/`mood`/`sleep_quality`/`relaxation_level` (all `1–5`, DB-constrained), `feelings` (free text, not an enum), `sleep_start_time`, `wake_up_time`, `video_play_seconds`, `created_at`.
-- `practice_log` and `feelings` option lists live entirely in `mobile/src/screens/roadmap/DailySlidersScreen.tsx` — changing them is a frontend-only change.
+- `id`, `user_id`, `mindfulness_practice` (`yes`/`no`), `practice_duration`, `practice_location`, `stress_level`/`calm_before`/`calm_after`/`sleep_quality` (all `1–5`, DB-constrained), `feelings` (free text, not an enum), `sleep_start_time`, `wake_up_time`, `video_play_seconds`, `created_at`.
+- `feelings` option list lives entirely in `mobile/src/screens/roadmap/DailySlidersScreen.tsx` — changing it is a frontend-only change. (`practice_log` was a retired free-text column, now dropped from the schema.)
 
 ### `voice_recordings`
 Metadata for the "Weekly Whispers" voice-journal audio (the file itself lives in Cloudflare R2).

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
+    View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
     ActivityIndicator, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -48,6 +48,22 @@ export default function AboutMeQuestionnaireScreen() {
     const [otherHobby, setOtherHobby] = useState('');
     const [otherCultural, setOtherCultural] = useState('');
 
+    // Validation/error popup — same PopupModal-driven pattern as the roadmap screens,
+    // instead of the plain OS Alert.alert.
+    const [popup, setPopup] = useState<{
+        visible: boolean;
+        type: 'success' | 'error' | 'warning' | 'info';
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+    }>({ visible: false, type: 'warning', title: '', message: '' });
+
+    const showPopup = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string, onConfirm?: () => void) => {
+        setPopup({ visible: true, type, title, message, onConfirm });
+    };
+
+    const hidePopup = () => setPopup(prev => ({ ...prev, visible: false }));
+
     // Android hardware back would otherwise silently discard in-progress answers.
     const hasUnsavedProgress = JSON.stringify(data) !== JSON.stringify(EMPTY_ABOUT_ME_DATA) || selectedHobbies.length > 0;
     const exitWithoutSaving = useCallback(() => navigation.goBack(), [navigation]);
@@ -88,11 +104,26 @@ export default function AboutMeQuestionnaireScreen() {
                 if (profile.cultural_background && !culturalBackgrounds.includes(profile.cultural_background)) {
                     setOtherCultural(profile.cultural_background);
                 }
-                setData(prev => ({
-                    ...prev,
-                    ...profile,
-                    age: profile.age ? Number(profile.age) : null
-                }));
+                setData(prev => {
+                    const merged: AboutMeData = {
+                        ...prev,
+                        ...profile,
+                        age: profile.age ? Number(profile.age) : null,
+                    };
+                    // The DB row is created with NULL columns (signup trigger, before the
+                    // user fills anything in), and `profile` above is an untyped API
+                    // response — any not-yet-filled text field can come back as `null`,
+                    // not `''`. Normalize those back to the empty string so every string
+                    // field is always a real string, matching AboutMeData's type and
+                    // keeping .trim()/TextInput usage below safe.
+                    (Object.keys(EMPTY_ABOUT_ME_DATA) as (keyof AboutMeData)[]).forEach((key) => {
+                        if (key === 'age' || key === 'is_completed') return;
+                        if (merged[key] == null) {
+                            (merged as any)[key] = '';
+                        }
+                    });
+                    return merged;
+                });
                 if (profile.is_completed) setDeclarationChecked(true);
             }
         } catch (error) {
@@ -102,56 +133,37 @@ export default function AboutMeQuestionnaireScreen() {
         }
     };
 
+    // Single source of truth for "is this step's required data filled in" — used both
+    // to gray out Next/Submit live as the user types/selects, and (via validateStep
+    // below) to surface a specific message if pressed anyway right as it goes invalid.
+    const getStepError = (step: number): { title: string; message: string } | null => {
+        if (step === 0) {
+            if (!data.university_id.trim()) return { title: "Required Field", message: "Please enter your University ID." };
+            if (!data.education_level) return { title: "Required Field", message: "Please select your Education Level." };
+            if (!data.faculty) return { title: "Required Field", message: "Please select your Faculty." };
+            if (!data.major_field_of_study) return { title: "Required Field", message: "Please select your Major." };
+        } else if (step === 1) {
+            if (!data.age || isNaN(data.age) || data.age <= 0 || data.age > 120) return { title: "Required Field", message: "Please enter a valid Age." };
+            if (!data.living_situation) return { title: "Required Field", message: "Please select your Living Situation." };
+            if (!data.family_background.trim()) return { title: "Required Field", message: "Please describe your Family Background." };
+            if (!data.cultural_background) return { title: "Required Field", message: "Please select your Cultural Background." };
+        } else if (step === 2) {
+            if (selectedHobbies.length === 0) return { title: "Required Field", message: "Please select at least one Hobby." };
+            if (!data.why_mindflow.trim()) return { title: "Required Field", message: "Please share your Previous Experience." };
+            if (!declarationChecked) return { title: "Declaration Required", message: "Please confirm that your information is accurate before submitting." };
+        }
+        return null;
+    };
+
+    const isStepValid = (step: number): boolean => getStepError(step) === null;
+
     // Validates only the fields belonging to one wizard step, so Next can catch a
     // missing answer before moving on instead of only surfacing it at final submit.
     const validateStep = (step: number): boolean => {
-        if (step === 0) {
-            if (!data.university_id.trim()) {
-                Alert.alert("Required Field", "Please enter your University ID.");
-                return false;
-            }
-            if (!data.education_level) {
-                Alert.alert("Required Field", "Please select your Education Level.");
-                return false;
-            }
-            if (!data.faculty) {
-                Alert.alert("Required Field", "Please select your Faculty.");
-                return false;
-            }
-            if (!data.major_field_of_study) {
-                Alert.alert("Required Field", "Please select your Major.");
-                return false;
-            }
-        } else if (step === 1) {
-            if (!data.age || isNaN(data.age) || data.age <= 0 || data.age > 120) {
-                Alert.alert("Required Field", "Please enter a valid Age.");
-                return false;
-            }
-            if (!data.living_situation) {
-                Alert.alert("Required Field", "Please select your Living Situation.");
-                return false;
-            }
-            if (!data.family_background.trim()) {
-                Alert.alert("Required Field", "Please describe your Family Background.");
-                return false;
-            }
-            if (!data.cultural_background) {
-                Alert.alert("Required Field", "Please select your Cultural Background.");
-                return false;
-            }
-        } else if (step === 2) {
-            if (selectedHobbies.length === 0) {
-                Alert.alert("Required Field", "Please select at least one Hobby.");
-                return false;
-            }
-            if (!data.why_mindflow.trim()) {
-                Alert.alert("Required Field", "Please share your Previous Experience.");
-                return false;
-            }
-            if (!declarationChecked) {
-                Alert.alert("Declaration Required", "Please confirm that your information is accurate before submitting.");
-                return false;
-            }
+        const error = getStepError(step);
+        if (error) {
+            showPopup('warning', error.title, error.message);
+            return false;
         }
         return true;
     };
@@ -173,9 +185,9 @@ export default function AboutMeQuestionnaireScreen() {
             const token = await getAuthToken();
 
             if (!token) {
-                Alert.alert('Session Expired', 'Please login again to continue.', [
-                    { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
-                ]);
+                showPopup('error', 'Session Expired', 'Please login again to continue.', () => {
+                    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                });
                 return;
             }
 
@@ -212,7 +224,7 @@ export default function AboutMeQuestionnaireScreen() {
                 throw new Error(err.error || 'Failed to update');
             }
         } catch (error: any) {
-            Alert.alert("Error", error.message);
+            showPopup('error', 'Error', error.message || 'Failed to submit. Please try again.');
         } finally {
             setSaving(false);
         }
@@ -535,15 +547,20 @@ export default function AboutMeQuestionnaireScreen() {
                                     </TouchableOpacity>
                                 )}
                                 {formStep < TOTAL_STEPS - 1 ? (
-                                    <TouchableOpacity style={styles.nextButton} onPress={goNext} activeOpacity={0.8}>
+                                    <TouchableOpacity
+                                        style={[styles.nextButton, !isStepValid(formStep) && styles.nextButtonDisabled]}
+                                        onPress={goNext}
+                                        disabled={!isStepValid(formStep)}
+                                        activeOpacity={0.8}
+                                    >
                                         <Text style={styles.nextButtonText}>Next</Text>
                                         <Ionicons name="arrow-forward" size={18} color={Colors.surface} />
                                     </TouchableOpacity>
                                 ) : (
                                     <TouchableOpacity
                                         onPress={save}
-                                        disabled={saving || !declarationChecked || data.is_completed}
-                                        style={[styles.nextButton, (saving || !declarationChecked || data.is_completed) && styles.nextButtonDisabled]}
+                                        disabled={saving || data.is_completed || !isStepValid(2)}
+                                        style={[styles.nextButton, (saving || data.is_completed || !isStepValid(2)) && styles.nextButtonDisabled]}
                                         activeOpacity={0.8}
                                     >
                                         {saving ? (
@@ -573,6 +590,16 @@ export default function AboutMeQuestionnaireScreen() {
                             setShowSuccessModal(false);
                             navigation.replace('AboutMeView');
                         }}
+                    />
+
+                    <PopupModal
+                        visible={popup.visible}
+                        type={popup.type}
+                        themeColor={ABOUT_ME_ACCENT}
+                        title={popup.title}
+                        message={popup.message}
+                        onClose={hidePopup}
+                        onConfirm={popup.onConfirm}
                     />
                 </ScrollView>
             </KeyboardAvoidingView>
