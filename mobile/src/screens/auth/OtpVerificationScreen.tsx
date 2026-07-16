@@ -19,7 +19,7 @@ import { PanelWave } from '../../components/PanelWave';
 import { LogoBlock } from '../../components/LogoBlock';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { getPostAuthRoute } from '../../lib/postAuthRoute';
-import { setAuthToken } from '../../lib/apiClient';
+import { setSession } from '../../lib/apiClient';
 
 const { width, height } = Dimensions.get('window');
 const CODE_LENGTH = 8;
@@ -169,7 +169,7 @@ export default function OtpVerificationScreen() {
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Verification failed');
             showNotification('success', 'Email Verified Successfully!');
-            if (result.session?.access_token) await setAuthToken(result.session.access_token);
+            if (result.session?.access_token) await setSession(result.session);
             await AsyncStorage.setItem('isLoggedIn', 'true');
             if (result.user?.user_metadata?.full_name) await AsyncStorage.setItem('userName', result.user.user_metadata.full_name);
             const dest = await getPostAuthRoute();

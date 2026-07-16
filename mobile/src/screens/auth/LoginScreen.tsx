@@ -16,7 +16,8 @@ import { PanelWave } from '../../components/PanelWave';
 import { LogoBlock } from '../../components/LogoBlock';
 import { getPostAuthRoute } from '../../lib/postAuthRoute';
 import { AUTH_ENDPOINTS } from '../../config/api';
-import { setAuthToken } from '../../lib/apiClient';
+import { setSession, setAuthToken } from '../../lib/apiClient';
+import { PasswordResetModal } from '../../components/PasswordResetModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,6 +48,7 @@ export default function LoginScreen() {
     const [keyboardVisible, setKeyboardVisible] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [headerHeight, setHeaderHeight] = useState(0);
+    const [resetVisible, setResetVisible] = useState(false);
     const activeOffsetRef = useRef(0);
 
     const handleFocus = (offset: number) => {
@@ -109,7 +111,10 @@ export default function LoginScreen() {
             }
             await AsyncStorage.setItem('isLoggedIn', 'true');
             if (result.session && result.session.access_token) {
-                await setAuthToken(result.session.access_token);
+                // setSession (not setAuthToken) so the refresh_token is persisted too —
+                // without it, the app force-logs the user out the moment the short-lived
+                // access token expires, since there's nothing to silently refresh it with.
+                await setSession(result.session);
             } else if (result.token) {
                 await setAuthToken(result.token);
             }
@@ -204,6 +209,10 @@ export default function LoginScreen() {
                                 </TouchableOpacity>
                             </View>
 
+                            <TouchableOpacity onPress={() => setResetVisible(true)} style={styles.forgotButton}>
+                                <Text style={styles.forgotText}>Forgot password?</Text>
+                            </TouchableOpacity>
+
                             <TouchableOpacity
                                 style={[styles.loginButton, loading && { opacity: 0.6 }]}
                                 onPress={handleLogin}
@@ -235,6 +244,14 @@ export default function LoginScreen() {
                 message={notificationMessage}
                 visible={notificationVisible}
                 onHide={() => setNotificationVisible(false)}
+            />
+
+            <PasswordResetModal
+                visible={resetVisible}
+                onClose={() => setResetVisible(false)}
+                onSuccess={() => showNotification('success', 'Password updated — log in with your new password.')}
+                initialEmail={email}
+                emailEditable
             />
         </View>
     );
@@ -284,6 +301,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     input: { fontSize: 16, color: '#2D3436' },
+    forgotButton: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4 },
+    forgotText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
     loginButton: {
         backgroundColor: Colors.primary,
         borderRadius: 30,

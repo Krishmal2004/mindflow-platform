@@ -18,9 +18,8 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 
-// Distinct from Calendar's sky accent / Profile's brand green — matches the
-// Weekly Whispers roadmap color on the Dashboard, since this screen is the
-// aggregate view across all roadmap activities.
+
+
 const JOURNEY_ACCENT = '#6366F1';
 
 const { width } = Dimensions.get('window');
@@ -120,6 +119,7 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
 };
 
 export default function JourneyScreen() {
+
     const [dailyData, setDailyData] = useState<DailySliderData[]>([]);
     const [weeklyData, setWeeklyData] = useState<QuestionnaireResponse[]>([]);
     const [pss10Data, setPss10Data] = useState<QuestionnaireResponse[]>([]);
@@ -181,10 +181,6 @@ export default function JourneyScreen() {
     }, [pss10Data, ffmq15Data, wemwbs14Data]);
 
     // --- Chart Data ---
-    // metricCard sits inside `section` (paddingHorizontal 24) and has its own
-    // padding: 16 — the chart must be sized to that actual interior width, not
-    // the screen width, or react-native-chart-kit renders past the card's
-    // rounded edges and its y-axis labels get cramped against the plot line.
     const CHART_WIDTH = width - 24 * 2 - 16 * 2;
 
     const getChartData = (metric: 'stress' | 'sleep' | 'relax') => {
@@ -202,7 +198,6 @@ export default function JourneyScreen() {
         };
     };
 
-    // Most recent entry's raw value for the small "latest reading" badge in each card header.
     const getLatestValue = (metric: 'stress' | 'sleep' | 'relax'): number | null => {
         if (dailyData.length === 0) return null;
         const latest = dailyData[0];
@@ -364,6 +359,7 @@ export default function JourneyScreen() {
                     </View>
                 )}
             </ScrollView>
+
         </View>
     );
 }

@@ -20,11 +20,9 @@ import { cardShadow, cardShadowElevated } from '../styles/shared';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { StatusBar } from 'expo-status-bar';
 
-// Matches the existing "Events" legend/indicator color on this screen, distinct
-// from Journey's indigo and Profile's brand green.
+
 const CALENDAR_ACCENT = '#0EA5E9';
 
-// Interface
 interface CalendarEvent {
     id: number;
     title: string;
@@ -37,6 +35,7 @@ interface CalendarEvent {
 }
 
 export default function CalendarScreen() {
+
     const [currentDate, setCurrentDate] = useState(new Date());
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +84,6 @@ export default function CalendarScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        // Force-bypasses the response cache, or pull-to-refresh would silently serve the same cached data and appear to do nothing.
         await fetchCalendarEvents(true);
         setRefreshing(false);
     };
@@ -358,6 +356,7 @@ export default function CalendarScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
         </View>
     );
 }
