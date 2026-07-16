@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,11 +9,17 @@ import { apiFetch } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { JourneyIcons } from '../../components/JourneyIcons';
-import { ABOUT_ME_ACCENT, ABOUT_ME_ACCENT_TINT, AboutMeData, EMPTY_ABOUT_ME_DATA } from './shared';
+import { PanelWave } from '../../components/PanelWave';
+import { ABOUT_ME_ACCENT, ABOUT_ME_ACCENT_TINT, AboutMeData, EMPTY_ABOUT_ME_DATA, panelStyles } from './shared';
 
-// Read-only summary of a completed About Me profile. Redirects back to the
-// Front screen if the profile somehow isn't complete yet (e.g. a stale link),
-// since there's nothing to show here otherwise.
+const AboutMeIllustration = require('../../../assets/aboutMe.png') as number;
+
+// Read-only summary of a completed About Me profile, styled like the Front
+// screen: the same illustration above the same rounded blue panel, with the
+// three info sections listed inside it as one scrollable page instead of a
+// separate plain-background layout. Redirects back to Front if the profile
+// somehow isn't complete yet (e.g. a stale link), since there's nothing to
+// show here otherwise.
 export default function AboutMeViewScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [loading, setLoading] = useState(true);
@@ -53,108 +59,124 @@ export default function AboutMeViewScreen() {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
+            <View style={panelStyles.loadingContainer}>
                 <ActivityIndicator size="large" color={ABOUT_ME_ACCENT} />
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
+        <View style={panelStyles.container}>
             <StatusBar style="dark" />
-            <ScreenHeader title="About Me" subtitle="Your research profile" onBack={goBack} />
+            <ScreenHeader title="About Me" onBack={goBack} />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-                <View style={styles.successBanner}>
-                    <Ionicons name="checkmark-circle" size={24} color={ABOUT_ME_ACCENT} />
-                    <Text style={styles.successBannerText}>Profile Completed</Text>
-                </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[panelStyles.content, panelStyles.contentFullHeight]}>
+                <View style={panelStyles.introWrap}>
+                    <View style={panelStyles.introIllustrationWrap}>
+                        <Image source={AboutMeIllustration} style={styles.illustration} resizeMode="contain" />
+                    </View>
 
-                {/* Card 1: Academic Profile */}
-                <View style={styles.groupedCard}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardHeaderIconContainer}>
-                            <JourneyIcons.Academic width={18} height={18} color={ABOUT_ME_ACCENT} />
-                        </View>
-                        <Text style={styles.cardHeaderText}>Academic Profile</Text>
-                    </View>
-                    <View style={styles.cardBody}>
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>University ID</Text>
-                            <Text style={styles.infoFieldValue}>{data.university_id || 'Not Specified'}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Education Level</Text>
-                            <Text style={styles.infoFieldValue}>{data.education_level || 'Not Specified'}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Faculty</Text>
-                            <Text style={styles.infoFieldValue}>{data.faculty || 'Not Specified'}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Major / Field of Study</Text>
-                            <Text style={styles.infoFieldValue}>{data.major_field_of_study || 'Not Specified'}</Text>
-                        </View>
-                    </View>
-                </View>
+                    <View style={panelStyles.introPanel}>
+                        <Text style={panelStyles.introPanelTitle}>YOUR PROFILE</Text>
+                        <Text style={panelStyles.introPanelSubtitle}>PROFILE COMPLETED</Text>
 
-                {/* Card 2: Personal Profile */}
-                <View style={styles.groupedCard}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardHeaderIconContainer}>
-                            <JourneyIcons.Person width={18} height={18} color={ABOUT_ME_ACCENT} />
+                        <View style={styles.successBanner}>
+                            <Ionicons name="checkmark-circle" size={24} color={ABOUT_ME_ACCENT} />
+                            <Text style={styles.successBannerText}>Thanks for sharing your profile</Text>
                         </View>
-                        <Text style={styles.cardHeaderText}>Personal Profile</Text>
-                    </View>
-                    <View style={styles.cardBody}>
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Age</Text>
-                            <Text style={styles.infoFieldValue}>{data.age?.toString() || 'Not Specified'}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Living Situation</Text>
-                            <Text style={styles.infoFieldValue}>{data.living_situation || 'Not Specified'}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Cultural Background</Text>
-                            <Text style={styles.infoFieldValue}>{data.cultural_background || 'Not Specified'}</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Family Background</Text>
-                            <Text style={styles.infoFieldValueText}>{data.family_background || 'Not Specified'}</Text>
-                        </View>
-                    </View>
-                </View>
 
-                {/* Card 3: Interests & MindFlow Journey */}
-                <View style={styles.groupedCard}>
-                    <View style={styles.cardHeader}>
-                        <View style={styles.cardHeaderIconContainer}>
-                            <JourneyIcons.Star width={18} height={18} color={ABOUT_ME_ACCENT} />
+                        {/* Card 1: Academic Profile */}
+                        <View style={styles.groupedCard}>
+                            <View style={styles.cardHeader}>
+                                <View style={styles.cardHeaderIconContainer}>
+                                    <JourneyIcons.Academic width={18} height={18} color={ABOUT_ME_ACCENT} />
+                                </View>
+                                <Text style={styles.cardHeaderText}>Academic Profile</Text>
+                            </View>
+                            <View style={styles.cardBody}>
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>University ID</Text>
+                                    <Text style={styles.infoFieldValue}>{data.university_id || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Education Level</Text>
+                                    <Text style={styles.infoFieldValue}>{data.education_level || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Faculty</Text>
+                                    <Text style={styles.infoFieldValue}>{data.faculty || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Major / Field of Study</Text>
+                                    <Text style={styles.infoFieldValue}>{data.major_field_of_study || 'Not Specified'}</Text>
+                                </View>
+                            </View>
                         </View>
-                        <Text style={styles.cardHeaderText}>Interests & Experience</Text>
-                    </View>
-                    <View style={styles.cardBody}>
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Hobbies & Interests</Text>
-                            <Text style={styles.infoFieldValueText}>{data.hobbies_interests || 'None Specified'}</Text>
+
+                        {/* Card 2: Personal Profile */}
+                        <View style={styles.groupedCard}>
+                            <View style={styles.cardHeader}>
+                                <View style={styles.cardHeaderIconContainer}>
+                                    <JourneyIcons.Person width={18} height={18} color={ABOUT_ME_ACCENT} />
+                                </View>
+                                <Text style={styles.cardHeaderText}>Personal Profile</Text>
+                            </View>
+                            <View style={styles.cardBody}>
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Age</Text>
+                                    <Text style={styles.infoFieldValue}>{data.age?.toString() || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Living Situation</Text>
+                                    <Text style={styles.infoFieldValue}>{data.living_situation || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Cultural Background</Text>
+                                    <Text style={styles.infoFieldValue}>{data.cultural_background || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Family Background</Text>
+                                    <Text style={styles.infoFieldValueText}>{data.family_background || 'Not Specified'}</Text>
+                                </View>
+                            </View>
                         </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Personal Goals</Text>
-                            <Text style={styles.infoFieldValueText}>{data.personal_goals || 'Not Specified'}</Text>
+
+                        {/* Card 3: Interests & MindFlow Journey */}
+                        <View style={styles.groupedCard}>
+                            <View style={styles.cardHeader}>
+                                <View style={styles.cardHeaderIconContainer}>
+                                    <JourneyIcons.Star width={18} height={18} color={ABOUT_ME_ACCENT} />
+                                </View>
+                                <Text style={styles.cardHeaderText}>Interests & Experience</Text>
+                            </View>
+                            <View style={styles.cardBody}>
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Hobbies & Interests</Text>
+                                    <Text style={styles.infoFieldValueText}>{data.hobbies_interests || 'None Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Personal Goals</Text>
+                                    <Text style={styles.infoFieldValueText}>{data.personal_goals || 'Not Specified'}</Text>
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={styles.infoField}>
+                                    <Text style={styles.infoFieldLabel}>Previous Experience</Text>
+                                    <Text style={styles.infoFieldValueText}>{data.why_mindflow || 'Not Specified'}</Text>
+                                </View>
+                            </View>
                         </View>
-                        <View style={styles.divider} />
-                        <View style={styles.infoField}>
-                            <Text style={styles.infoFieldLabel}>Previous Experience</Text>
-                            <Text style={styles.infoFieldValueText}>{data.why_mindflow || 'Not Specified'}</Text>
-                        </View>
+
+                        {/* Room below the last card so PanelWave (bottom: 0 of the panel) has space to show instead of butting straight up against the card. */}
+                        <View style={styles.cardsEndSpacer} />
+
+                        <PanelWave />
                     </View>
                 </View>
             </ScrollView>
@@ -163,34 +185,31 @@ export default function AboutMeViewScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    content: {
-        padding: 16,
-        paddingBottom: 60,
+    illustration: {
+        width: 400,
+        height: 278,
     },
     successBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: ABOUT_ME_ACCENT_TINT,
+        backgroundColor: Colors.surface,
         padding: 16,
         borderRadius: 16,
         marginBottom: 16,
+        width: '100%',
         gap: 12,
     },
     successBannerText: {
-        color: ABOUT_ME_ACCENT,
+        flex: 1,
+        color: Colors.textPrimary,
         fontWeight: '700',
-        fontSize: 15,
+        fontSize: 14,
+    },
+    cardsEndSpacer: {
+        height: 35,
     },
     groupedCard: {
+        width: '100%',
         backgroundColor: Colors.surface,
         borderRadius: 20,
         marginBottom: 16,

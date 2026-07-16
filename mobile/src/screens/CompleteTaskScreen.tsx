@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions, Image } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Colors } from '../constants/colors';
@@ -64,8 +63,15 @@ export default function CompleteTaskScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.header}>
-                    <Animated.View style={[styles.successIcon, { shadowColor: themeColor }, animatedIconStyle]}>
-                        <Ionicons name="checkmark-circle" size={80} color={themeColor} />
+                    <Animated.View style={[styles.illustrationContainer, animatedIconStyle]}>
+                        <Image
+                            source={require('../../assets/greatJob.png')}
+                            style={{
+                                width: width * 0.85,
+                                height: (width * 0.85 * 609) / 1026,
+                                resizeMode: 'contain',
+                            }}
+                        />
                     </Animated.View>
                     <Animated.View style={[styles.textCenter, animatedContentStyle]}>
                         <Text style={styles.title}>{title}</Text>
@@ -114,15 +120,10 @@ const styles = StyleSheet.create({
     textCenter: {
         alignItems: 'center',
     },
-    successIcon: {
+    illustrationContainer: {
         marginBottom: 20,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-        backgroundColor: '#FFF',
-        borderRadius: 50,
-        padding: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     title: {
         fontSize: 28,
