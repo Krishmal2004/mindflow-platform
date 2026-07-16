@@ -82,24 +82,28 @@ function BreathingIllustration({ color, isControlGroup }: { color: string; isCon
 
     return (
         <View style={styles.illustrationContainer}>
-            {/* Soft pulsing halo ripples */}
-            <Animated.View style={[
-                styles.illustrationPulse,
-                {
-                    transform: [{ scale: pulseScale1 }],
-                    opacity: pulseOpacity1,
-                    backgroundColor: color,
-                }
-            ]} />
-            <Animated.View style={[
-                styles.illustrationPulse,
-                {
-                    transform: [{ scale: pulseScale2 }],
-                    opacity: 0.08,
-                    backgroundColor: color,
-                }
-            ]} />
-            
+            {/* Soft pulsing halo ripples — control group only; the .ex illustration is the plain image alone. */}
+            {isControlGroup && (
+                <>
+                    <Animated.View style={[
+                        styles.illustrationPulse,
+                        {
+                            transform: [{ scale: pulseScale1 }],
+                            opacity: pulseOpacity1,
+                            backgroundColor: color,
+                        }
+                    ]} />
+                    <Animated.View style={[
+                        styles.illustrationPulse,
+                        {
+                            transform: [{ scale: pulseScale2 }],
+                            opacity: 0.08,
+                            backgroundColor: color,
+                        }
+                    ]} />
+                </>
+            )}
+
             {isControlGroup ? (
                 /* Advanced Mountain Journey illustration for the control group (.cg) */
                 <Svg width={100} height={100} viewBox="0 0 64 64" style={{ zIndex: 1 }}>
