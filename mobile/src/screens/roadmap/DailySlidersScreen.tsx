@@ -407,14 +407,12 @@ export default function DailySlidersScreen() {
             clearApiCache('/api/roadmap/daily');
             clearApiCache('/api/journey');
 
-            showPopup('success', 'Great Job Today!', 'You have successfully done the Daily Task. See you tomorrow again!', () => {
-                navigation.replace('CompleteTask', {
-                    title: 'Great Job Today!',
-                    message: 'You have successfully done the Daily Task. See you tomorrow again!',
-                    isDaily: true,
-                    themeColor: Colors.primary,
-                    themeBgGrad: [THEME_BG, '#FFF9F0', '#FFFFFF']
-                });
+            navigation.replace('CompleteTask', {
+                title: 'Great Job Today!',
+                message: 'You have successfully done the Daily Task. See you tomorrow again!',
+                isDaily: true,
+                themeColor: Colors.primary,
+                themeBgGrad: [THEME_BG, '#FFF9F0', '#FFFFFF']
             });
 
         } catch (error: any) {

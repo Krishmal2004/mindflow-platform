@@ -14,12 +14,20 @@ import { apiFetch } from '../lib/apiClient';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
+import { LogoBlock } from '../components/LogoBlock';
 
 
 const { width } = Dimensions.get('window');
 
-const AppIcon = require('../../assets/app-icon.png') as number;
 const EgGroupImage = require('../../assets/egGroup.png') as number;
+const CgGroupImage = require('../../assets/cgGroup.png') as number;
+
+// Sampled directly from egGroup.png's own palette (most common non-white pixels),
+// so the experimental-group (.ex) Dashboard accent visually matches its illustration
+// instead of reusing the generic brand green.
+const EG_BLUE = '#466FB5';       // mid blue — icon/illustration accent
+const EG_BLUE_DARK = '#214081'; // deep navy — label/author text
+const EG_BLUE_LIGHT = '#C4D2EC'; // pale blue — card border/tint
 
 type DashboardNavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -46,118 +54,15 @@ function ProgressRing({ size = 88, strokeWidth = 9, progress, color }: { size?: 
     );
 }
 
-// Custom-designed pulsing breathing illustration representing calming mindfulness (lotus for .ex, sun for .cg)
-function BreathingIllustration({ color, isControlGroup }: { color: string; isControlGroup: boolean }) {
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-        const pulse = Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 1.25,
-                    duration: 3200,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 1.0,
-                    duration: 3200,
-                    useNativeDriver: true,
-                })
-            ])
-        );
-        pulse.start();
-        return () => pulse.stop();
-    }, [pulseAnim]);
-
-    const pulseScale1 = pulseAnim;
-    const pulseOpacity1 = pulseAnim.interpolate({
-        inputRange: [1, 1.25],
-        outputRange: [0.25, 0.02]
-    });
-
-    const pulseScale2 = pulseAnim.interpolate({
-        inputRange: [1, 1.25],
-        outputRange: [0.75, 1.1]
-    });
-
+// Group illustration: a plain themed image per research arm, no decoration around it.
+function BreathingIllustration({ isControlGroup }: { isControlGroup: boolean }) {
     return (
         <View style={styles.illustrationContainer}>
-            {/* Soft pulsing halo ripples — control group only; the .ex illustration is the plain image alone. */}
-            {isControlGroup && (
-                <>
-                    <Animated.View style={[
-                        styles.illustrationPulse,
-                        {
-                            transform: [{ scale: pulseScale1 }],
-                            opacity: pulseOpacity1,
-                            backgroundColor: color,
-                        }
-                    ]} />
-                    <Animated.View style={[
-                        styles.illustrationPulse,
-                        {
-                            transform: [{ scale: pulseScale2 }],
-                            opacity: 0.08,
-                            backgroundColor: color,
-                        }
-                    ]} />
-                </>
-            )}
-
-            {isControlGroup ? (
-                /* Advanced Mountain Journey illustration for the control group (.cg) */
-                <Svg width={100} height={100} viewBox="0 0 64 64" style={{ zIndex: 1 }}>
-                    <Defs>
-                        <SvgLinearGradient id="mountGradLight" x1="0" y1="0" x2="1" y2="1">
-                            <Stop offset="0" stopColor={color} stopOpacity="1" />
-                            <Stop offset="1" stopColor={color} stopOpacity="0.4" />
-                        </SvgLinearGradient>
-                        <SvgLinearGradient id="mountGradDark" x1="0" y1="0" x2="1" y2="1">
-                            <Stop offset="0" stopColor={color} stopOpacity="0.8" />
-                            <Stop offset="1" stopColor={color} stopOpacity="0.2" />
-                        </SvgLinearGradient>
-                    </Defs>
-                    {/* Background Soft circle track */}
-                    <Circle cx="32" cy="32" r="23" fill={color} opacity="0.08" />
-                    
-                    {/* Left/Light side of mountain peak */}
-                    <Path
-                        d="M32 14 L12 48 L32 48 Z"
-                        fill="url(#mountGradLight)"
-                    />
-                    {/* Right/Shadow side of mountain peak */}
-                    <Path
-                        d="M32 14 L32 48 L48 48 Z"
-                        fill="url(#mountGradDark)"
-                    />
-                    {/* Smaller foreground peak */}
-                    <Path
-                        d="M20 30 L8 48 L28 48 Z"
-                        fill="url(#mountGradLight)"
-                        opacity="0.6"
-                    />
-                    
-                    {/* Winding path going up the mountain */}
-                    <Path
-                        d="M16 48 Q 24 44 26 40 Q 28 36 32 36 Q 36 36 34 32"
-                        fill="none"
-                        stroke="#FFFFFF"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        opacity="0.85"
-                    />
-                    
-                    {/* Glowing guiding star at the summit */}
-                    <Circle cx="32" cy="11" r="2.5" fill="#FFFFFF" />
-                </Svg>
-            ) : (
-                /* Experimental-group (.ex) illustration, replacing the previous lotus SVG. */
-                <Image
-                    source={EgGroupImage}
-                    style={{ width: 108, height: 68, zIndex: 1 }}
-                    resizeMode="contain"
-                />
-            )}
+            <Image
+                source={isControlGroup ? CgGroupImage : EgGroupImage}
+                style={styles.groupIllustrationImage}
+                resizeMode="contain"
+            />
         </View>
     );
 }
@@ -197,7 +102,7 @@ const FUN_FACTS = [
     { text: "There are more stars in the universe than grains of sand on every beach on Earth.", author: "Fun Fact" },
     { text: "A group of flamingos is called a 'flamboyance'.", author: "Fun Fact" },
     { text: "The shortest war in history lasted just 38 minutes.", author: "Fun Fact" },
-    { text: "Sharks are older than trees — they've been around for roughly 400 million years.", author: "Fun Fact" },
+    { text: "Sharks are older than trees - they've been around for roughly 400 million years.", author: "Fun Fact" },
     { text: "Wombat poop is cube-shaped.", author: "Fun Fact" },
     { text: "The Great Wall of China isn't actually visible from space with the naked eye.", author: "Fun Fact" },
     { text: "A single fluffy cloud can weigh more than a million pounds.", author: "Fun Fact" },
@@ -208,7 +113,7 @@ const FUN_FACTS = [
     { text: "Cows form close friendships and get stressed when separated from their best friend.", author: "Fun Fact" },
     { text: "The unicorn is Scotland's national animal.", author: "Fun Fact" },
     { text: "Butterflies can taste with their wings.", author: "Fun Fact" },
-    { text: "Most of a cat's day — about 70% of its life — is spent sleeping.", author: "Fun Fact" },
+    { text: "Most of a cat's day - about 70% of its life — is spent sleeping.", author: "Fun Fact" },
 ];
 
 // Roadmap steps configuration
@@ -385,12 +290,6 @@ export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
     const insets = useSafeAreaInsets();
 
-    const getFormattedDate = () => {
-        const today = new Date();
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        return `${days[today.getDay()]}, ${months[today.getMonth()]} ${today.getDate()}`;
-    };
     const [userName, setUserName] = useState('User');
     const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
     const [currentFactIndex, setCurrentFactIndex] = useState(0);
@@ -635,29 +534,13 @@ export default function DashboardScreen() {
                 showsVerticalScrollIndicator={false}
             >
 
-                {/* ── Header: brand row + premium greeting card ── */}
+                {/* ── Header: logo block + premium greeting card ── */}
                 <Animated.View style={[styles.header, { opacity: mountFade }]}>
-                    {/* Brand row */}
-                    <View style={styles.brandRow}>
-                        <View style={styles.brandLeft}>
-                            <Image source={AppIcon} style={styles.brandLogo} resizeMode="contain" />
-                            <View style={styles.brandNameRow}>
-                                <Text style={styles.brandThin}>Mind</Text>
-                                <Text style={styles.brandBold}>Flow</Text>
-                            </View>
-                        </View>
-                        <View style={styles.dateContainer}>
-                            <Ionicons name="calendar-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
-                            <Text style={styles.dateText}>{getFormattedDate()}</Text>
-                        </View>
-                    </View>
+                    <LogoBlock />
 
                     {/* Centered Hero Illustration & Greeting */}
                     <View style={styles.greetingHeaderBlock}>
-                        <BreathingIllustration
-                            color={isControlGroup ? '#D97706' : Colors.primary}
-                            isControlGroup={isControlGroup}
-                        />
+                        <BreathingIllustration isControlGroup={isControlGroup} />
                         <Text style={styles.greetingText}>Hello, {userName}</Text>
                         <Text style={styles.questionText}>
                             {isUnassigned
@@ -702,11 +585,11 @@ export default function DashboardScreen() {
                             <Ionicons
                                 name={isControlGroup ? 'bulb-outline' : 'sparkles-outline'}
                                 size={15}
-                                color={isControlGroup ? '#D97706' : Colors.primary}
+                                color={isControlGroup ? '#D97706' : EG_BLUE}
                             />
                             <Text style={[
                                 styles.quoteLabelText,
-                                { color: isControlGroup ? '#B45309' : '#5C836A' }
+                                { color: isControlGroup ? '#B45309' : EG_BLUE_DARK }
                             ]}>
                                 {isControlGroup ? 'Daily Fun Fact' : "Today's Inspiration"}
                             </Text>
@@ -719,7 +602,7 @@ export default function DashboardScreen() {
                             </Text>
                             <Text style={[
                                 styles.quoteAuthor,
-                                { color: isControlGroup ? '#B45309' : '#5C836A' }
+                                { color: isControlGroup ? '#B45309' : EG_BLUE_DARK }
                             ]}>
                                 — {isControlGroup ? currentFact.author : currentQuote.author}
                             </Text>
@@ -839,39 +722,6 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         zIndex: 1,
     },
-    brandRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 14,
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    brandLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    brandLogo: {
-        width: 48,
-        height: 48,
-        marginRight: 10,
-    },
-    brandNameRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-    },
-    brandThin: {
-        fontSize: 24,
-        fontWeight: '300',
-        color: '#3A3A3A',
-        letterSpacing: 0.4,
-    },
-    brandBold: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: Colors.primary,
-        letterSpacing: 0.4,
-    },
     greetingText: {
         fontSize: 14,
         fontWeight: '600',
@@ -902,28 +752,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         position: 'relative',
     },
-    illustrationPulse: {
-        position: 'absolute',
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-    },
-    dateContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F3F8F4',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: '#E4EFE7',
-    },
-    dateText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: Colors.primary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+    groupIllustrationImage: {
+        width: 188,
+        height: 138,
     },
     // ── Premium Quote / Fact Card ──
     quoteCard: {
@@ -938,8 +769,8 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     quoteCardEx: {
-        backgroundColor: '#FCFDFD',
-        borderColor: '#E6EFEA',
+        backgroundColor: '#FAFBFE',
+        borderColor: EG_BLUE_LIGHT,
     },
     quoteCardControl: {
         backgroundColor: '#FCFAF6',

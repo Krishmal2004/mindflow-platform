@@ -177,14 +177,12 @@ export default function StressSnapshotScreen() {
             clearApiCache('/api/roadmap/stress');
             clearApiCache('/api/journey');
 
-            showPopup('success', 'Response Saved!', 'Thank you for tracking your stress levels today.', () => {
-                navigation.replace('CompleteTask', {
-                    title: 'Great Job!',
-                    message: 'You have successfully completed the Stress Snapshot. See you in 1 month!',
-                    buttonText: 'Back to Dashboard',
-                    themeColor: Colors.primary,
-                    themeBgGrad: [THEME_BG, '#FCEEEB', '#FFFFFF']
-                });
+            navigation.replace('CompleteTask', {
+                title: 'Great Job!',
+                message: 'You have successfully completed the Stress Snapshot. See you in 1 month!',
+                buttonText: 'Back to Dashboard',
+                themeColor: Colors.primary,
+                themeBgGrad: [THEME_BG, '#FCEEEB', '#FFFFFF']
             });
 
         } catch (error: any) {

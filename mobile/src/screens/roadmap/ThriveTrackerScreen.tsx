@@ -176,14 +176,12 @@ export default function ThriveTrackerScreen() {
             clearApiCache('/api/roadmap/thrive');
             clearApiCache('/api/journey');
 
-            showPopup('success', 'Response Saved!', 'Thank you for tracking your wellbeing today.', () => {
-                navigation.replace('CompleteTask', {
-                    title: 'Great Job!',
-                    message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!',
-                    buttonText: 'Back to Dashboard',
-                    themeColor: Colors.primary,
-                    themeBgGrad: ['#E6F4EA', '#F1F7F3', '#FFFFFF']
-                });
+            navigation.replace('CompleteTask', {
+                title: 'Great Job!',
+                message: 'You have successfully completed the Thrive Tracker. See you in 2 weeks!',
+                buttonText: 'Back to Dashboard',
+                themeColor: Colors.primary,
+                themeBgGrad: ['#E6F4EA', '#F1F7F3', '#FFFFFF']
             });
 
         } catch (error: any) {

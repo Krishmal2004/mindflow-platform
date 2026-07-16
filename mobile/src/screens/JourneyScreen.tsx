@@ -181,6 +181,12 @@ export default function JourneyScreen() {
     }, [pss10Data, ffmq15Data, wemwbs14Data]);
 
     // --- Chart Data ---
+    // metricCard sits inside `section` (paddingHorizontal 24) and has its own
+    // padding: 16 — the chart must be sized to that actual interior width, not
+    // the screen width, or react-native-chart-kit renders past the card's
+    // rounded edges and its y-axis labels get cramped against the plot line.
+    const CHART_WIDTH = width - 24 * 2 - 16 * 2;
+
     const getChartData = (metric: 'stress' | 'sleep' | 'relax') => {
         const recent = dailyData.slice(0, 7).reverse();
         if (recent.length === 0) return { labels: [], datasets: [{ data: [] }] };
@@ -196,30 +202,56 @@ export default function JourneyScreen() {
         };
     };
 
+    // Most recent entry's raw value for the small "latest reading" badge in each card header.
+    const getLatestValue = (metric: 'stress' | 'sleep' | 'relax'): number | null => {
+        if (dailyData.length === 0) return null;
+        const latest = dailyData[0];
+        return metric === 'stress' ? latest.stress_level : metric === 'sleep' ? latest.sleep_quality : latest.calm_after;
+    };
+
     const renderChart = (metric: 'stress' | 'sleep' | 'relax', color: string) => {
         const data = getChartData(metric);
-        if (data.datasets[0].data.length === 0) return <Text style={styles.noDataText}>No data yet</Text>;
+        if (data.datasets[0].data.length === 0) {
+            return (
+                <View style={styles.noDataBox}>
+                    <Ionicons name="analytics-outline" size={22} color={Colors.textMuted} />
+                    <Text style={styles.noDataText}>No data yet</Text>
+                </View>
+            );
+        }
 
         return (
             <LineChart
                 data={data}
-                width={width - 72}
-                height={200}
+                width={CHART_WIDTH}
+                height={180}
+                fromZero
+                segments={5}
+                yAxisInterval={1}
                 chartConfig={{
                     backgroundColor: Colors.surface,
                     backgroundGradientFrom: Colors.surface,
                     backgroundGradientTo: Colors.surface,
                     decimalPlaces: 0,
                     color: (opacity = 1) => color,
-                    labelColor: (opacity = 1) => `rgba(45, 52, 54, ${opacity})`,
-                    style: { borderRadius: 24 },
-                    propsForDots: { r: '5', strokeWidth: '2', stroke: color }
+                    labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
+                    propsForBackgroundLines: { stroke: Colors.surfaceMuted },
+                    style: { borderRadius: 16 },
+                    propsForDots: { r: '4', strokeWidth: '2', stroke: color },
                 }}
                 bezier
-                style={{ marginVertical: 8, borderRadius: 24 }}
+                withInnerLines={true}
+                withOuterLines={false}
+                style={styles.chart}
             />
         );
     };
+
+    const METRICS: { key: 'stress' | 'sleep' | 'relax'; title: string; color: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+        { key: 'stress', title: 'Stress Levels', color: '#EF4444', icon: 'flame-outline' },
+        { key: 'sleep', title: 'Sleep Quality', color: '#3B82F6', icon: 'moon-outline' },
+        { key: 'relax', title: 'Calm (After Practice)', color: Colors.primary, icon: 'leaf-outline' },
+    ];
 
     return (
         <View style={styles.container}>
@@ -273,20 +305,27 @@ export default function JourneyScreen() {
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>Daily Metrics (Last 7 Entries)</Text>
 
-                                <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Stress Levels</Text>
-                                    {renderChart('stress', '#EF4444')}
-                                </View>
-
-                                <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Sleep Quality</Text>
-                                    {renderChart('sleep', '#3B82F6')}
-                                </View>
-
-                                <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Calm (After Practice)</Text>
-                                    {renderChart('relax', Colors.primary)}
-                                </View>
+                                {METRICS.map(({ key, title, color, icon }) => {
+                                    const latest = getLatestValue(key);
+                                    return (
+                                        <View key={key} style={styles.metricCard}>
+                                            <View style={styles.metricCardHeader}>
+                                                <View style={styles.metricTitleRow}>
+                                                    <View style={[styles.metricIconCircle, { backgroundColor: `${color}1A` }]}>
+                                                        <Ionicons name={icon} size={15} color={color} />
+                                                    </View>
+                                                    <Text style={styles.cardHeader}>{title}</Text>
+                                                </View>
+                                                {latest !== null && (
+                                                    <View style={[styles.metricBadge, { backgroundColor: `${color}1A` }]}>
+                                                        <Text style={[styles.metricBadgeText, { color }]}>{latest}/5</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            {renderChart(key, color)}
+                                        </View>
+                                    );
+                                })}
                             </View>
                         )}
 
@@ -400,22 +439,57 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         color: Colors.textMuted,
         textAlign: 'center',
-        marginVertical: 16,
+        marginTop: 8,
         fontWeight: '500',
+    },
+    noDataBox: {
+        height: 180,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     metricCard: {
         backgroundColor: Colors.surface,
-        borderRadius: 30,
+        borderRadius: 24,
         padding: 16,
-        marginBottom: 20,
+        marginBottom: 16,
+        overflow: 'hidden',
         ...cardShadow,
+    },
+    metricCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    metricTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    metricIconCircle: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    metricBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    metricBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
     },
     cardHeader: {
         fontSize: 14,
         fontWeight: '700',
         color: Colors.textPrimary,
-        marginBottom: 8,
-        marginLeft: 4,
+    },
+    chart: {
+        marginTop: 8,
+        borderRadius: 16,
     },
     listItem: {
         flexDirection: 'row',

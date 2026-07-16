@@ -182,14 +182,12 @@ export default function MindfulMirrorScreen() {
             clearApiCache('/api/roadmap/mindful');
             clearApiCache('/api/journey');
 
-            showPopup('success', 'Reflection Saved!', 'Thank you for taking a moment to reflect on your mindfulness journey.', () => {
-                navigation.replace('CompleteTask', {
-                    title: 'Great Job!',
-                    message: 'You have successfully completed the Mindful Mirror. See you in 1 month!',
-                    buttonText: 'Back to Dashboard',
-                    themeColor: Colors.primary,
-                    themeBgGrad: [THEME_BG, '#E6F2F0', '#FFFFFF']
-                });
+            navigation.replace('CompleteTask', {
+                title: 'Great Job!',
+                message: 'You have successfully completed the Mindful Mirror. See you in 1 month!',
+                buttonText: 'Back to Dashboard',
+                themeColor: Colors.primary,
+                themeBgGrad: [THEME_BG, '#E6F2F0', '#FFFFFF']
             });
 
         } catch (error: any) {

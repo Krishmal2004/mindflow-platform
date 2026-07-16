@@ -45,6 +45,7 @@ export default function LoginScreen() {
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
     const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [headerHeight, setHeaderHeight] = useState(0);
     const activeOffsetRef = useRef(0);
 
@@ -59,7 +60,9 @@ export default function LoginScreen() {
         fadeAnim.value = withTiming(1, { duration: 800 });
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
 
-        const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+        const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+            const kh = e.endCoordinates.height;
+            setKeyboardHeight(kh);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(true);
             setTimeout(() => {
@@ -67,6 +70,7 @@ export default function LoginScreen() {
             }, 100);
         });
         const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(false);
             scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -220,6 +224,9 @@ export default function LoginScreen() {
                         {/* Wave decoration at bottom of panel */}
                         <PanelWave />
                     </Animated.View>
+                    
+                    {/* Bottom spacer to allow scrolling the card to the top */}
+                    <View style={{ height: keyboardHeight }} />
                 </ScrollView>
             </KeyboardAvoidingView>
 

@@ -63,6 +63,7 @@ export default function SignupScreen() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     const [touched, setTouched] = useState({ name: false, email: false, password: false, confirm: false });
     const [errors, setErrors] = useState({ name: '', email: '', password: '', confirm: '' });
@@ -87,7 +88,9 @@ export default function SignupScreen() {
         fadeAnim.value = withTiming(1, { duration: 800 });
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
 
-        const show = Keyboard.addListener('keyboardDidShow', () => {
+        const show = Keyboard.addListener('keyboardDidShow', (e) => {
+            const kh = e.endCoordinates.height;
+            setKeyboardHeight(kh);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(true);
             setTimeout(() => {
@@ -95,6 +98,7 @@ export default function SignupScreen() {
             }, 100);
         });
         const hide = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(false);
             scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -353,6 +357,9 @@ export default function SignupScreen() {
                         {/* Wave decoration at bottom of panel */}
                         <PanelWave />
                     </Animated.View>
+                    
+                    {/* Bottom spacer to allow scrolling the card to the top */}
+                    <View style={{ height: keyboardHeight }} />
                 </ScrollView>
             </KeyboardAvoidingView>
 

@@ -301,26 +301,24 @@ export default function WeeklyWhispersScreen() {
             clearApiCache('/api/roadmap/weekly');
             clearApiCache('/api/journey');
 
-            showPopup('success', 'Success!', 'Your voice recording has been submitted successfully.', () => {
-                navigation.dispatch(
-                    CommonActions.reset({
-                        index: 1,
-                        routes: [
-                            { name: 'MainTabs' },
-                            {
-                                name: 'CompleteTask',
-                                params: {
-                                    title: 'Great Job!',
-                                    message: 'Your voice recording has been submitted successfully. See you next week!',
-                                    buttonText: 'Back to Journey',
-                                    themeColor: Colors.primary,
-                                    themeBgGrad: [THEME_BG, '#E0E7FF', '#FFFFFF']
-                                }
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 1,
+                    routes: [
+                        { name: 'MainTabs' },
+                        {
+                            name: 'CompleteTask',
+                            params: {
+                                title: 'Great Job!',
+                                message: 'Your voice recording has been submitted successfully. See you next week!',
+                                buttonText: 'Back to Journey',
+                                themeColor: Colors.primary,
+                                themeBgGrad: [THEME_BG, '#E0E7FF', '#FFFFFF']
                             }
-                        ],
-                    })
-                );
-            });
+                        }
+                    ],
+                })
+            );
 
         } catch (error: any) {
             console.error('Submission processing error:', error);

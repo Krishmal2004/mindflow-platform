@@ -17,9 +17,11 @@ interface ScreenHeaderProps {
 // used to be copy-pasted (with drifting styles) into each screen individually.
 export function ScreenHeader({ title, subtitle, onBack }: ScreenHeaderProps) {
     if (onBack) {
-        // Mirrors the roadmap screens' (e.g. Mindful Mirror) header: a floating white
-        // circular back button with a soft shadow, title sitting next to it rather
-        // than centered — no card background, divider line, or color accent.
+        // Mirrors the roadmap screens' (e.g. Mindful Mirror) floating white circular
+        // back button with a soft shadow — no card background, divider line, or
+        // color accent. Title/subtitle are centered: the middle block is flex: 1
+        // between two equal-width (40px) fixed elements, so it centers within the
+        // whole row rather than merely sitting next to the back button.
         return (
             <SafeAreaView edges={['top', 'left', 'right']}>
                 <View style={styles.backHeader}>
@@ -65,8 +67,8 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.surface,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
     },
-    backTitleBlock: { alignItems: 'flex-start' },
+    backTitleBlock: { flex: 1, alignItems: 'center' },
     backTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
-    backSubtitle: { fontSize: 11, color: Colors.iconMuted, fontWeight: '500', letterSpacing: 0.5, marginTop: 2 },
+    backSubtitle: { fontSize: 11, color: Colors.iconMuted, fontWeight: '500', letterSpacing: 0.5, marginTop: 2, textAlign: 'center' },
     backSpacer: { width: 40 },
 });

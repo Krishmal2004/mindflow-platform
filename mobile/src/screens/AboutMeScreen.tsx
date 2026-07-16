@@ -9,7 +9,8 @@ import {
     TextInput,
     ActivityIndicator,
     KeyboardAvoidingView,
-    Platform
+    Platform,
+    Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -23,10 +24,14 @@ import { cardShadow } from '../styles/shared';
 import { PopupModal } from '../components/PopupModal';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { SignupIllustration } from '../components/SignupIllustration';
 import { PanelWave } from '../components/PanelWave';
 
-const ABOUT_ME_ACCENT = '#0D9488';
+const AboutMeIllustration = require('../../assets/aboutMe.png') as number;
+// Light blue identity for this screen (matches the intro panel's #E3F2FD tone)
+// instead of the app's default sage green — used everywhere on this screen in
+// place of the shared Colors.primary / Colors.primaryTint tokens.
+const ABOUT_ME_ACCENT = '#3B82F6';
+const ABOUT_ME_ACCENT_TINT = '#E8F1FE';
 
 // Types
 interface AboutMeData {
@@ -286,7 +291,7 @@ export default function AboutMeScreen() {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={Colors.primary} />
+                <ActivityIndicator size="large" color={ABOUT_ME_ACCENT} />
             </View>
         );
     }
@@ -312,11 +317,17 @@ export default function AboutMeScreen() {
                 style={{ flex: 1 }}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[
+                        styles.content,
+                        !data.is_completed && currentStep === 'intro' && styles.contentIntro,
+                    ]}
+                >
                 {data.is_completed && !showSuccessModal ? (
                     <View style={styles.readOnlyContainer}>
                         <View style={styles.successBanner}>
-                            <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                            <Ionicons name="checkmark-circle" size={24} color={ABOUT_ME_ACCENT} />
                             <Text style={styles.successBannerText}>Profile Completed</Text>
                         </View>
 
@@ -324,7 +335,7 @@ export default function AboutMeScreen() {
                         <View style={styles.groupedCard}>
                             <View style={styles.cardHeader}>
                                 <View style={styles.cardHeaderIconContainer}>
-                                    <JourneyIcons.Academic width={18} height={18} color={Colors.primary} />
+                                    <JourneyIcons.Academic width={18} height={18} color={ABOUT_ME_ACCENT} />
                                 </View>
                                 <Text style={styles.cardHeaderText}>Academic Profile</Text>
                             </View>
@@ -355,7 +366,7 @@ export default function AboutMeScreen() {
                         <View style={styles.groupedCard}>
                             <View style={styles.cardHeader}>
                                 <View style={styles.cardHeaderIconContainer}>
-                                    <JourneyIcons.Person width={18} height={18} color={Colors.primary} />
+                                    <JourneyIcons.Person width={18} height={18} color={ABOUT_ME_ACCENT} />
                                 </View>
                                 <Text style={styles.cardHeaderText}>Personal Profile</Text>
                             </View>
@@ -386,7 +397,7 @@ export default function AboutMeScreen() {
                         <View style={styles.groupedCard}>
                             <View style={styles.cardHeader}>
                                 <View style={styles.cardHeaderIconContainer}>
-                                    <JourneyIcons.Star width={18} height={18} color={Colors.primary} />
+                                    <JourneyIcons.Star width={18} height={18} color={ABOUT_ME_ACCENT} />
                                 </View>
                                 <Text style={styles.cardHeaderText}>Interests & Experience</Text>
                             </View>
@@ -409,12 +420,9 @@ export default function AboutMeScreen() {
                         </View>
                     </View>
                 ) : currentStep === 'intro' ? (
-                    // Mirrors SignupScreen's layout: hero illustration above a rounded
-                    // blue panel (same #E3F2FD tone as Signup's bottomPanel) with a
-                    // caps title/subtitle pair, an info card, the CTA, and a bottom wave.
                     <View style={styles.introWrap}>
                         <View style={styles.introIllustrationWrap}>
-                            <SignupIllustration width={180} height={160} />
+                            <Image source={AboutMeIllustration} style={styles.introIllustration} resizeMode="contain" />
                         </View>
 
                         <View style={styles.introPanel}>
@@ -448,23 +456,11 @@ export default function AboutMeScreen() {
                     </View>
                 ) : (
                     <>
-                        <View style={styles.helpCard}>
-                            <View style={styles.helpCardIcon}>
-                                <Ionicons name="information-circle" size={22} color="#0284C7" />
-                            </View>
-                            <View style={styles.helpCardContent}>
-                                <Text style={styles.helpTitle}>Help us know you better</Text>
-                                <Text style={styles.helpText}>
-                                    Please provide accurate and truthful information. This helps us personalise your MindFlow experience.
-                                </Text>
-                            </View>
-                        </View>
-
                         {/* CARD 1: ACADEMIC DETAILS */}
                         <View style={styles.groupedFormCard}>
                             <View style={styles.formCardHeader}>
                                 <View style={styles.formCardIconWrap}>
-                                    <JourneyIcons.Academic width={20} height={20} color={Colors.primary} />
+                                    <JourneyIcons.Academic width={20} height={20} color={ABOUT_ME_ACCENT} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.formCardHeaderText}>Academic Details</Text>
@@ -561,7 +557,7 @@ export default function AboutMeScreen() {
                         <View style={styles.groupedFormCard}>
                             <View style={styles.formCardHeader}>
                                 <View style={styles.formCardIconWrap}>
-                                    <JourneyIcons.Person width={20} height={20} color={Colors.primary} />
+                                    <JourneyIcons.Person width={20} height={20} color={ABOUT_ME_ACCENT} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.formCardHeaderText}>Personal Profile</Text>
@@ -674,7 +670,7 @@ export default function AboutMeScreen() {
                         <View style={styles.groupedFormCard}>
                             <View style={styles.formCardHeader}>
                                 <View style={styles.formCardIconWrap}>
-                                    <JourneyIcons.Star width={20} height={20} color={Colors.primary} />
+                                    <JourneyIcons.Star width={20} height={20} color={ABOUT_ME_ACCENT} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.formCardHeaderText}>Goals & Hobbies</Text>
@@ -785,7 +781,7 @@ export default function AboutMeScreen() {
                 <PopupModal
                     visible={showSuccessModal}
                     type="success"
-                    themeColor={Colors.primary}
+                    themeColor={ABOUT_ME_ACCENT}
                     title="Profile Completed!"
                     message="Thank you for sharing your information. Your profile is now set up."
                     buttonText="Continue"
@@ -819,25 +815,30 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 60,
     },
-    // Intro step (illustration + blue panel + "Fill Form" gate, before the form
-    // shows) — deliberately mirrors SignupScreen's hero-illustration-over-a-
-    // rounded-blue-panel layout (same #E3F2FD tone, same caps title/subtitle,
-    // same bottom wave) for visual consistency with the rest of the auth/onboarding flow.
+    contentIntro: {
+        flexGrow: 1,
+        paddingBottom: 0,
+    },
     introWrap: {
+        flex: 1,
         marginHorizontal: -16, // bleeds the panel to the screen edges like Signup's bottomPanel
         alignItems: 'center',
     },
     introIllustrationWrap: {
         alignItems: 'center',
+        marginTop: 12,
         marginBottom: 8,
     },
+    introIllustration: {
+        width: 400,
+        height: 278,
+    },
     introPanel: {
+        flex: 1, 
         backgroundColor: '#E3F2FD',
         width: '100%',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
         paddingTop: 24,
         paddingBottom: 28,
         paddingHorizontal: 24,
@@ -917,35 +918,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: Colors.surface,
     },
-    helpCard: {
-        backgroundColor: '#EFF6FF',
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#BFDBFE',
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
-    },
-    helpCardIcon: {
-        marginTop: 1,
-    },
-    helpCardContent: {
-        flex: 1,
-    },
-    helpTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1D4ED8',
-        marginBottom: 3,
-    },
-    helpText: {
-        fontSize: 13,
-        color: '#334155',
-        lineHeight: 18,
-    },
-    
     // Grouped Card styles for Read Only & Forms
     groupedCard: {
         backgroundColor: Colors.surface,
@@ -971,7 +943,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     cardHeaderIconContainer: {
-        backgroundColor: Colors.primaryTint,
+        backgroundColor: ABOUT_ME_ACCENT_TINT,
         padding: 8,
         borderRadius: 10,
     },
@@ -1040,7 +1012,7 @@ const styles = StyleSheet.create({
         width: 38,
         height: 38,
         borderRadius: 12,
-        backgroundColor: Colors.primaryTint,
+        backgroundColor: ABOUT_ME_ACCENT_TINT,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1095,7 +1067,7 @@ const styles = StyleSheet.create({
         color: Colors.textPrimary,
     },
     inputFocused: {
-        borderColor: Colors.primary,
+        borderColor: ABOUT_ME_ACCENT,
         backgroundColor: Colors.surface,
     },
     textArea: {
@@ -1118,8 +1090,8 @@ const styles = StyleSheet.create({
         borderColor: Colors.borderLight,
     },
     pillActive: {
-        backgroundColor: Colors.primaryTint,
-        borderColor: Colors.primary,
+        backgroundColor: ABOUT_ME_ACCENT_TINT,
+        borderColor: ABOUT_ME_ACCENT,
     },
     pillText: {
         fontSize: 13,
@@ -1127,7 +1099,7 @@ const styles = StyleSheet.create({
         color: '#334155',
     },
     pillTextActive: {
-        color: Colors.primary,
+        color: ABOUT_ME_ACCENT,
         fontWeight: '700',
     },
 
@@ -1147,8 +1119,8 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     selectRowActive: {
-        backgroundColor: Colors.primaryTint,
-        borderColor: Colors.primary,
+        backgroundColor: ABOUT_ME_ACCENT_TINT,
+        borderColor: ABOUT_ME_ACCENT,
     },
     radioCircle: {
         width: 20,
@@ -1160,13 +1132,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     radioCircleActive: {
-        borderColor: Colors.primary,
+        borderColor: ABOUT_ME_ACCENT,
     },
     radioInnerCircle: {
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: Colors.primary,
+        backgroundColor: ABOUT_ME_ACCENT,
     },
     selectRowText: {
         fontSize: 14,
@@ -1214,7 +1186,7 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     checkboxChecked: {
-        borderColor: Colors.primary,
+        borderColor: ABOUT_ME_ACCENT,
         backgroundColor: '#F8FAFC',
     },
     checkbox: {
@@ -1228,8 +1200,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkboxActive: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
+        backgroundColor: ABOUT_ME_ACCENT,
+        borderColor: ABOUT_ME_ACCENT,
     },
     checkboxLabel: {
         flex: 1,
@@ -1240,11 +1212,11 @@ const styles = StyleSheet.create({
     },
     saveButton: {
         marginTop: 20,
-        backgroundColor: Colors.primary,
+        backgroundColor: ABOUT_ME_ACCENT,
         paddingVertical: 16,
         borderRadius: 24,
         alignItems: 'center',
-        shadowColor: Colors.primary,
+        shadowColor: ABOUT_ME_ACCENT,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -1268,14 +1240,14 @@ const styles = StyleSheet.create({
     successBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.primaryTint,
+        backgroundColor: ABOUT_ME_ACCENT_TINT,
         padding: 16,
         borderRadius: 16,
         marginBottom: 16,
         gap: 12,
     },
     successBannerText: {
-        color: Colors.primary,
+        color: ABOUT_ME_ACCENT,
         fontWeight: '700',
         fontSize: 15,
     },

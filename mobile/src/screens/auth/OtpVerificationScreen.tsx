@@ -61,6 +61,7 @@ export default function OtpVerificationScreen() {
     const panelAnim   = useSharedValue(0);
 
     const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [headerHeight, setHeaderHeight] = useState(0);
     const activeOffsetRef = useRef(0);
 
@@ -76,7 +77,9 @@ export default function OtpVerificationScreen() {
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
         panelAnim.value = withTiming(1, { duration: 800 });
 
-        const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+        const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+            const kh = e.endCoordinates.height;
+            setKeyboardHeight(kh);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(true);
             setTimeout(() => {
@@ -84,6 +87,7 @@ export default function OtpVerificationScreen() {
             }, 100);
         });
         const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setKeyboardVisible(false);
             scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -328,6 +332,9 @@ export default function OtpVerificationScreen() {
                         {/* Wave */}
                         <PanelWave />
                     </Animated.View>
+                    
+                    {/* Bottom spacer to allow scrolling the card to the top */}
+                    <View style={{ height: keyboardHeight }} />
                 </ScrollView>
             </KeyboardAvoidingView>
 
