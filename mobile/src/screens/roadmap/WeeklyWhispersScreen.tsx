@@ -1,28 +1,29 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    Modal,
     ActivityIndicator,
     Animated,
     Easing,
     Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Circle, Path, G, Defs, LinearGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 
 import { Colors as GlobalColors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
+import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
+import { formatUtcMonthDay } from '../../lib/dateFormat';
+import { useConfirmExitOnBack } from '../../lib/useConfirmExitOnBack';
 import { VoiceRecordingIllustration } from '../../components/MeditationIllustration';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { PanelWave } from '../../components/PanelWave';
 import { PopupModal } from '../../components/PopupModal';
 const Colors = {
     ...GlobalColors,
@@ -30,7 +31,7 @@ const Colors = {
 };
 const THEME_BG = '#EEF2FF';
 
-const { width, height: screenHeight } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 // The passage to read aloud
 const PASSAGE_TEXT = "The North Wind and the Sun were disputing which was the stronger, when a traveler came along wrapped in a warm cloak. They agreed that the one who first succeeded in making the traveler take his cloak off should be considered stronger than the other. Then the North Wind blew as hard as he could, but the more he blew the more closely did the traveler fold his cloak around him; and at last the North Wind gave up the attempt. Then the Sun shone out warmly, and immediately the traveler took off his cloak. And so the North Wind was obliged to confess that the Sun was the stronger of the two.";
@@ -39,6 +40,7 @@ const PASSAGE_TEXT = "The North Wind and the Sun were disputing which was the st
 
 export default function WeeklyWhispersScreen() {
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
 
     // Screen state
     const [currentStep, setCurrentStep] = useState<'intro' | 'recording'>('intro');
@@ -72,7 +74,7 @@ export default function WeeklyWhispersScreen() {
 
     // Refs
     const recordingRef = useRef<Audio.Recording | null>(null);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Animation
     const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -91,7 +93,7 @@ export default function WeeklyWhispersScreen() {
 
     useEffect(() => {
         if (isRecording) {
-            Animated.loop(
+            const loop = Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
                         toValue: 1,
@@ -105,31 +107,47 @@ export default function WeeklyWhispersScreen() {
                         useNativeDriver: true,
                     }),
                 ])
-            ).start();
+            );
+            loop.start();
+            // Without stopping the loop explicitly, setting pulseAnim back to 0 below
+            // (when isRecording flips false) doesn't halt it — it keeps fighting the
+            // reset value every frame in the background for as long as the screen stays mounted.
+            return () => loop.stop();
         } else {
             pulseAnim.setValue(0);
         }
     }, [isRecording]);
+
+    // Android hardware back would otherwise silently discard an in-progress recording —
+    // confirm first, then stop/discard it cleanly before actually leaving the screen.
+    const discardRecordingAndExit = useCallback(async () => {
+        try {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            if (recordingRef.current) {
+                await recordingRef.current.stopAndUnloadAsync();
+            }
+        } catch (e) {
+            console.log('Error stopping recording on back:', e);
+        } finally {
+            recordingRef.current = null;
+            setIsRecording(false);
+            navigation.goBack();
+        }
+    }, [navigation]);
+    useConfirmExitOnBack(isRecording, discardRecordingAndExit, 'Your recording will be lost if you leave now.');
 
     const checkPermissionAndStatus = async () => {
         try {
             const { status } = await Audio.requestPermissionsAsync();
             setPermissionGranted(status === 'granted');
 
-            const token = await AsyncStorage.getItem('authToken');
-            const response = await fetch(`${API_URL}/api/roadmap/weekly/status`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.completed || data.submitted) {
-                    setAlreadySubmitted(true);
-                    if (data.nextReset) setNextReset(new Date(data.nextReset));
-                }
+            const { ok, data } = await apiFetch<{ completed?: boolean; submitted?: boolean; nextReset?: string }>('/api/roadmap/weekly/status');
+            if (ok && data && (data.completed || data.submitted)) {
+                setAlreadySubmitted(true);
+                if (data.nextReset) setNextReset(new Date(data.nextReset));
             }
         } catch (error) {
             console.log('Status check failed');
@@ -256,7 +274,7 @@ export default function WeeklyWhispersScreen() {
 
         setUploading(true);
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await getAuthToken();
             if (!token) throw new Error('Not authenticated');
 
             // 1. Create FormData for file upload
@@ -308,26 +326,27 @@ export default function WeeklyWhispersScreen() {
                 throw new Error(errorData.error || 'Submission failed');
             }
 
-            showPopup('success', 'Success!', 'Your voice recording has been submitted successfully.', () => {
-                navigation.dispatch(
-                    CommonActions.reset({
-                        index: 1,
-                        routes: [
-                            { name: 'MainTabs' },
-                            {
-                                name: 'CompleteTask',
-                                params: {
-                                    title: 'Great Job!',
-                                    message: 'Your voice recording has been submitted successfully. See you next week!',
-                                    buttonText: 'Back to Journey',
-                                    themeColor: Colors.primary,
-                                    themeBgGrad: [THEME_BG, '#E0E7FF', '#FFFFFF']
-                                }
+            clearApiCache('/api/roadmap/weekly');
+            clearApiCache('/api/journey');
+
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 1,
+                    routes: [
+                        { name: 'MainTabs' },
+                        {
+                            name: 'CompleteTask',
+                            params: {
+                                title: 'Great Job!',
+                                message: 'Your voice recording has been submitted successfully. See you next week!',
+                                buttonText: 'Back to Journey',
+                                themeColor: Colors.primary,
+                                themeBgGrad: [THEME_BG, '#E0E7FF', '#FFFFFF']
                             }
-                        ],
-                    })
-                );
-            });
+                        }
+                    ],
+                })
+            );
 
         } catch (error: any) {
             console.error('Submission processing error:', error);
@@ -355,7 +374,7 @@ export default function WeeklyWhispersScreen() {
 
     if (alreadySubmitted) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <StatusBar style="dark" />
                 {/* Background leaves */}
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
@@ -368,7 +387,7 @@ export default function WeeklyWhispersScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
-                <View style={styles.successContainer}>
+                <View style={[styles.successContainer, { paddingBottom: 24 + insets.bottom }]}>
                     <View style={styles.successIcon}>
                         <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
                     </View>
@@ -376,7 +395,7 @@ export default function WeeklyWhispersScreen() {
                     <Text style={styles.successText}>You&apos;ve completed this week&apos;s recording.</Text>
                     {nextReset && (
                         <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: Colors.primary }]}>
-                            Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            Next reset: {formatUtcMonthDay(nextReset)}
                         </Text>
                     )}
 
@@ -391,11 +410,11 @@ export default function WeeklyWhispersScreen() {
         );
     }
 
-    // INTRO SCREEN
     if (currentStep === 'intro') {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <StatusBar style="dark" />
+                <LeavesDecoration width={width} height={width} color={Colors.primary} />
                 <PopupModal
                     visible={popup.visible}
                     type={popup.type}
@@ -406,9 +425,6 @@ export default function WeeklyWhispersScreen() {
                     themeColor={Colors.primary}
                 />
 
-                {/* Background leaves */}
-                <LeavesDecoration width={width} height={width} color={Colors.primary} />
-
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
@@ -417,47 +433,50 @@ export default function WeeklyWhispersScreen() {
                     <View style={{ width: 40 }} />
                 </View>
 
-                <ScrollView contentContainerStyle={styles.introContent} scrollEnabled={false}>
-                    {/* Large SVG Illustration */}
-                    <View style={styles.illustrationContainer}>
-                        <VoiceRecordingIllustration width={width * 0.67} height={width * 0.67} color={Colors.primary} />
-                    </View>
-
-                    {/* Title and Description */}
-                    <Text style={styles.introTitle}>Voice Recording</Text>
-                    <Text style={styles.introSubtitle}>Vocal Biomarker Capture</Text>
-
-                    <View style={styles.introCard}>
-                        <View style={styles.introIconRow}>
-                            <View style={styles.introIconCircle}>
-                                <Ionicons name="mic" size={24} color={Colors.primary} />
-                            </View>
-                            <Text style={styles.introCardTitle}>What You&apos;ll Do</Text>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.introWrap}>
+                        <View style={styles.illustrationContainer}>
+                            <VoiceRecordingIllustration width={width * 0.62} height={width * 0.62} color={Colors.primary} />
                         </View>
-                        <Text style={styles.introCardText}>
-                            Read a short paragraph aloud in your normal speaking voice. This helps us understand your vocal patterns for research purposes.
-                        </Text>
 
-                        <View style={styles.infoBadges}>
-                            <View style={styles.badge}>
-                                <Ionicons name="time-outline" size={16} color={Colors.primary} />
-                                <Text style={styles.badgeText}>15-45 sec</Text>
+                        <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
+                            <Text style={styles.introPanelLabel}>VOCAL BIOMARKER CAPTURE</Text>
+                            <Text style={styles.introPanelHeadline}>VOICE RECORDING</Text>
+
+                            <View style={styles.introCard}>
+                                <View style={styles.introIconRow}>
+                                    <View style={styles.introIconCircle}>
+                                        <Ionicons name="mic" size={24} color={Colors.primary} />
+                                    </View>
+                                    <Text style={styles.introCardTitle}>What You&apos;ll Do</Text>
+                                </View>
+                                <Text style={styles.introCardText}>
+                                    Read a short paragraph aloud in your normal speaking voice. This helps us understand your vocal patterns for research purposes.
+                                </Text>
+
+                                <View style={styles.infoBadges}>
+                                    <View style={styles.badge}>
+                                        <Ionicons name="time-outline" size={16} color={Colors.primary} />
+                                        <Text style={styles.badgeText}>15-45 sec</Text>
+                                    </View>
+                                    <View style={styles.badge}>
+                                        <Ionicons name="book-outline" size={16} color={Colors.primary} />
+                                        <Text style={styles.badgeText}>Read Aloud</Text>
+                                    </View>
+                                </View>
                             </View>
-                            <View style={styles.badge}>
-                                <Ionicons name="book-outline" size={16} color={Colors.primary} />
-                                <Text style={styles.badgeText}>Read Aloud</Text>
-                            </View>
+
+                            <TouchableOpacity
+                                style={styles.goButton}
+                                onPress={() => setCurrentStep('recording')}
+                            >
+                                <Text style={styles.goButtonText}>Let&apos;s Go</Text>
+                                <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
+                            </TouchableOpacity>
+
+                            <PanelWave />
                         </View>
                     </View>
-
-                    {/* Go Button */}
-                    <TouchableOpacity
-                        style={styles.goButton}
-                        onPress={() => setCurrentStep('recording')}
-                    >
-                        <Text style={styles.goButtonText}>Let&apos;s Go</Text>
-                        <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
                 </ScrollView>
             </SafeAreaView>
         );
@@ -465,7 +484,7 @@ export default function WeeklyWhispersScreen() {
 
     // RECORDING SCREEN
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <StatusBar style="dark" />
             <PopupModal
                 visible={popup.visible}
@@ -515,44 +534,39 @@ export default function WeeklyWhispersScreen() {
                 </View>
             </View>
 
-            {!recordingUri ? (
-                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                    <Text style={styles.instructionText}>
-                        Read the passage aloud in your normal speaking voice:
-                    </Text>
-
-                    <View style={styles.questionCard}>
-                        <View style={styles.passageHeader}>
-                            <Ionicons name="book-outline" size={18} color={Colors.primary} />
-                            <Text style={styles.passageLabel}>PASSAGE TO READ</Text>
-                        </View>
-                        
-                        <View style={styles.passageContainer}>
-                            <ScrollView nestedScrollEnabled style={{ maxHeight: 230 }}>
-                                <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
-                            </ScrollView>
-                        </View>
-
-                        <View style={styles.divider} />
-
-                        <View style={styles.recordingRow}>
-                            {/* Left Side: SVG Illustration */}
-                            <View style={styles.leftSideContainer}>
-                                <VoiceRecordingIllustration width={width * 0.4} height={width * 0.4} color={Colors.primary} />
-                            </View>
-
-                            {/* Right Side: Controls */}
-                            <View style={styles.rightSideContainer}>
-                                {/* Record Button */}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.introWrap}>
+                    <View style={styles.illustrationContainer}>
+                        {!recordingUri && (
+                            <>
                                 <TouchableOpacity
                                     onPress={handleToggleRecording}
                                     activeOpacity={0.8}
-                                    style={styles.recordButtonContainer}
+                                    style={styles.recordButtonRing}
                                 >
+                                    {isRecording && (
+                                        <Animated.View
+                                            style={[
+                                                styles.recordPulseRing,
+                                                {
+                                                    transform: [{
+                                                        scale: pulseAnim.interpolate({
+                                                            inputRange: [0, 1],
+                                                            outputRange: [1, 1.6]
+                                                        })
+                                                    }],
+                                                    opacity: pulseAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0.5, 0]
+                                                    })
+                                                }
+                                            ]}
+                                        />
+                                    )}
                                     <View style={[styles.recordButton, isRecording && styles.recordButtonActive]}>
                                         <Ionicons
                                             name={isRecording ? "stop" : "mic"}
-                                            size={32}
+                                            size={36}
                                             color="#FFFFFF"
                                         />
                                     </View>
@@ -565,62 +579,75 @@ export default function WeeklyWhispersScreen() {
                                 {!isRecording && (
                                     <Text style={styles.hintText}>Min 15s | Max 45s</Text>
                                 )}
-                            </View>
-                        </View>
-
-                        {isRecording && (
-                            <View style={styles.recordingIndicator}>
-                                <View style={styles.pulseDot} />
-                                <Text style={styles.recordingText}>Recording in progress...</Text>
-                            </View>
+                            </>
                         )}
                     </View>
-                </ScrollView>
-            ) : (
-                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                    <Text style={styles.instructionText}>
-                        Review your recording before submitting:
-                    </Text>
 
-                    <View style={styles.questionCard}>
-                        <View style={styles.reviewIconCircle}>
-                            <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
+                    <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
+                        <View style={styles.panelBody}>
+                            <View style={styles.passageHeader}>
+                                <Ionicons name="book-outline" size={18} color={Colors.primary} />
+                                <Text style={styles.passageLabel}>PASSAGE TO READ</Text>
+                            </View>
+
+                            <View style={styles.passageContainer}>
+                                <ScrollView nestedScrollEnabled style={{ maxHeight: 400 }}>
+                                    <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
+                                </ScrollView>
+                            </View>
+
+                            {isRecording && (
+                                <View style={styles.recordingIndicator}>
+                                    <View style={styles.pulseDot} />
+                                    <Text style={styles.recordingText}>Recording in progress...</Text>
+                                </View>
+                            )}
+
+                            {recordingUri && (
+                                <View style={styles.reviewSection}>
+                                    <View style={styles.reviewHeaderRow}>
+                                        <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                                        <Text style={styles.reviewSectionTitle}>Recording Ready</Text>
+                                    </View>
+
+                                    <View style={styles.waveformContainer}>
+                                        {[16, 24, 32, 20, 40, 28, 18, 36, 22, 30, 26, 34, 18, 22, 28].map((h, i) => (
+                                            <View key={i} style={[styles.waveBar, { height: h }]} />
+                                        ))}
+                                    </View>
+
+                                    <Text style={styles.reviewDuration}>Duration: {formatTime(recordingDuration)}</Text>
+
+                                    <View style={styles.buttonRow}>
+                                        <TouchableOpacity style={styles.retryButton} onPress={handleRetry} activeOpacity={0.7}>
+                                            <Ionicons name="refresh" size={20} color={Colors.primary} />
+                                            <Text style={styles.retryButtonText}>Retake</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
+                                            onPress={handleSubmit}
+                                            disabled={uploading}
+                                            activeOpacity={0.7}
+                                        >
+                                            {uploading ? (
+                                                <ActivityIndicator color="#FFFFFF" />
+                                            ) : (
+                                                <>
+                                                    <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+                                                    <Text style={styles.submitButtonText}>Submit</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
                         </View>
-                        <Text style={styles.reviewTitle}>Recording Complete!</Text>
 
-                        <View style={styles.waveformContainer}>
-                            {[16, 24, 32, 20, 40, 28, 18, 36, 22, 30, 26, 34, 18, 22, 28].map((h, i) => (
-                                <View key={i} style={[styles.waveBar, { height: h }]} />
-                            ))}
-                        </View>
-
-                        <Text style={styles.reviewDuration}>Duration: {formatTime(recordingDuration)}</Text>
-
-                        <View style={styles.buttonRow}>
-                            <TouchableOpacity style={styles.retryButton} onPress={handleRetry} activeOpacity={0.7}>
-                                <Ionicons name="refresh" size={20} color={Colors.primary} />
-                                <Text style={styles.retryButtonText}>Retake</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.submitButton, uploading && styles.submitButtonDisabled]}
-                                onPress={handleSubmit}
-                                disabled={uploading}
-                                activeOpacity={0.7}
-                            >
-                                {uploading ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <>
-                                        <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
-                                        <Text style={styles.submitButtonText}>Submit</Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </View>
+                        <PanelWave />
                     </View>
-                </ScrollView>
-            )}
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -671,47 +698,51 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '700',
     },
-    content: {
-        padding: 20,
-    },
-    instructionText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#636E72',
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    questionCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 30, // Standardized bottom panel/card curves
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.04,
-        shadowRadius: 16,
-        elevation: 4,
-        minHeight: 320,
-    },
-    // Intro Screen
+    // Intro Screen — About Me front-page layout: illustration above a rounded panel.
     introContent: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        flexGrow: 1,
+    },
+    introWrap: {
+        flex: 1,
+        marginHorizontal: -16, // cancels introContent's padding so the panel bleeds to the screen edges
         alignItems: 'center',
     },
     illustrationContainer: {
-        marginBottom: 16,
+        marginBottom: 20,
+        alignItems: 'center',
     },
-    introTitle: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#2D3436',
-        marginBottom: 2,
-        textAlign: 'center',
+    introPanel: {
+        flex: 1,
+        backgroundColor: THEME_BG,
+        width: '100%',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingTop: 24,
+        paddingBottom: 28,
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 6,
     },
-    introSubtitle: {
-        fontSize: 14,
+    introPanelLabel: {
+        fontSize: 13,
+        fontWeight: '600',
         color: '#636E72',
-        marginBottom: 16,
-        textAlign: 'center',
+        letterSpacing: 2,
+        marginBottom: 2,
+    },
+    introPanelHeadline: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: '#2D3436',
+        letterSpacing: 1,
+        marginBottom: 20,
     },
     introCard: {
         backgroundColor: '#FFFFFF',
@@ -777,6 +808,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         borderRadius: 30,
         width: '100%',
+        marginBottom: 32, // leaves room below the button so PanelWave (bottom: 0 of the panel) isn't covered by it
+        zIndex: 1,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
@@ -790,30 +823,31 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     // Recording Screen
-    recordingRow: {
-        flexDirection: 'row',
+    panelBody: {
+        width: '100%',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 8,
+        marginBottom: 32, // leaves room below the content so PanelWave (bottom: 0 of the panel) isn't covered by it
+        zIndex: 1,
     },
-    leftSideContainer: {
-        flex: 1,
-        alignItems: 'center',
+    recordButtonRing: {
+        width: 128,
+        height: 128,
+        borderRadius: 64,
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
-    },
-    rightSideContainer: {
-        flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
-    },
-    recordButtonContainer: {
-        marginTop: 8,
-        marginBottom: 10,
+        marginTop: 12,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 5,
     },
     recordButton: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+        width: 88,
+        height: 88,
+        borderRadius: 44,
         backgroundColor: Colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
@@ -826,6 +860,13 @@ const styles = StyleSheet.create({
     recordButtonActive: {
         backgroundColor: '#EF4444',
         shadowColor: '#EF4444',
+    },
+    recordPulseRing: {
+        position: 'absolute',
+        width: 88,
+        height: 88,
+        borderRadius: 44,
+        backgroundColor: '#EF4444',
     },
     statusText: {
         fontSize: 15,
@@ -881,33 +922,35 @@ const styles = StyleSheet.create({
     passageContainer: {
         backgroundColor: '#F8FAFC',
         borderRadius: 20,
-        padding: 12,
+        padding: 16,
         borderWidth: 1,
         borderColor: '#E2E8F0',
         marginBottom: 4,
+        minHeight: 180,
     },
     passageText: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#334155',
-        lineHeight: 22,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#E2E8F0',
-        marginVertical: 12,
+        lineHeight: 28,
     },
     // Review Screen
-    reviewIconCircle: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
+    reviewSection: {
+        width: '100%',
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E2E8F0',
     },
-    reviewTitle: {
-        fontSize: 20,
+    reviewHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    reviewSectionTitle: {
+        fontSize: 16,
         fontWeight: '700',
         color: '#2D3436',
-        marginBottom: 16,
-        textAlign: 'center',
     },
     waveformContainer: {
         flexDirection: 'row',

@@ -9,21 +9,20 @@ import {
     ActivityIndicator,
     Modal,
     Pressable,
-    Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Svg, Circle } from 'react-native-svg';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { apiFetch } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
-import { LeavesDecoration } from '../components/LeavesDecoration';
+import { cardShadow, cardShadowElevated } from '../styles/shared';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { StatusBar } from 'expo-status-bar';
 
-const { width } = Dimensions.get('window');
 
-// Interface
+const CALENDAR_ACCENT = '#0EA5E9';
+
 interface CalendarEvent {
     id: number;
     title: string;
@@ -36,6 +35,7 @@ interface CalendarEvent {
 }
 
 export default function CalendarScreen() {
+
     const [currentDate, setCurrentDate] = useState(new Date());
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +52,7 @@ export default function CalendarScreen() {
         }, [currentDate])
     );
 
-    const fetchCalendarEvents = async () => {
+    const fetchCalendarEvents = async (force = false) => {
         try {
             setIsLoadingEvents(true);
             const year = currentDate.getFullYear();
@@ -67,11 +67,15 @@ export default function CalendarScreen() {
             const endDate = new Date(lastDay);
             endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
 
-            const startStr = startDate.toISOString().split('T')[0];
-            const endStr = endDate.toISOString().split('T')[0];
+            // Local date components, not toISOString() (which converts to UTC first) —
+            // for positive-UTC-offset users that shifts the range a day earlier and can
+            // drop the last day(s) of the month/week from the fetch.
+            const startStr = formatDateKey(startDate);
+            const endStr = formatDateKey(endDate);
 
             const { ok, data } = await apiFetch<CalendarEvent[]>(
-                `/api/calendar/events?start=${startStr}&end=${endStr}`
+                `/api/calendar/events?start=${startStr}&end=${endStr}`,
+                { force }
             );
             if (ok && data) setCalendarEvents(data);
         } catch (error) {
@@ -83,7 +87,7 @@ export default function CalendarScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchCalendarEvents();
+        await fetchCalendarEvents(true);
         setRefreshing(false);
     };
 
@@ -197,13 +201,13 @@ export default function CalendarScreen() {
                 <View style={styles.calendarCard}>
                     <View style={styles.calendarHeader}>
                         <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton} activeOpacity={0.7}>
-                            <Ionicons name="chevron-back" size={20} color="#2D3436" />
+                            <Ionicons name="chevron-back" size={20} color={Colors.textPrimary} />
                         </TouchableOpacity>
                         <Text style={styles.monthTitle}>
                             {monthNames[month]} {year}
                         </Text>
                         <TouchableOpacity onPress={goToNextMonth} style={styles.navButton} activeOpacity={0.7}>
-                            <Ionicons name="chevron-forward" size={20} color="#2D3436" />
+                            <Ionicons name="chevron-forward" size={20} color={Colors.textPrimary} />
                         </TouchableOpacity>
                     </View>
 
@@ -247,14 +251,11 @@ export default function CalendarScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <LeavesDecoration width={width} height={width} />
 
-            <SafeAreaView edges={['top', 'left', 'right']}>
-                <View style={styles.headerContainer}>
-                    <Text style={styles.title}>Calendar</Text>
-                    <Text style={styles.subtitle}>Track your sessions & schedules</Text>
-                </View>
-            </SafeAreaView>
+            <ScreenHeader
+                title="Calendar"
+                subtitle="Track your sessions & schedules"
+            />
 
             <ScrollView
                 ref={scrollViewRef}
@@ -331,7 +332,7 @@ export default function CalendarScreen() {
                                 {selectedDateEvents?.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                             </Text>
                             <TouchableOpacity onPress={() => setSelectedDateEvents(null)} activeOpacity={0.7}>
-                                <Ionicons name="close-circle" size={24} color="#94A3B8" />
+                                <Ionicons name="close-circle" size={24} color={Colors.textMuted} />
                             </TouchableOpacity>
                         </View>
 
@@ -358,6 +359,7 @@ export default function CalendarScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
         </View>
     );
 }
@@ -365,21 +367,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F8F9',
-    },
-    headerContainer: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#2D3436',
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 15,
-        color: '#636E72',
+        backgroundColor: Colors.background,
     },
     content: {
         flex: 1,
@@ -387,14 +375,10 @@ const styles = StyleSheet.create({
     },
     calendarCard: {
         marginHorizontal: 24,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 30,
         padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.03,
-        shadowRadius: 16,
-        elevation: 4,
+        ...cardShadowElevated,
         marginBottom: 24,
     },
     calendarHeader: {
@@ -407,14 +391,14 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: Colors.surfaceMuted,
         justifyContent: 'center',
         alignItems: 'center',
     },
     monthTitle: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     grid: {
         flexDirection: 'row',
@@ -428,7 +412,7 @@ const styles = StyleSheet.create({
     weekDayText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#94A3B8',
+        color: Colors.textMuted,
     },
     dayCell: {
         width: `${100 / 7}%`,
@@ -439,7 +423,7 @@ const styles = StyleSheet.create({
     },
     dayText: {
         fontSize: 14,
-        color: '#2D3436',
+        color: Colors.textPrimary,
         fontWeight: '600',
     },
     todayCell: {
@@ -447,7 +431,7 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
     todayText: {
-        color: '#FFFFFF',
+        color: Colors.surface,
         fontWeight: '700',
     },
     mindfulnessDayCell: {
@@ -476,7 +460,7 @@ const styles = StyleSheet.create({
         width: 4,
         height: 4,
         borderRadius: 2,
-        backgroundColor: '#0EA5E9',
+        backgroundColor: CALENDAR_ACCENT,
     },
     legendContainer: {
         flexDirection: 'row',
@@ -484,7 +468,7 @@ const styles = StyleSheet.create({
         marginTop: 20,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+        borderTopColor: Colors.surfaceMuted,
     },
     legendItem: {
         flexDirection: 'row',
@@ -503,11 +487,11 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary,
     },
     eventLegend: {
-        backgroundColor: '#0EA5E9',
+        backgroundColor: CALENDAR_ACCENT,
     },
     legendText: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         fontWeight: '600',
     },
     section: {
@@ -516,42 +500,38 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 12,
         fontWeight: '800',
-        color: '#94A3B8',
+        color: Colors.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 1.5,
         marginBottom: 12,
         paddingLeft: 4,
     },
     noEventsContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 24,
         padding: 32,
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         borderStyle: 'dashed',
     },
     noEventsText: {
         fontSize: 14,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         marginTop: 12,
         fontWeight: '600',
     },
     eventCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 24,
         padding: 16,
         marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+        ...cardShadow,
     },
     eventCardCompleted: {
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
         borderWidth: 1.5,
         borderColor: '#C2E7CD',
     },
@@ -575,17 +555,17 @@ const styles = StyleSheet.create({
     eventTitle: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     eventTime: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         marginTop: 2,
         fontWeight: '500',
     },
     eventDescription: {
         fontSize: 12,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         marginTop: 4,
     },
     eventStatus: {
@@ -604,7 +584,7 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     modalContent: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 30,
         padding: 24,
         width: '100%',
@@ -622,20 +602,20 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        borderBottomColor: Colors.surfaceMuted,
     },
     modalTitle: {
         fontSize: 16,
         fontWeight: '800',
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     modalEventItem: {
         marginBottom: 12,
-        backgroundColor: '#F6F8F9',
+        backgroundColor: Colors.background,
         padding: 14,
         borderRadius: 20,
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
     },
     modalEventRow: {
         flexDirection: 'row',
@@ -646,16 +626,16 @@ const styles = StyleSheet.create({
     modalEventTitle: {
         fontSize: 15,
         fontWeight: '700',
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     modalEventTime: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         fontWeight: '500',
     },
     modalEventDesc: {
         fontSize: 12,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         marginTop: 4,
         lineHeight: 18,
     },
@@ -664,7 +644,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalNoEventsText: {
-        color: '#94A3B8',
+        color: Colors.textMuted,
         fontStyle: 'italic',
         fontWeight: '500',
     },

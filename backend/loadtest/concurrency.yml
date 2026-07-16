@@ -1,0 +1,54 @@
+# Concurrency test: many "users" performing the same action at the same instant.
+#
+# Two scenarios, weighted:
+#  - concurrent-login: bursts of simultaneous logins against the one seeded
+#    participant account. Expect the auth rate limiter (20/15min, see app.ts)
+#    to kick in and return 429s once the burst exceeds it — that's a pass, not
+#    a bug: it proves login is protected from a credential-stuffing-style burst.
+#  - concurrent-daily-submit: many simultaneous POST /api/roadmap/daily using
+#    one pre-issued token (see loadtest/get-token.js). daily_sliders has one
+#    row per user per day, so with a fresh (unsubmitted-today) test account you
+#    should see exactly one 200 and the rest 409 DAILY_ALREADY_SUBMITTED — never
+#    a 500 or a duplicate row. If the seeded account already has today's entry
+#    (default seed data includes "today"), every request 409s, which still
+#    proves the uniqueness constraint holds under concurrent writes.
+config:
+  target: "{{ $processEnvironment.BASE_URL }}"
+  plugins:
+    expect: {}
+  phases:
+    - name: concurrent-burst
+      duration: 10
+      arrivalCount: 50
+  variables:
+    authToken: "{{ $processEnvironment.AUTH_TOKEN }}"
+    loginEmail: "{{ $processEnvironment.TEST_EMAIL }}"
+    loginPassword: "{{ $processEnvironment.TEST_PASSWORD }}"
+
+scenarios:
+  - name: concurrent-login
+    weight: 1
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ loginEmail }}"
+            password: "{{ loginPassword }}"
+          expect:
+            - statusCode: [200, 401, 429]
+
+  - name: concurrent-daily-submit
+    weight: 1
+    flow:
+      - post:
+          url: "/api/roadmap/daily"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            stress_level: 3
+            calm_before: 3
+            calm_after: 4
+            sleep_quality: 3
+            mindfulness_practice: "no"
+          expect:
+            - statusCode: [200, 409]

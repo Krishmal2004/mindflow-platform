@@ -1,41 +1,69 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions, Animated } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Dimensions, Animated, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop, Circle } from 'react-native-svg';
 
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
 import { apiFetch } from '../lib/apiClient';
+import { formatUtcMonthDay, formatUtcWeekday } from '../lib/dateFormat';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
-import { LeavesDecoration } from '../components/LeavesDecoration';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
-import { QuoteIcon } from '../components/DashboardIllustrations';
+import { LogoBlock } from '../components/LogoBlock';
+import { PanelWave } from '../components/PanelWave';
+import { RoadmapBgDecor } from '../components/RoadmapBgDecor';
+
 
 const { width } = Dimensions.get('window');
 
+const EgGroupImage = require('../../assets/exGroup.png') as number;
+const CgGroupImage = require('../../assets/cgGroup.png') as number;
+
+const EG_BLUE = '#466FB5';       
+const EG_BLUE_DARK = '#214081'; 
+const EG_BLUE_LIGHT = '#C4D2EC'; 
+
 type DashboardNavProp = NativeStackNavigationProp<RootStackParamList>;
 
-function QuoteCardWave() {
-    const h = 56;
+// Circular progress indicator, Samsung Health-style — a plain track ring plus a colored
+// progress arc drawn via strokeDasharray/strokeDashoffset around the same circle.
+function ProgressRing({ size = 88, strokeWidth = 9, progress, color }: { size?: number; strokeWidth?: number; progress: number; color: string }) {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference * (1 - Math.min(Math.max(progress, 0), 1));
     return (
-        <Svg width={width} height={h} viewBox={`0 0 ${width} ${h}`} style={{ position: 'absolute', bottom: 0, left: 0 }} pointerEvents="none">
-            <Defs>
-                <SvgLinearGradient id="qwave" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0" stopColor="#A7D7C5" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#7FD9D1" stopOpacity="1" />
-                    <Stop offset="1" stopColor="#63C9D9" stopOpacity="1" />
-                </SvgLinearGradient>
-            </Defs>
-            <Path d={`M0 ${h*0.45} C${width*0.25} ${h*0.1} ${width*0.5} ${h*0.75} ${width*0.75} ${h*0.3} C${width*0.88} ${h*0.1} ${width} ${h*0.45} ${width} ${h*0.45} L${width} ${h} L0 ${h} Z`} fill="url(#qwave)" opacity={0.2} />
-            <Path d={`M0 ${h*0.65} C${width*0.22} ${h*0.38} ${width*0.5} ${h*0.85} ${width*0.72} ${h*0.55} C${width*0.86} ${h*0.32} ${width} ${h*0.62} ${width} ${h*0.62} L${width} ${h} L0 ${h} Z`} fill="url(#qwave)" opacity={0.12} />
+        <Svg width={size} height={size}>
+            <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#EEF1EF" strokeWidth={strokeWidth} fill="none" />
+            <Circle
+                cx={size / 2} cy={size / 2} r={radius}
+                stroke={color} strokeWidth={strokeWidth} fill="none"
+                strokeDasharray={`${circumference} ${circumference}`}
+                strokeDashoffset={offset}
+                strokeLinecap="round"
+                rotation={-90}
+                originX={size / 2}
+                originY={size / 2}
+            />
         </Svg>
+    );
+}
+
+// Group illustration: a plain themed image per research arm, no decoration around it.
+function BreathingIllustration({ isControlGroup }: { isControlGroup: boolean }) {
+    return (
+        <View style={styles.illustrationContainer}>
+            <Image
+                source={isControlGroup ? CgGroupImage : EgGroupImage}
+                style={styles.groupIllustrationImage}
+                resizeMode="contain"
+            />
+        </View>
     );
 }
 
@@ -74,7 +102,7 @@ const FUN_FACTS = [
     { text: "There are more stars in the universe than grains of sand on every beach on Earth.", author: "Fun Fact" },
     { text: "A group of flamingos is called a 'flamboyance'.", author: "Fun Fact" },
     { text: "The shortest war in history lasted just 38 minutes.", author: "Fun Fact" },
-    { text: "Sharks are older than trees — they've been around for roughly 400 million years.", author: "Fun Fact" },
+    { text: "Sharks are older than trees - they've been around for roughly 400 million years.", author: "Fun Fact" },
     { text: "Wombat poop is cube-shaped.", author: "Fun Fact" },
     { text: "The Great Wall of China isn't actually visible from space with the naked eye.", author: "Fun Fact" },
     { text: "A single fluffy cloud can weigh more than a million pounds.", author: "Fun Fact" },
@@ -85,8 +113,71 @@ const FUN_FACTS = [
     { text: "Cows form close friendships and get stressed when separated from their best friend.", author: "Fun Fact" },
     { text: "The unicorn is Scotland's national animal.", author: "Fun Fact" },
     { text: "Butterflies can taste with their wings.", author: "Fun Fact" },
-    { text: "Most of a cat's day — about 70% of its life — is spent sleeping.", author: "Fun Fact" },
+    { text: "Most of a cat's day - about 70% of its life — is spent sleeping.", author: "Fun Fact" },
 ];
+
+// Quote/fact card: owns its own rotation timer and fade animation so the rotation
+// only re-renders this card, not the whole dashboard (roadmap, decor, etc).
+const QuoteFactCard = memo(function QuoteFactCard({ isControlGroup }: { isControlGroup: boolean }) {
+    const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
+    const [currentFactIndex, setCurrentFactIndex] = useState(0);
+    const fadeAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 500,
+                useNativeDriver: true,
+            }).start(() => {
+                setCurrentQuoteIndex((prev) => (prev + 1) % MINDFULNESS_QUOTES.length);
+                setCurrentFactIndex((prev) => (prev + 1) % FUN_FACTS.length);
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }).start();
+            });
+        }, 120000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const currentQuote = MINDFULNESS_QUOTES[currentQuoteIndex];
+    const currentFact = FUN_FACTS[currentFactIndex];
+
+    return (
+        <View style={[
+            styles.quoteCard,
+            isControlGroup ? styles.quoteCardControl : styles.quoteCardEx,
+        ]}>
+            <View style={styles.quoteHeader}>
+                <Ionicons
+                    name={isControlGroup ? 'bulb-outline' : 'sparkles-outline'}
+                    size={15}
+                    color={isControlGroup ? '#D97706' : EG_BLUE}
+                />
+                <Text style={[
+                    styles.quoteLabelText,
+                    { color: isControlGroup ? '#B45309' : EG_BLUE_DARK }
+                ]}>
+                    {isControlGroup ? 'Daily Fun Fact' : "Today's Inspiration"}
+                </Text>
+            </View>
+            <Animated.View style={[styles.quoteBody, { opacity: fadeAnim }]}>
+                <Text style={styles.quoteText}>
+                    {isControlGroup ? currentFact.text : `"${currentQuote.text}"`}
+                </Text>
+                <Text style={[
+                    styles.quoteAuthor,
+                    { color: isControlGroup ? '#B45309' : EG_BLUE_DARK }
+                ]}>
+                    — {isControlGroup ? currentFact.author : currentQuote.author}
+                </Text>
+            </Animated.View>
+        </View>
+    );
+});
 
 // Roadmap steps configuration
 const JOURNEY_STEPS = [
@@ -116,7 +207,7 @@ interface RoadmapNodeProps {
     onPressLocked?: (isTimeLocked: boolean, nextReset: Date | null) => void;
 }
 
-const RoadmapNode = ({
+const RoadmapNode = memo(({
     id,
     title,
     subtitle,
@@ -141,9 +232,9 @@ const RoadmapNode = ({
         if (id === 1) {
             statusText = 'Next: Tomorrow';
         } else if (id === 2 && nextReset) {
-            statusText = `Next: ${nextReset.toLocaleDateString(undefined, { weekday: 'short' })}`;
+            statusText = `Next: ${formatUtcWeekday(nextReset)}`;
         } else if (id > 2 && nextReset) {
-            statusText = `Next: ${nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+            statusText = `Next: ${formatUtcMonthDay(nextReset)}`;
         } else {
             statusText = 'Completed';
         }
@@ -199,23 +290,23 @@ const RoadmapNode = ({
                         shadowRadius: 10,
                         borderWidth: 0,
                     } : {
-                        backgroundColor: locked ? '#F1F5F9' : bgColor,
+                        backgroundColor: locked ? Colors.surfaceMuted : bgColor,
                         borderColor: locked ? '#CBD5E1' : color
                     }
                 ]}>
                     {completed ? (
-                        <Ionicons name="checkmark" size={id === 5 ? 30 : 26} color="#FFFFFF" />
+                        <Ionicons name="checkmark" size={id === 5 ? 30 : 26} color={Colors.surface} />
                     ) : locked ? (
-                        <Ionicons name="lock-closed" size={id === 5 ? 24 : 20} color="#94A3B8" />
+                        <Ionicons name="lock-closed" size={id === 5 ? 24 : 20} color={Colors.textMuted} />
                     ) : (
                         <Icon width={id === 5 ? 32 : 28} height={id === 5 ? 32 : 28} color={color} />
                     )}
                 </View>
-                
+
                 {/* Step Index Badge */}
                 <View style={[
                     styles.stepNumberBadge,
-                    { backgroundColor: locked ? '#94A3B8' : color }
+                    { backgroundColor: locked ? Colors.textMuted : color }
                 ]}>
                     <Text style={styles.stepNumberText}>{id}</Text>
                 </View>
@@ -232,7 +323,7 @@ const RoadmapNode = ({
                 isActive && !completed ? {
                     borderColor: color,
                     borderWidth: 1.5,
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: Colors.surface,
                     shadowColor: color,
                     shadowOpacity: 0.15,
                     shadowRadius: 8,
@@ -242,39 +333,30 @@ const RoadmapNode = ({
             ]}>
                 <Text style={[
                     styles.nodeLabelText,
-                    { color: locked ? '#64748B' : color }
+                    { color: locked ? Colors.iconMuted : color }
                 ]}>
                     {title}
                 </Text>
                 <Text style={[
                     styles.nodeSubtext,
                     completed && { color: color, fontWeight: '700' },
-                    locked && { color: '#94A3B8' }
+                    locked && { color: Colors.textMuted }
                 ]}>
                     {statusText}
                 </Text>
             </View>
         </TouchableOpacity>
     );
-};
+});
 
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
     const insets = useSafeAreaInsets();
 
-    const getFormattedDate = () => {
-        const today = new Date();
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        return `${days[today.getDay()]}, ${months[today.getMonth()]} ${today.getDate()}`;
-    };
     const [userName, setUserName] = useState('User');
-    const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
-    const [currentFactIndex, setCurrentFactIndex] = useState(0);
     const [statuses, setStatuses] = useState<any>({});
     const [researchGroup, setResearchGroup] = useState('');
     const [summaryLoaded, setSummaryLoaded] = useState(false);
-    const fadeAnim = useRef(new Animated.Value(1)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const mountFade = useRef(new Animated.Value(0)).current;
     const mountScale = useRef(new Animated.Value(0.96)).current;
@@ -389,7 +471,11 @@ export default function DashboardScreen() {
                         apiFetch<{ group: string }>('/api/dashboard/summary'),
                     ]);
                     if (statusRes.ok && statusRes.data) setStatuses(statusRes.data);
-                    if (summaryRes.ok && summaryRes.data) setResearchGroup(summaryRes.data.group || '');
+                    if (summaryRes.ok && summaryRes.data) {
+                        const group = summaryRes.data.group || '';
+                        setResearchGroup(group);
+                        await AsyncStorage.setItem('researchGroup', group);
+                    }
                     setSummaryLoaded(true);
                 } catch (error) {
                     console.log('Dashboard status check failed:', error);
@@ -436,27 +522,6 @@ export default function DashboardScreen() {
         ).start();
     }, []);
 
-    // Rotate quotes/facts every 20 seconds (whichever card is showing for this group)
-    useEffect(() => {
-        const interval = setInterval(() => {
-            Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 500,
-                useNativeDriver: true,
-            }).start(() => {
-                setCurrentQuoteIndex((prev) => (prev + 1) % MINDFULNESS_QUOTES.length);
-                setCurrentFactIndex((prev) => (prev + 1) % FUN_FACTS.length);
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                }).start();
-            });
-        }, 20000);
-
-        return () => clearInterval(interval);
-    }, []);
-
     // Get index of the first incomplete step
     const getActiveStepId = () => {
         for (let i = 0; i < JOURNEY_STEPS.length; i++) {
@@ -468,13 +533,14 @@ export default function DashboardScreen() {
         return 0; // all completed
     };
 
-    const currentQuote = MINDFULNESS_QUOTES[currentQuoteIndex];
-    const currentFact = FUN_FACTS[currentFactIndex];
     const isControlGroup = researchGroup === 'cg';
     const isUnassigned = summaryLoaded && researchGroup === '';
     const mapWidth = width - 48;
     const mapHeight = 520;
     const activeStepId = getActiveStepId();
+
+    const completedCount = isUnassigned ? 0 : JOURNEY_STEPS.filter(s => getStatus(s.statusKey).completed).length;
+    const journeyProgress = completedCount / JOURNEY_STEPS.length;
 
     // Exact center coordinates calculation for the connecting path
     const cx1 = mapWidth - 52;
@@ -498,175 +564,169 @@ export default function DashboardScreen() {
                   `C ${mapWidth * 0.4} ${cy3}, ${mapWidth * 0.6} ${cy4}, ${cx4} ${cy4} ` +
                   `C ${mapWidth * 0.6} ${cy4}, ${mapWidth * 0.4} ${cy5}, ${cx5} ${cy5}`;
 
+    const [headerHeight, setHeaderHeight] = useState(0);
+
     return (
         <View style={styles.container}>
-            <StatusBar style="dark" />
+            <StatusBar style="dark" translucent backgroundColor="transparent" />
 
-            {/* Top Leaves Decoration */}
-            <View style={styles.topDecoration}>
-                <LeavesDecoration width={width} height={width} color={Colors.primary} />
-            </View>
-
-            <ScrollView
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    { paddingTop: insets.top > 0 ? insets.top + 16 : 60 }
+            {/* ── ABSOLUTE FIXED TOP: Logo + Illustration + Greeting + Quote ── */}
+            <Animated.View
+                pointerEvents="none"
+                onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+                style={[
+                    styles.fixedTop,
+                    { opacity: mountFade, paddingTop: insets.top > 0 ? insets.top + 5 : 24 }
                 ]}
-                showsVerticalScrollIndicator={false}
             >
+                <LogoBlock />
 
-                {/* Header */}
-                <Animated.View style={[styles.header, { opacity: mountFade }]}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.greetingText}>HELLO, {userName.toUpperCase()} !</Text>
-                        <View style={styles.dateContainer}>
-                            <Ionicons name="calendar-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
-                            <Text style={styles.dateText}>{getFormattedDate()}</Text>
-                        </View>
-                    </View>
+                {/* Centered Hero Illustration & Greeting */}
+                <View style={styles.greetingHeaderBlock}>
+                    <BreathingIllustration isControlGroup={isControlGroup} />
+                    <Text style={styles.greetingText}>Hello, {userName}</Text>
                     <Text style={styles.questionText}>
-                        {isControlGroup ? <>WHAT WOULD YOU{'\n'}LIKE TO DO?</> : <>READY FOR YOUR{'\n'}MINDFUL MOMENT?</>}
+                        {isUnassigned
+                            ? <>Welcome to{'\n'}MindFlow</>
+                            : isControlGroup
+                                ? <>What would you{'\n'}like to do today?</>
+                                : <>Ready for your{'\n'}mindful moment?</>}
                     </Text>
-                </Animated.View>
+                </View>
+            </Animated.View>
 
-                {/* Pending-assignment banner — shown only when no research group is set */}
-                {isUnassigned && (
-                    <View style={styles.pendingBanner}>
-                        <View style={styles.pendingIconCircle}>
-                            <Ionicons name="time-outline" size={22} color="#D97706" />
+            {/* ── SCROLLABLE: Spacer + Journey panel ── */}
+            <ScrollView
+                style={styles.journeyScroll}
+                contentContainerStyle={styles.journeyScrollContent}
+                showsVerticalScrollIndicator={false}
+                bounces={true}
+            >
+                {/* Spacer that matches the fixed header height so content starts below it */}
+                <View style={{ height: headerHeight }} />
+
+                {/* Journey Section — rounded themed panel with wave decoration, matching Signup design */}
+                <View style={styles.roadmapWrap}>
+                    <View style={[
+                        styles.roadmapPanel,
+                        { backgroundColor: isControlGroup ? '#FFF8EC' : '#E3F2FD' }
+                    ]}>
+                        <Text style={[
+                            styles.panelLabel,
+                            { color: isControlGroup ? '#92400E' : '#636E72' }
+                        ]}>{isControlGroup ? 'YOUR ACTIVITIES' : 'YOUR JOURNEY'}</Text>
+                        <Text style={[
+                            styles.panelHeading,
+                            { color: isControlGroup ? '#2D3436' : '#2D3436' }
+                        ]}>{isControlGroup ? 'WEEKLY CHECK-INS' : 'MINDFULNESS ROADMAP'}</Text>
+
+                        {/* Pending-assignment banner */}
+                        {isUnassigned && (
+                            <View style={styles.pendingBanner}>
+                                <View style={styles.pendingIconCircle}>
+                                    <Ionicons name="time-outline" size={22} color="#D97706" />
+                                </View>
+                                <View style={styles.pendingBannerBody}>
+                                    <Text style={styles.pendingBannerTitle}>Waiting for Group Assignment</Text>
+                                    <Text style={styles.pendingBannerSub}>
+                                        Your researcher will assign your study group shortly. Data entry is locked until then.
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.pendingAboutMeBtn}
+                                        onPress={() => navigation.navigate('AboutMe')}
+                                        activeOpacity={0.75}
+                                    >
+                                        <Ionicons name="document-text-outline" size={14} color="#D97706" />
+                                        <Text style={styles.pendingAboutMeBtnText}>Complete About Me Profile</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Quote / Fun Fact card */}
+                        {!isUnassigned && <QuoteFactCard isControlGroup={isControlGroup} />}
+
+                        {/* Progress Hero */}
+                        <View style={[
+                            styles.progressHero,
+                            {
+                                backgroundColor: '#FFFFFF',
+                                borderColor: isControlGroup ? '#FDE68A' : '#C4D2EC',
+                                borderWidth: 1,
+                            }
+                        ]}>
+                            <View style={styles.progressRingWrap}>
+                                <ProgressRing progress={journeyProgress} color={isControlGroup ? '#D97706' : EG_BLUE} />
+                                <View style={styles.progressRingCenter}>
+                                    <Text style={styles.progressRingValue}>{completedCount}/{JOURNEY_STEPS.length}</Text>
+                                </View>
+                            </View>
+                            <View style={styles.progressHeroBody}>
+                                <Text style={styles.progressHeroTitle}>
+                                    {completedCount === JOURNEY_STEPS.length ? 'All caught up' : 'Keep going'}
+                                </Text>
+                                <Text style={styles.progressHeroSubtitle}>
+                                    {isUnassigned
+                                        ? 'Activities unlock once your group is assigned.'
+                                        : completedCount === JOURNEY_STEPS.length
+                                            ? "You've completed every activity in its current window."
+                                            : `${JOURNEY_STEPS.length - completedCount} activit${JOURNEY_STEPS.length - completedCount === 1 ? 'y' : 'ies'} left to complete.`}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.pendingBannerBody}>
-                            <Text style={styles.pendingBannerTitle}>Waiting for Group Assignment</Text>
-                            <Text style={styles.pendingBannerSub}>
-                                Your researcher will assign your study group shortly. Data entry is locked until then.
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.pendingAboutMeBtn}
-                                onPress={() => navigation.navigate('AboutMe')}
-                                activeOpacity={0.75}
+
+                        {/* Winding Roadmap Pathway */}
+                        <View style={[styles.mapContainer, { height: mapHeight }]}>
+                            {/* Organic leaves, suns, and bird silhouettes decoration, bled past the
+                                panel's side padding so it reaches the screen edges */}
+                            <View style={styles.mapBgBleed}>
+                                <RoadmapBgDecor isCG={isControlGroup} w={width} h={mapHeight} />
+                            </View>
+
+                            <Svg
+                                width={mapWidth}
+                                height={mapHeight}
+                                viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+                                style={styles.mapSvg}
                             >
-                                <Ionicons name="document-text-outline" size={14} color="#D97706" />
-                                <Text style={styles.pendingAboutMeBtnText}>Complete About Me Profile</Text>
-                            </TouchableOpacity>
+                                <Defs>
+                                    <SvgLinearGradient id="pathGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <Stop offset="0" stopColor="#D97706" stopOpacity="0.8" />
+                                        <Stop offset="0.25" stopColor="#6366F1" stopOpacity="0.8" />
+                                        <Stop offset="0.5" stopColor="#749F82" stopOpacity="0.8" />
+                                        <Stop offset="0.75" stopColor="#E07A5F" stopOpacity="0.8" />
+                                        <Stop offset="1" stopColor="#0D9488" stopOpacity="0.8" />
+                                    </SvgLinearGradient>
+                                </Defs>
+                                <Path
+                                    d={pathD}
+                                    stroke="url(#pathGrad)"
+                                    strokeWidth="8"
+                                    strokeLinecap="round"
+                                    opacity="0.12"
+                                    fill="none"
+                                />
+                                <Path
+                                    d={pathD}
+                                    stroke="url(#pathGrad)"
+                                    strokeWidth="3.5"
+                                    fill="none"
+                                    strokeDasharray="8 6"
+                                    strokeLinecap="round"
+                                />
+                            </Svg>
+
+                            {renderNode(0, 30, undefined, 24)}
+                            {renderNode(1, 130, 24)}
+                            {renderNode(2, 230, undefined, 24)}
+                            {renderNode(3, 330, 24)}
+                            {renderNode(4, 430, undefined, 24)}
                         </View>
-                    </View>
-                )}
 
-                {/* Daily Thoughts card: mindfulness quotes for the experimental group,
-                    non-mindfulness fun facts (in orange) for the control group (.cg) — this
-                    group must not see mindfulness-themed content. */}
-                {isControlGroup ? (
-                    <View style={styles.thoughtsCard}>
-                        <LinearGradient
-                            colors={['#D9A675', '#C2875A']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.thoughtsGradient}
-                        >
-                            <View style={styles.quoteIconContainer}>
-                                <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
-                            </View>
-                            <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
-                                <Text style={styles.thoughtsText}>{currentFact.text}</Text>
-                                <Text style={styles.thoughtsAuthor}>— {currentFact.author}</Text>
-                            </Animated.View>
-                            <View style={styles.thoughtsIndicator}>
-                                {FUN_FACTS.map((_, index) => (
-                                    <View
-                                        key={index}
-                                        style={[
-                                            styles.dot,
-                                            index === currentFactIndex && styles.dotActive
-                                        ]}
-                                    />
-                                ))}
-                            </View>
-                        </LinearGradient>
-                    </View>
-                ) : (
-                    <View style={styles.thoughtsCard}>
-                        <LinearGradient
-                            colors={['#94BCA1', '#749F82']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.thoughtsGradient}
-                        >
-                            <View style={styles.quoteIconContainer}>
-                                <QuoteIcon size={28} color="rgba(255,255,255,0.3)" />
-                            </View>
-                            <Animated.View style={[styles.thoughtsContent, { opacity: fadeAnim }]}>
-                                <Text style={styles.thoughtsText}>&quot;{currentQuote.text}&quot;</Text>
-                                <Text style={styles.thoughtsAuthor}>— {currentQuote.author}</Text>
-                            </Animated.View>
-                            <View style={styles.thoughtsIndicator}>
-                                {MINDFULNESS_QUOTES.map((_, index) => (
-                                    <View
-                                        key={index}
-                                        style={[
-                                            styles.dot,
-                                            index === currentQuoteIndex && styles.dotActive
-                                        ]}
-                                    />
-                                ))}
-                            </View>
-                        </LinearGradient>
-                    </View>
-                )}
-
-                {/* Journey Roadmap Section - Vertical Curved Map */}
-                <View style={styles.roadmapSection}>
-                    <Text style={styles.roadmapTitle}>YOUR JOURNEY</Text>
-                    <Text style={styles.roadmapSubtitle}>Follow the path to mindfulness</Text>
-                    <View style={[styles.mapContainer, { height: mapHeight }]}>
-                        {/* SVG Path Background */}
-                        <Svg
-                            width={mapWidth}
-                            height={mapHeight}
-                            viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-                            style={styles.mapSvg}
-                        >
-                            <Defs>
-                                <SvgLinearGradient id="pathGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <Stop offset="0" stopColor="#D97706" stopOpacity="0.8" />
-                                    <Stop offset="0.25" stopColor="#6366F1" stopOpacity="0.8" />
-                                    <Stop offset="0.5" stopColor="#749F82" stopOpacity="0.8" />
-                                    <Stop offset="0.75" stopColor="#E07A5F" stopOpacity="0.8" />
-                                    <Stop offset="1" stopColor="#0D9488" stopOpacity="0.8" />
-                                </SvgLinearGradient>
-                            </Defs>
-                            
-                            {/* Curved background glow path */}
-                            <Path
-                                d={pathD}
-                                stroke="url(#pathGrad)"
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                                opacity="0.12"
-                                fill="none"
-                            />
-                            
-                            {/* Curved connecting path connecting all nodes */}
-                            <Path
-                                d={pathD}
-                                stroke="url(#pathGrad)"
-                                strokeWidth="3.5"
-                                fill="none"
-                                strokeDasharray="8 6"
-                                strokeLinecap="round"
-                            />
-                        </Svg>
-
-                        {renderNode(0, 30, undefined, 24)}
-                        {renderNode(1, 130, 24)}
-                        {renderNode(2, 230, undefined, 24)}
-                        {renderNode(3, 330, 24)}
-                        {renderNode(4, 430, undefined, 24)}
+                        {/* Wave decoration matching Signup bottom panel */}
+                        <PanelWave />
                     </View>
                 </View>
-
-                {/* Bottom spacing for tab bar */}
-                <View style={{ height: 100 }} />
-
             </ScrollView>
 
             <PopupModal
@@ -683,136 +743,196 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#F6F8F9',
     },
-    topDecoration: {
+    fixedTop: {
         position: 'absolute',
         top: 0,
+        left: 0,
         right: 0,
+        alignItems: 'center',
+        paddingHorizontal: 24,
         zIndex: 0,
     },
-    scrollContent: {
-        paddingTop: 80,
-        paddingHorizontal: 24,
-        paddingBottom: 40,
+    journeyScroll: {
+        flex: 1,
     },
-    header: {
-        marginBottom: 24,
-        zIndex: 1,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    journeyScrollContent: {
+        flexGrow: 1,
         alignItems: 'center',
+    },
+    greetingHeaderBlock: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 12,
         marginBottom: 8,
     },
     greetingText: {
         fontSize: 14,
         fontWeight: '600',
-        color: Colors.textSecondary,
-        letterSpacing: 1,
-    },
-    dateContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(116, 159, 130, 0.08)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    dateText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: Colors.primary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        color: Colors.iconMuted,
+        letterSpacing: 0.8,
+        marginTop: 10,
+        marginBottom: 4,
+        textAlign: 'center',
     },
     questionText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: Colors.textPrimary,
-        lineHeight: 34,
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#2D3436',
+        lineHeight: 30,
+        letterSpacing: -0.4,
+        textAlign: 'center',
+        marginBottom: 40,
     },
-    // Mindfulness Thoughts
-    thoughtsCard: {
-        marginBottom: 24,
-        borderRadius: 20,
+    illustrationContainer: {
+        width: 180,
+        height: 180,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    groupIllustrationImage: {
+        // Fill the 180x180 container instead of a fixed pixel size — the old fixed
+        // 508x198 was ~3x wider than its own container regardless of device, and
+        // overflowed further on narrow phones. resizeMode="contain" (set on the
+        // Image itself) keeps the aspect ratio correct within the box.
+        width: '100%',
+        height: '100%',
+    },
+    roadmapWrap: {
+        width: '100%',
+    },
+    roadmapPanel: {
+        width: '100%',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingTop: 28,
+        paddingBottom: 120,
+        paddingHorizontal: 24,
         overflow: 'hidden',
-        shadowColor: '#749F82',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 10,
     },
-    thoughtsGradient: {
-        padding: 24,
-        minHeight: 150,
-    },
-    quoteIconContainer: {
-        position: 'absolute',
-        top: 16,
-        right: 16,
-    },
-    thoughtsContent: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    thoughtsText: {
-        fontSize: 16,
-        color: '#FFFFFF',
-        fontStyle: 'italic',
-        lineHeight: 24,
-        marginBottom: 12,
-    },
-    thoughtsAuthor: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.7)',
-        fontWeight: '500',
-    },
-    thoughtsIndicator: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 6,
-        marginTop: 16,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: 'rgba(255,255,255,0.3)',
-    },
-    dotActive: {
-        backgroundColor: '#FFFFFF',
-        width: 18,
-    },
-    // Roadmap Section
-    roadmapSection: {
-        marginBottom: 20,
-    },
-    roadmapTitle: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#B0BFCA',
+    panelLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#636E72',
         letterSpacing: 2,
-        textTransform: 'uppercase',
         marginBottom: 2,
     },
-    roadmapSubtitle: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '500',
+    panelHeading: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: '#2D3436',
+        letterSpacing: 1,
         marginBottom: 16,
     },
-    // Map Container
+    quoteCard: {
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 16,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 1,
+    },
+    quoteCardEx: {
+        backgroundColor: '#FAFBFE',
+        borderColor: EG_BLUE_LIGHT,
+    },
+    quoteCardControl: {
+        backgroundColor: '#FCFAF6',
+        borderColor: '#F7EAD0',
+    },
+    quoteHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 10,
+    },
+    quoteLabelText: {
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+    },
+    quoteBody: {
+        marginTop: 2,
+    },
+    quoteText: {
+        fontSize: 14,
+        lineHeight: 22,
+        color: '#374151',
+        fontStyle: 'italic',
+        marginBottom: 8,
+    },
+    quoteAuthor: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    progressHero: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+        elevation: 1,
+    },
+    progressRingWrap: {
+        width: 88,
+        height: 88,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    progressRingCenter: {
+        position: 'absolute',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    progressRingValue: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#1F2937',
+    },
+    progressHeroBody: {
+        flex: 1,
+    },
+    progressHeroTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 3,
+    },
+    progressHeroSubtitle: {
+        fontSize: 12,
+        color: Colors.iconMuted,
+        lineHeight: 17,
+    },
     mapContainer: {
         position: 'relative',
         overflow: 'visible',
+    },
+    mapBgBleed: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: -24,
+        right: -24,
     },
     mapSvg: {
         position: 'absolute',
         top: 0,
         left: 0,
     },
-    // Map Nodes
     mapNode: {
         position: 'absolute',
         alignItems: 'center',
@@ -845,7 +965,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
     },
     nodeCircleCompleted: {
         backgroundColor: Colors.primary,
@@ -870,15 +990,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: '#FFFFFF',
+        borderColor: Colors.surface,
     },
     stepNumberText: {
-        color: '#FFFFFF',
+        color: Colors.surface,
         fontSize: 9,
         fontWeight: 'bold',
     },
     nodeLabel: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 12,
@@ -892,18 +1012,18 @@ const styles = StyleSheet.create({
     nodeLabelCompleted: {
         borderWidth: 1,
         borderColor: Colors.primary,
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
     },
     nodeLabelLocked: {
         backgroundColor: '#F8FAFC',
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         borderWidth: 1,
         opacity: 0.7,
     },
     nodeLabelActive: {
         borderColor: Colors.primary,
         borderWidth: 1.5,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         shadowColor: Colors.primary,
         shadowOpacity: 0.15,
         shadowRadius: 8,
@@ -915,10 +1035,9 @@ const styles = StyleSheet.create({
     },
     nodeSubtext: {
         fontSize: 10,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         marginTop: 2,
     },
-    // Pending-assignment banner
     pendingBanner: {
         flexDirection: 'row',
         backgroundColor: '#FFFBEB',
@@ -926,7 +1045,7 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: '#FDE68A',
         padding: 16,
-        marginBottom: 20,
+        marginBottom: 16,
         gap: 12,
         alignItems: 'flex-start',
         shadowColor: '#D97706',

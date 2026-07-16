@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase';
 
-/** Allowed fields for about_me_profiles upsert (matches DB schema). */
+// Allowed fields for about_me_profiles upsert (matches DB schema).
 const ABOUT_ME_FIELDS = [
     'university_id', 'education_level', 'faculty', 'major_field_of_study', 'age',
     'living_situation', 'family_background', 'cultural_background',
@@ -9,7 +9,7 @@ const ABOUT_ME_FIELDS = [
 ] as const;
 
 export class ProfileService {
-    /** Fetch user profile (username + research ID). */
+    // Fetch user profile (username + research ID).
     public async getProfile(userId: string) {
         const { data, error } = await supabase
             .from('profiles')
@@ -25,7 +25,7 @@ export class ProfileService {
         };
     }
 
-    /** Fetch extended profile from about_me_profiles. */
+    // Fetch extended profile from about_me_profiles.
     public async getAboutMe(userId: string) {
         const { data, error } = await supabase
             .from('about_me_profiles')
@@ -35,11 +35,7 @@ export class ProfileService {
 
         if (error && error.code !== 'PGRST116') throw error;
 
-        // The row is normally auto-created by the handle_new_user_about_me trigger on
-        // signup, but if it hasn't landed yet (or predates the trigger), returning bare
-        // `null` here is dangerous: postAuthRoute on the client does `data && !data.is_completed`,
-        // and a null body fails that check and is treated as "onboarding complete", letting a
-        // brand-new user straight into the main app. Return the same default shape instead.
+        // Returning bare null here would fail postAuthRoute's `data && !data.is_completed` check on the client, wrongly treating a new user as onboarding-complete — return the default shape instead.
         if (!data) {
             return {
                 id: userId,
@@ -60,7 +56,7 @@ export class ProfileService {
         return data;
     }
 
-    /** Upsert about_me_profiles with allowlisted fields only. */
+    // Upsert about_me_profiles with allowlisted fields only.
     public async updateAboutMe(userId: string, body: Record<string, any>) {
         const updateData: Record<string, any> = {};
         for (const field of ABOUT_ME_FIELDS) {

@@ -13,12 +13,7 @@ Notifications.setNotificationHandler({
     }),
 });
 
-/**
- * Requests notification permission and registers this device's Expo push token with the
- * backend so the 8 AM greeting / 7 PM pending-task reminder jobs can reach it. No-ops quietly
- * on failure (e.g. permission denied, or no EAS project configured) — reminders are a nice-to-have,
- * not something that should block app usage.
- */
+// Registers this device's Expo push token for the reminder jobs; no-ops quietly on failure since reminders are a nice-to-have, not blocking.
 export async function registerForPushNotificationsAsync(): Promise<void> {
     try {
         if (Platform.OS === 'android') {

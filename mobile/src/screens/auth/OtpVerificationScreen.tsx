@@ -2,63 +2,54 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Dimensions, ScrollView,
-    NativeSyntheticEvent, TextInputKeyPressEventData,
+    NativeSyntheticEvent, TextInputKeyPressEventData, Keyboard, LayoutAnimation, UIManager, ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
-import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
-import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { VerifyIllustration } from '../../components/VerifyIllustration';
 import { Notification, NotificationType } from '../../components/Notification';
+import { PanelWave } from '../../components/PanelWave';
+import { LogoBlock } from '../../components/LogoBlock';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { getPostAuthRoute } from '../../lib/postAuthRoute';
+import { setSession } from '../../lib/apiClient';
 
 const { width, height } = Dimensions.get('window');
 const CODE_LENGTH = 8;
 
-// Each box width: full panel content width minus gaps, divided by 8
-// Panel is full width, paddingHorizontal 24 each side → content = width - 48
-// 8 boxes with 7 gaps of 6px → boxW = (width - 48 - 7*6) / 8
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Box width: panel content width (screen width minus 48 for horizontal padding) minus 7 gaps of 6px, divided across 8 boxes.
 const BOX_W = Math.floor((width - 48 - 42) / 8);
 const BOX_H = Math.round(BOX_W * 1.22);   // taller than wide so digits never clip
 
 type OtpScreenRouteProp = RouteProp<RootStackParamList, 'OtpVerification'>;
 
-// ── Wave (same as Login/Signup) ────────────────────────────────────────────────
-function PanelWave() {
-    const h = 90; const w = width;
-    return (
-        <Svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}
-            style={{ position: 'absolute', bottom: 0, left: 0 }} pointerEvents="none">
-            <Defs>
-                <SvgGradient id="vwg" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0"   stopColor="#A7D7C5" stopOpacity="1" />
-                    <Stop offset="0.5" stopColor="#7FD9D1" stopOpacity="1" />
-                    <Stop offset="1"   stopColor="#63C9D9" stopOpacity="1" />
-                </SvgGradient>
-            </Defs>
-            <Path d={`M0 ${h*0.4} C${w*0.25} ${h*0.1} ${w*0.5} ${h*0.7} ${w*0.75} ${h*0.3} C${w*0.88} ${h*0.1} ${w} ${h*0.4} ${w} ${h*0.4} L${w} ${h} L0 ${h} Z`} fill="url(#vwg)" opacity={0.22} />
-            <Path d={`M0 ${h*0.6} C${w*0.22} ${h*0.35} ${w*0.5} ${h*0.82} ${w*0.72} ${h*0.5} C${w*0.86} ${h*0.3} ${w} ${h*0.58} ${w} ${h*0.58} L${w} ${h} L0 ${h} Z`} fill="url(#vwg)" opacity={0.14} />
-        </Svg>
-    );
-}
+// Wave (same as Login/Signup)
 
-// ── Screen ─────────────────────────────────────────────────────────────────────
+
+// Screen
 export default function OtpVerificationScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<OtpScreenRouteProp>();
     const email = route.params?.email || '';
+    const insets = useSafeAreaInsets();
+    const scrollRef = useRef<ScrollView>(null);
 
     const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
     const [loading, setLoading] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
     const inputRefs = useRef<(TextInput | null)[]>([]);
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
 
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
@@ -69,12 +60,46 @@ export default function OtpVerificationScreen() {
     const scaleAnim   = useSharedValue(0.9);
     const panelAnim   = useSharedValue(0);
 
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [headerHeight, setHeaderHeight] = useState(0);
+    const activeOffsetRef = useRef(0);
+
+    const handleFocus = (offset: number) => {
+        activeOffsetRef.current = offset;
+        if (keyboardVisible) {
+            scrollRef.current?.scrollTo({ y: headerHeight + offset, animated: true });
+        }
+    };
+
     useEffect(() => {
         fadeAnim.value  = withTiming(1, { duration: 800 });
         scaleAnim.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.exp) });
         panelAnim.value = withTiming(1, { duration: 800 });
+
+        const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+            const kh = e.endCoordinates.height;
+            setKeyboardHeight(kh);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setKeyboardVisible(true);
+            setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: headerHeight + activeOffsetRef.current, animated: true });
+            }, 100);
+        });
+        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setKeyboardVisible(false);
+            scrollRef.current?.scrollTo({ y: 0, animated: true });
+        });
+
         setTimeout(() => inputRefs.current[0]?.focus(), 300);
-    }, []);
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, [headerHeight, keyboardVisible]);
 
     useEffect(() => {
         if (resendCooldown <= 0) return;
@@ -94,7 +119,7 @@ export default function OtpVerificationScreen() {
         );
     };
 
-    // ── Box handlers ──────────────────────────────────────────────────────────
+    // Box handlers
     const handleChange = (text: string, index: number) => {
         const digit = text.replace(/[^0-9]/g, '').slice(-1);
         const next = [...digits];
@@ -126,7 +151,7 @@ export default function OtpVerificationScreen() {
         }
     };
 
-    // ── Verify ────────────────────────────────────────────────────────────────
+    // Verify
     const submitCode = async (code: string) => {
         if (loading) return;
         if (code.length !== CODE_LENGTH) {
@@ -144,7 +169,7 @@ export default function OtpVerificationScreen() {
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Verification failed');
             showNotification('success', 'Email Verified Successfully!');
-            if (result.session?.access_token) await AsyncStorage.setItem('authToken', result.session.access_token);
+            if (result.session?.access_token) await setSession(result.session);
             await AsyncStorage.setItem('isLoggedIn', 'true');
             if (result.user?.user_metadata?.full_name) await AsyncStorage.setItem('userName', result.user.user_metadata.full_name);
             const dest = await getPostAuthRoute();
@@ -166,7 +191,7 @@ export default function OtpVerificationScreen() {
         setTimeout(() => inputRefs.current[0]?.focus(), 50);
     };
 
-    // ── Resend ────────────────────────────────────────────────────────────────
+    // Resend
     const handleResend = async () => {
         if (!email || resendCooldown > 0) return;
         try {
@@ -195,39 +220,39 @@ export default function OtpVerificationScreen() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="dark" />
+            <StatusBar style="dark" translucent backgroundColor="transparent" />
 
-            {/* Background leaves */}
-            <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
+            {/* Fixed Background Header (doesn't move) */}
+            <View 
+                pointerEvents="none"
+                onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+                style={[styles.fixedHeader, { paddingTop: insets.top > 0 ? insets.top + 5 : 24 }]}
+            >
+                <Animated.View style={headerStyle}>
+                    <LogoBlock />
+                </Animated.View>
+
+                <Animated.View style={[styles.illusContainer, illusStyle]}>
+                    <VerifyIllustration width={width * 0.55} height={width * 0.49} />
+                </Animated.View>
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardView}>
                 <ScrollView
+                    ref={scrollRef}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                 >
-                    {/* Logo */}
-                    <Animated.View style={[styles.logoBlock, headerStyle]}>
-                        <View style={styles.logoRow}>
-                            <Text style={styles.logoThin}>Mind</Text>
-                            <Text style={styles.logoBold}>Flow</Text>
-                        </View>
-                        <View style={styles.taglineRow}>
-                            <View style={styles.taglineDot} />
-                            <Text style={styles.tagline}>Find your inner peace</Text>
-                            <View style={styles.taglineDot} />
-                        </View>
-                    </Animated.View>
-
-                    {/* Illustration */}
-                    <Animated.View style={[styles.illusContainer, illusStyle]}>
-                        <VerifyIllustration width={width * 0.52} height={width * 0.46} />
-                    </Animated.View>
+                    {/* Spacer matching fixed header height */}
+                    <View style={{ height: headerHeight }} />
 
                     {/* Blue panel */}
-                    <Animated.View style={[styles.bottomPanel, panelStyle]}>
+                    <Animated.View 
+                        style={[styles.bottomPanel, panelStyle, { minHeight: height - headerHeight, paddingBottom: insets.bottom }]}
+                    >
                         <Text style={styles.panelLabel}>VERIFICATION</Text>
                         <Text style={styles.panelTitle}>ENTER CODE</Text>
 
@@ -245,6 +270,7 @@ export default function OtpVerificationScreen() {
                                     style={[
                                         styles.box,
                                         digit ? styles.boxFilled : null,
+                                        focusedIndex === i ? styles.boxFocused : null,
                                         i === 3 ? styles.boxGap : null,
                                     ]}
                                     value={digit}
@@ -259,6 +285,8 @@ export default function OtpVerificationScreen() {
                                     caretHidden
                                     editable={!loading}
                                     accessibilityLabel={`Digit ${i + 1}`}
+                                    onFocus={() => { setFocusedIndex(i); handleFocus(0); }}
+                                    onBlur={() => setFocusedIndex(null)}
                                 />
                             ))}
                         </Animated.View>
@@ -283,7 +311,11 @@ export default function OtpVerificationScreen() {
                             onPress={handleVerifyPress}
                             disabled={loading || filledCount < CODE_LENGTH}
                         >
-                            <Text style={styles.buttonText}>{loading ? 'VERIFYING...' : 'VERIFY'}</Text>
+                            {loading ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <Text style={styles.buttonText}>VERIFY</Text>
+                            )}
                         </TouchableOpacity>
 
                         {/* Resend */}
@@ -300,6 +332,9 @@ export default function OtpVerificationScreen() {
                         {/* Wave */}
                         <PanelWave />
                     </Animated.View>
+                    
+                    {/* Bottom spacer to allow scrolling the card to the top */}
+                    <View style={{ height: keyboardHeight }} />
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -315,35 +350,31 @@ export default function OtpVerificationScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F6F8F9' },
-    decorationContainer: { position: 'absolute', top: 0, left: 0, right: 0 },
     keyboardView: { flex: 1 },
+    fixedHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 0,
+    },
     scrollContent: {
         flexGrow: 1,
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingTop: 44,
     },
-    // Logo
-    logoBlock: { alignItems: 'center', marginBottom: 4 },
-    logoRow: { flexDirection: 'row', alignItems: 'baseline' },
-    logoThin: { fontSize: 30, fontWeight: '300', color: '#3A3A3A', letterSpacing: 2 },
-    logoBold: { fontSize: 30, fontWeight: '800', color: Colors.primary, letterSpacing: 2 },
-    taglineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-    taglineDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#7FD9D1', opacity: 0.80 },
-    tagline: { fontSize: 10, color: '#7A8285', letterSpacing: 3, textTransform: 'uppercase', fontWeight: '600' },
     // Illustration
-    illusContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+    illusContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
     // Panel
     bottomPanel: {
         backgroundColor: '#E3F2FD',
         width: '100%',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
-        paddingTop: 24,
-        paddingBottom: 104,
+        paddingTop: 20,
+        paddingBottom: 0,
         paddingHorizontal: 24,
         alignItems: 'center',
-        flex: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.05,
@@ -384,6 +415,10 @@ const styles = StyleSheet.create({
     boxFilled: {
         borderColor: Colors.primary,
         backgroundColor: '#F0FFF4',
+    },
+    boxFocused: {
+        borderColor: Colors.primary,
+        borderWidth: 2,
     },
     boxGap: { marginRight: 8 },
     // Progress

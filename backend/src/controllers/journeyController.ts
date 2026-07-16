@@ -14,7 +14,7 @@ const thriveService = new ThriveService();
 const stressService = new StressService();
 const mindfulService = new MindfulService();
 
-/** Aggregated status for all 5 journey steps. */
+// Aggregated status for all 5 journey steps.
 export const getJourneyStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.user?.id) {
@@ -22,8 +22,7 @@ export const getJourneyStatus = async (req: AuthenticatedRequest, res: Response)
             return;
         }
 
-        // allSettled instead of all: one roadmap step's status check failing (e.g. a
-        // transient Supabase blip) shouldn't 500 the whole journey view for the other four.
+        // allSettled so one roadmap step's status check failing doesn't 500 the whole journey view.
         const keys = ['daily', 'weekly', 'thrive', 'stress', 'mindful'] as const;
         const results = await Promise.allSettled([
             dailyService.getDailyStatus(req.user.id),
@@ -46,7 +45,7 @@ export const getJourneyStatus = async (req: AuthenticatedRequest, res: Response)
     }
 };
 
-/** Full journey data for admin/web dashboard consumption. */
+// Full journey data for admin/web dashboard consumption.
 export const getJourneyData = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.user?.id) {

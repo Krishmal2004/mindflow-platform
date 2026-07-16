@@ -51,11 +51,14 @@ describe('DashboardScreen mindfulness quotes visibility', () => {
         expect(await findByText(/Breathe in peace/i)).toBeTruthy();
     });
 
-    it('shows the mindfulness quotes card by default when no group is assigned', async () => {
+    it('shows neither condition card while unassigned, plus the pending-assignment banner', async () => {
+        // Regression test: an unassigned participant must not see either arm's condition-specific messaging before a researcher assigns their group.
         mockApi('');
-        const { findByText } = await render(<DashboardScreen />);
+        const { findByText, queryByText } = await render(<DashboardScreen />);
 
-        expect(await findByText(/Breathe in peace/i)).toBeTruthy();
+        expect(await findByText(/Waiting for Group Assignment/i)).toBeTruthy();
+        expect(queryByText(/Breathe in peace/i)).toBeNull();
+        expect(queryByText(/Honey never spoils/i)).toBeNull();
     });
 
     it('never renders the removed Breathing Exercise / Yoga cards', async () => {

@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-/** Reads env var with fallbacks for legacy VITE/EXPO prefixes. */
+// Reads env var with fallbacks for legacy VITE/EXPO prefixes.
 const getEnv = (key: string): string | undefined => {
     const val = process.env[key] || process.env[`VITE_${key}`] || process.env[`EXPO_PUBLIC_${key}`];
     return val?.replace(/["']/g, '').trim();

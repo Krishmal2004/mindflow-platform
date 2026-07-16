@@ -10,7 +10,12 @@
     "test": "jest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "loadtest:token": "node loadtest/get-token.js",
+    "loadtest:stress": "artillery run loadtest/stress.yml",
+    "loadtest:spike": "artillery run loadtest/spike.yml",
+    "loadtest:soak": "artillery run loadtest/soak.yml",
+    "loadtest:concurrency": "artillery run loadtest/concurrency.yml"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +25,7 @@
     "@aws-sdk/client-s3": "^3.968.0",
     "@aws-sdk/s3-request-presigner": "^3.968.0",
     "@supabase/supabase-js": "^2.89.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "expo-server-sdk": "^5.0.0",
@@ -34,6 +40,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
@@ -42,6 +49,7 @@
     "@types/node": "^25.0.3",
     "@types/supertest": "^7.2.0",
     "@types/ws": "^8.18.1",
+    "artillery": "^2.0.33",
     "eslint": "^9.25.0",
     "eslint-config-prettier": "^9.0.0",
     "globals": "^15.15.0",
@@ -55,6 +63,9 @@
     "typescript-eslint": "^8.0.0"
   },
   "overrides": {
-    "js-yaml": "^4.2.0"
+    "js-yaml": "^4.2.0",
+    "artillery": {
+      "js-yaml": "^3.14.1"
+    }
   }
 }

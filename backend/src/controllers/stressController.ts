@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const stressService = new StressService();
 
-/** PSS-10 answer schema: 10 questions, each 1–5. */
+// PSS-10 answer schema: 10 questions, each 1–5.
 const stressSchema = z.object({
     q1: z.number().int().min(1).max(5),
     q2: z.number().int().min(1).max(5),

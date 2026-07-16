@@ -1,0 +1,26 @@
+config:
+  target: "{{ $processEnvironment.BASE_URL }}"
+  phases:
+    - name: baseline
+      duration: 60
+      arrivalRate: 5
+    - name: sudden-spike
+      duration: 20
+      arrivalRate: 300
+    - name: recovery
+      duration: 90
+      arrivalRate: 5
+  variables:
+    authToken: "{{ $processEnvironment.AUTH_TOKEN }}"
+  ensure:
+    maxErrorRate: 10
+
+scenarios:
+  - name: Burst then drop, watch recovery
+    flow:
+      - get:
+          url: "/health"
+      - get:
+          url: "/api/dashboard/summary"
+          headers:
+            Authorization: "Bearer {{ authToken }}"

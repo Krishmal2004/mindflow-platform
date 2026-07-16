@@ -1,12 +1,15 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { onSessionExpired } from '../lib/apiClient';
 import SplashScreen from '../screens/SplashScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import ResetOtpScreen from '../screens/auth/ResetOtpScreen';
 import TabNavigator from './TabNavigator';
 import DailySlidersScreen from '../screens/roadmap/DailySlidersScreen';
 import WeeklyWhispersScreen from '../screens/roadmap/WeeklyWhispersScreen';
@@ -14,15 +17,31 @@ import ThriveTrackerScreen from '../screens/roadmap/ThriveTrackerScreen';
 import StressSnapshotScreen from '../screens/roadmap/StressSnapshotScreen';
 import MindfulMirrorScreen from '../screens/roadmap/MindfulMirrorScreen';
 import CompleteTaskScreen from '../screens/CompleteTaskScreen';
-import AboutMeScreen from '../screens/AboutMeScreen';
+import AboutMeFrontScreen from '../screens/aboutMe/AboutMe-Front';
+import AboutMeQuestionnaireScreen from '../screens/aboutMe/AboutMe-Questionnaire';
+import AboutMeViewScreen from '../screens/aboutMe/AboutMe-View';
 
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export default function AppNavigator() {
+    // A genuinely expired/revoked session (refresh_token failed, not just a short-lived
+    // access token — apiFetch already recovers from that silently) can surface from any
+    // screen's API call, not just app launch. Reset straight to Login rather than leaving
+    // the participant stuck on a screen that will keep 401ing.
+    useEffect(() => {
+        return onSessionExpired(() => {
+            if (navigationRef.isReady()) {
+                navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }
+        });
+    }, []);
+
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
                 initialRouteName="Splash"
                 screenOptions={{
@@ -35,6 +54,8 @@ export default function AppNavigator() {
                 <Stack.Screen name="Login" component={LoginScreen} options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="Signup" component={SignupScreen} options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="ResetOtp" component={ResetOtpScreen} options={{ animation: 'slide_from_right' }} />
 
                 {/* Main Application Flow (Tabs) */}
                 <Stack.Screen name="MainTabs" component={TabNavigator} options={{ animation: 'fade' }} />
@@ -47,7 +68,9 @@ export default function AppNavigator() {
                 <Stack.Screen name="MindfulMirror" component={MindfulMirrorScreen} options={{ animation: 'slide_from_right' }} />
 
                 <Stack.Screen name="CompleteTask" component={CompleteTaskScreen} options={{ animation: 'fade' }} />
-                <Stack.Screen name="AboutMe" component={AboutMeScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="AboutMe" component={AboutMeFrontScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="AboutMeQuestionnaire" component={AboutMeQuestionnaireScreen} options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="AboutMeView" component={AboutMeViewScreen} options={{ animation: 'slide_from_right' }} />
             </Stack.Navigator>
         </NavigationContainer>
     );

@@ -1,0 +1,33 @@
+config:
+  target: "{{ $processEnvironment.BASE_URL }}"
+  phases:
+    - name: warm-up
+      duration: 30
+      arrivalRate: 5
+    - name: ramp-to-breaking-point
+      duration: 300
+      arrivalRate: 5
+      rampTo: 200
+  variables:
+    authToken: "{{ $processEnvironment.AUTH_TOKEN }}"
+  ensure:
+    p95: 1000
+    maxErrorRate: 5
+
+scenarios:
+  - name: Read-heavy authenticated traffic
+    flow:
+      - get:
+          url: "/health"
+      - get:
+          url: "/api/dashboard/summary"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - get:
+          url: "/api/journey/status"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+      - get:
+          url: "/api/roadmap/daily/status"
+          headers:
+            Authorization: "Bearer {{ authToken }}"

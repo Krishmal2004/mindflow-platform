@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 import { TABLES_CONFIG } from '@/lib/tableConfig';
-import { fetchOverviewMetrics, fetchTablePage } from '@/lib/adminData';
+import { fetchOverviewMetrics, fetchFilteredTablePage } from '@/lib/adminData';
 import { useUserMap } from '@/hooks/useUserMap';
 import { CrudModal } from '@/components/admin/CrudModal';
 import { WeeklyVideosTab } from '@/components/admin/WeeklyVideosTab';
@@ -67,6 +67,7 @@ export default function AdminDashboard() {
     const [selectedTable, setSelectedTable] = useState(TABLES_CONFIG[0]);
     const [tableData, setTableData] = useState<Record<string, unknown>[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [filterStartDate, setFilterStartDate] = useState('');
     const [filterEndDate, setFilterEndDate] = useState('');
     const [filterGroup, setFilterGroup] = useState<GroupFilter>('all');
@@ -91,6 +92,7 @@ export default function AdminDashboard() {
     const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
     const [exportStartDate, setExportStartDate] = useState('');
     const [exportEndDate, setExportEndDate] = useState('');
+    const [exportGroupFilter, setExportGroupFilter] = useState<GroupFilter>('all');
     const [exportLoading, setExportLoading] = useState(false);
 
     const [profilesCount, setProfilesCount] = useState(0);
@@ -126,10 +128,29 @@ export default function AdminDashboard() {
         }
     }, []);
 
+    // Debounce the search box so typing doesn't fire a network request per keystroke —
+    // filtering now happens server-side (see loadTableData) rather than on the already
+    // loaded page.
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
     const loadTableData = useCallback(async (page = currentPage) => {
         setTableLoading(true);
         try {
-            const { rows, total } = await fetchTablePage(selectedTable.name, selectedTable.primaryKey, page, pageSize);
+            const groupUserIds = filterGroup === 'all'
+                ? null
+                : Array.from(groupMap.entries()).filter(([, g]) => g === filterGroup).map(([id]) => id);
+            const searchUserIds = debouncedSearchQuery ? findUserIdsByName(debouncedSearchQuery) : undefined;
+
+            const { rows, total } = await fetchFilteredTablePage(selectedTable, page, pageSize, {
+                searchQuery: debouncedSearchQuery || undefined,
+                searchUserIds,
+                startDate: filterStartDate || undefined,
+                endDate: filterEndDate || undefined,
+                groupUserIds,
+            });
             setTableData(rows);
             setTotalTableCount(total);
         } catch (err: unknown) {
@@ -137,7 +158,7 @@ export default function AdminDashboard() {
         } finally {
             setTableLoading(false);
         }
-    }, [selectedTable.name, selectedTable.primaryKey, currentPage]);
+    }, [selectedTable, currentPage, debouncedSearchQuery, filterStartDate, filterEndDate, filterGroup, groupMap, findUserIdsByName]);
 
     const loadAnalyticsData = useCallback(async (
         tf: Timeframe,
@@ -206,6 +227,7 @@ export default function AdminDashboard() {
         if (activeTab === 'tables') {
             setCurrentPage(1);
             setSearchQuery('');
+            setDebouncedSearchQuery('');
             setFilterStartDate('');
             setFilterEndDate('');
             setFilterGroup('all');
@@ -216,7 +238,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         if (activeTab === 'tables') loadTableData(currentPage);
-    }, [currentPage, selectedTable.name, activeTab, loadTableData]);
+    }, [currentPage, activeTab, loadTableData]);
 
     // ── CRUD operations ───────────────────────────────────────────────────────
 
@@ -310,16 +332,37 @@ export default function AdminDashboard() {
     const triggerExportCSV = async () => {
         setExportLoading(true);
         try {
-            let query = supabase.from(selectedTable.name).select('*').order(selectedTable.primaryKey, { ascending: false });
-            if (exportStartDate) query = query.gte('created_at', exportStartDate);
-            if (exportEndDate) query = query.lte('created_at', exportEndDate + 'T23:59:59.999Z');
+            // Page through the full result set (Supabase/PostgREST caps a single response
+            // at its configured max-rows, commonly 1000) instead of one unbounded select —
+            // otherwise large tables silently export incomplete with no indication anything
+            // was cut off.
+            const EXPORT_CHUNK_SIZE = 1000;
+            const groupIds = exportGroupFilter !== 'all' && selectedTable.hasUserId
+                ? new Set(Array.from(groupMap.entries()).filter(([, g]) => g === exportGroupFilter).map(([id]) => id))
+                : null;
 
-            const { data, error } = await query;
-            if (error) throw error;
-            const rows = data || [];
+            let rows: Record<string, unknown>[] = [];
+            let from = 0;
+            for (;;) {
+                let query = supabase
+                    .from(selectedTable.name)
+                    .select('*')
+                    .order(selectedTable.primaryKey, { ascending: false })
+                    .range(from, from + EXPORT_CHUNK_SIZE - 1);
+                if (exportStartDate) query = query.gte('created_at', exportStartDate);
+                if (exportEndDate) query = query.lte('created_at', exportEndDate + 'T23:59:59.999Z');
+                if (groupIds) query = query.in('user_id', Array.from(groupIds));
+
+                const { data, error } = await query;
+                if (error) throw error;
+                const chunk = (data || []) as Record<string, unknown>[];
+                rows = rows.concat(chunk);
+                if (chunk.length < EXPORT_CHUNK_SIZE) break;
+                from += EXPORT_CHUNK_SIZE;
+            }
 
             if (rows.length === 0) {
-                toast.error('No data matching the selected timeframe');
+                toast.error('No data matching the selected filters');
                 return;
             }
             const headers = Object.keys(rows[0]);
@@ -328,12 +371,18 @@ export default function AdminDashboard() {
                 ...rows.map(row => headers.map(k => {
                     const val = (row as Record<string, unknown>)[k];
                     if (val === null || val === undefined) return '';
-                    const s = String(val).replace(/"/g, '""');
+                    // JSON.stringify for object/array cells (e.g. a future jsonb column)
+                    // instead of String(), which would otherwise emit the literal text
+                    // "[object Object]".
+                    const raw = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                    const s = raw.replace(/"/g, '""');
                     return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s}"` : s;
                 }).join(','))
             ].join('\r\n');
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            // Leading UTF-8 BOM so Excel on Windows renders non-ASCII characters in
+            // free-text fields (e.g. `feelings`) correctly instead of mangling them.
+            const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -382,56 +431,11 @@ export default function AdminDashboard() {
         }
     };
 
-    // ── Filtering & pagination ────────────────────────────────────────────────
+    // ── Pagination (filtering now happens server-side in loadTableData / fetchFilteredTablePage) ──
 
-    const filteredTableData = tableData.filter(row => {
-        // Text search
-        if (searchQuery) {
-            if (selectedTable.hasUserId) {
-                const matchIds = findUserIdsByName(searchQuery);
-                const uid = String(row.user_id ?? '');
-                if (!matchIds.includes(uid) && !uid.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-            } else if (selectedTable.name === 'profiles') {
-                const name = String(row.username ?? '').toLowerCase();
-                const rid = String(row.research_id ?? '').toLowerCase();
-                if (!name.includes(searchQuery.toLowerCase()) && !rid.includes(searchQuery.toLowerCase())) return false;
-            } else {
-                const val = String(row[selectedTable.searchColumn] ?? '');
-                if (!val.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-            }
-        }
-        // Date range filter
-        if (filterStartDate || filterEndDate) {
-            const dateVal = (row.created_at || row.event_date) as string | undefined;
-            if (dateVal) {
-                const d = new Date(dateVal);
-                if (filterStartDate && d < new Date(filterStartDate)) return false;
-                if (filterEndDate) {
-                    const limit = new Date(filterEndDate);
-                    limit.setHours(23, 59, 59, 999);
-                    if (d > limit) return false;
-                }
-            }
-        }
-        // Group filter
-        if (filterGroup !== 'all' && selectedTable.hasUserId) {
-            const uid = String(row.user_id ?? '');
-            const g = groupMap.get(uid);
-            if (g !== filterGroup) return false;
-        }
-        return true;
-    });
-
-    const totalPages = Math.ceil(
-        (searchQuery || filterStartDate || filterEndDate || filterGroup !== 'all'
-            ? filteredTableData.length
-            : totalTableCount) / pageSize
-    ) || 1;
-
-    const paginatedData = filteredTableData;
-    const displayTotal = (searchQuery || filterStartDate || filterEndDate || filterGroup !== 'all')
-        ? filteredTableData.length
-        : totalTableCount;
+    const totalPages = Math.ceil(totalTableCount / pageSize) || 1;
+    const paginatedData = tableData;
+    const displayTotal = totalTableCount;
 
     const hasActiveFilters = filterStartDate || filterEndDate || filterGroup !== 'all';
     const canGroupFilter = selectedTable.hasUserId;
@@ -1179,10 +1183,12 @@ export default function AdminDashboard() {
                                             Add Record
                                         </Button>
                                     )}
-                                    <Button onClick={() => setIsExportDialogOpen(true)} variant="outline" className="border-neutral-300 text-neutral-700 bg-white font-medium text-xs h-8 px-3 rounded-lg hover:bg-neutral-50">
-                                        <Download className="mr-1 h-3.5 w-3.5" />
-                                        Export CSV
-                                    </Button>
+                                    {!selectedTable.readOnly && (
+                                        <Button onClick={() => setIsExportDialogOpen(true)} variant="outline" className="border-neutral-300 text-neutral-700 bg-white font-medium text-xs h-8 px-3 rounded-lg hover:bg-neutral-50">
+                                            <Download className="mr-1 h-3.5 w-3.5" />
+                                            Export CSV
+                                        </Button>
+                                    )}
                                     <Button onClick={() => loadTableData(currentPage)} variant="outline" size="icon" className="h-8 w-8 bg-white border-neutral-300 hover:bg-neutral-50 rounded-lg text-neutral-600" title="Refresh">
                                         <RefreshCw className="h-3.5 w-3.5" />
                                     </Button>
@@ -1445,9 +1451,32 @@ export default function AdminDashboard() {
                                 <Input id="exp-end" type="date" value={exportEndDate} onChange={e => setExportEndDate(e.target.value)} className="text-xs h-9 bg-neutral-50 border-neutral-200 focus-visible:ring-0 rounded-lg" />
                             </div>
                         </div>
+                        {selectedTable.hasUserId && (
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-semibold text-neutral-700">Research Group</Label>
+                                <div className="flex rounded-lg border border-neutral-200 overflow-hidden bg-white w-fit">
+                                    {([
+                                        { id: 'all', label: 'All Participants' },
+                                        { id: 'cg', label: 'Control (.cg)' },
+                                        { id: 'ex', label: 'Experimental (.ex)' },
+                                    ] as { id: GroupFilter; label: string }[]).map(({ id, label }) => (
+                                        <button
+                                            key={id}
+                                            type="button"
+                                            onClick={() => setExportGroupFilter(id)}
+                                            className={`px-2.5 py-1.5 text-[11px] font-semibold border-r border-neutral-200 last:border-0 transition-colors ${
+                                                exportGroupFilter === id ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'
+                                            }`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter className="pt-4 border-t border-neutral-100 gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={() => { setExportStartDate(''); setExportEndDate(''); setIsExportDialogOpen(false); }} className="text-xs border-neutral-200 text-neutral-600 hover:bg-neutral-50 rounded-lg">
+                        <Button type="button" variant="outline" size="sm" onClick={() => { setExportStartDate(''); setExportEndDate(''); setExportGroupFilter('all'); setIsExportDialogOpen(false); }} className="text-xs border-neutral-200 text-neutral-600 hover:bg-neutral-50 rounded-lg">
                             Cancel
                         </Button>
                         <Button onClick={triggerExportCSV} size="sm" disabled={exportLoading} className="text-xs bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg shadow-sm">

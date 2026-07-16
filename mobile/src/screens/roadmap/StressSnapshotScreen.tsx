@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -8,19 +8,22 @@ import {
     ActivityIndicator,
     Dimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../types/navigation';
 
 import { API_URL } from '../../config/api';
+import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
+import { formatUtcMonthDay } from '../../lib/dateFormat';
+import { useConfirmExitOnBack } from '../../lib/useConfirmExitOnBack';
 import { Colors as GlobalColors } from '../../constants/colors';
 import { StressIllustration } from '../../components/MeditationIllustration';
 import { PopupModal } from '../../components/PopupModal';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
+import { PanelWave } from '../../components/PanelWave';
 import { FrequencyMeter } from '../../components/ScaleIcons';
 const Colors = {
     ...GlobalColors,
@@ -53,6 +56,7 @@ const SCALE_OPTIONS = [
 
 export default function StressSnapshotScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
     const startTimeRef = useRef<number | null>(null);
     const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,6 +68,10 @@ export default function StressSnapshotScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alreadySubmitted, setAlreadySubmitted] = useState(false);
     const [nextReset, setNextReset] = useState<Date | null>(null);
+
+    // Android hardware back would otherwise silently discard in-progress answers.
+    const exitWithoutSaving = useCallback(() => navigation.goBack(), [navigation]);
+    useConfirmExitOnBack(Object.keys(answers).length > 0, exitWithoutSaving);
 
     // Popup Modal state
     const [popup, setPopup] = useState<{
@@ -89,31 +97,12 @@ export default function StressSnapshotScreen() {
         };
     }, []);
 
-    const getAuthToken = async () => {
-        return await AsyncStorage.getItem('authToken');
-    };
-
     const checkStatus = async () => {
         try {
-            const token = await getAuthToken();
-            const response = await fetch(`${API_URL}/api/roadmap/stress/status`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.completed) {
-                    navigation.replace('CompleteTask', {
-                        title: 'Great Job!',
-                        message: 'You have successfully completed the Stress Snapshot. See you in 1 month!',
-                        buttonText: 'Back to Journey',
-                        themeColor: Colors.primary,
-                        themeBgGrad: [THEME_BG, '#FCEEEB', '#FFFFFF']
-                    });
-                    return;
-                }
+            const { ok, data } = await apiFetch<{ completed: boolean; nextReset?: string }>('/api/roadmap/stress/status');
+            if (ok && data?.completed) {
+                setAlreadySubmitted(true);
+                if (data.nextReset) setNextReset(new Date(data.nextReset));
             }
         } catch (error) {
             console.error('Error checking status:', error);
@@ -128,15 +117,22 @@ export default function StressSnapshotScreen() {
         setCurrentQuestionIndex(0);
     };
 
+    // Cancels any pending auto-advance before a manual Back/Next tap, or the 250ms timeout could also fire and skip a question.
+    const goToQuestion = (index: number) => {
+        if (advanceTimeoutRef.current) {
+            clearTimeout(advanceTimeoutRef.current);
+            advanceTimeoutRef.current = null;
+        }
+        setCurrentQuestionIndex(index);
+    };
+
     const handleSelect = (value: number) => {
         setAnswers(prev => ({
             ...prev,
             [`q${currentQuestionIndex + 1}`]: value
         }));
 
-        // Small delay for smooth transition feel, auto advance to next question.
-        // Clear any pending advance first so rapid re-taps on the same question
-        // reset the timer instead of stacking multiple advances.
+        // Auto-advances after a short delay; clears any pending advance first so rapid re-taps reset the timer instead of stacking.
         if (advanceTimeoutRef.current) {
             clearTimeout(advanceTimeoutRef.current);
             advanceTimeoutRef.current = null;
@@ -169,6 +165,14 @@ export default function StressSnapshotScreen() {
 
         try {
             const token = await getAuthToken();
+
+            if (!token) {
+                showPopup('error', 'Session Expired', 'Please login again to continue.', () => {
+                    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                });
+                return;
+            }
+
             const response = await fetch(`${API_URL}/api/roadmap/stress`, {
                 method: 'POST',
                 headers: {
@@ -186,14 +190,15 @@ export default function StressSnapshotScreen() {
                 throw new Error(error.error || 'Submission failed');
             }
 
-            showPopup('success', 'Response Saved!', 'Thank you for tracking your stress levels today.', () => {
-                navigation.replace('CompleteTask', {
-                    title: 'Great Job!',
-                    message: 'You have successfully completed the Stress Snapshot. See you in 1 month!',
-                    buttonText: 'Back to Journey',
-                    themeColor: Colors.primary,
-                    themeBgGrad: [THEME_BG, '#FCEEEB', '#FFFFFF']
-                });
+            clearApiCache('/api/roadmap/stress');
+            clearApiCache('/api/journey');
+
+            navigation.replace('CompleteTask', {
+                title: 'Great Job!',
+                message: 'You have successfully completed the Stress Snapshot. See you in 1 month!',
+                buttonText: 'Back to Dashboard',
+                themeColor: Colors.primary,
+                themeBgGrad: [THEME_BG, '#FCEEEB', '#FFFFFF']
             });
 
         } catch (error: any) {
@@ -216,18 +221,18 @@ export default function StressSnapshotScreen() {
 
     if (alreadySubmitted) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <StatusBar style="dark" />
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
                     </TouchableOpacity>
                     <Text style={styles.title}>Stress Snapshot</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
-                <View style={styles.successContainer}>
+                <View style={[styles.successContainer, { paddingBottom: 24 + insets.bottom }]}>
                     <View style={styles.successIcon}>
                         <Ionicons name="checkmark-circle" size={80} color={Colors.primary} />
                     </View>
@@ -235,15 +240,15 @@ export default function StressSnapshotScreen() {
                     <Text style={styles.successText}>Thank you for tracking your stress levels today.</Text>
                     {nextReset && (
                         <Text style={[styles.successText, { marginTop: 8, fontWeight: '700', color: Colors.primary }]}>
-                            Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            Next reset: {formatUtcMonthDay(nextReset)}
                         </Text>
                     )}
 
                     <TouchableOpacity
                         style={styles.homeButton}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => navigation.navigate('MainTabs')}
                     >
-                        <Text style={styles.homeButtonText}>Back to Journey</Text>
+                        <Text style={styles.homeButtonText}>Back to Dashboard</Text>
                     </TouchableOpacity>
                 </View>
             </SafeAreaView>
@@ -251,9 +256,12 @@ export default function StressSnapshotScreen() {
     }
 
     // INTRO SCREEN
+    // INTRO SCREEN — About Me front-page layout: illustration above a rounded
+    // panel (in this screen's own iconic terracotta) with a caps label/headline,
+    // the instructions card, the Start button, and a bottom wave.
     if (currentStep === 'intro') {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <StatusBar style="dark" />
                 <LeavesDecoration width={width} height={width} color={Colors.primary} />
                 <PopupModal
@@ -266,41 +274,47 @@ export default function StressSnapshotScreen() {
                     themeColor={Colors.primary}
                 />
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color="#1E293B" />
                     </TouchableOpacity>
                     <Text style={styles.title}>Stress Snapshot</Text>
                     <View style={{ width: 40 }} />
                 </View>
 
-                <ScrollView contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
-                    <View style={styles.illustrationContainer}>
-                        <StressIllustration width={width * 0.63} height={width * 0.63} color={Colors.primary} />
-                    </View>
-
-                    <Text style={styles.introTitle}>Perceived Stress</Text>
-                    <Text style={styles.introSubtitle}>Monthly Assessment (PSS-10)</Text>
-
-                    <View style={styles.introCard}>
-                        <View style={styles.introIconRow}>
-                            <View style={styles.introIconCircle}>
-                                <Ionicons name="information-circle-outline" size={24} color={Colors.primary} />
-                            </View>
-                            <Text style={styles.introCardTitle}>Instructions</Text>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
+                    <View style={styles.introWrap}>
+                        <View style={styles.illustrationContainer}>
+                            <StressIllustration width={width * 0.68} height={width * 0.68} color={Colors.primary} />
                         </View>
-                        <Text style={styles.introCardText}>
-                            The questions in this scale ask you about your feelings and thoughts during the last month. You will rate how often you felt or thought a certain way.
-                        </Text>
-                    </View>
 
-                    <TouchableOpacity
-                        style={styles.goButton}
-                        onPress={handleStart}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.goButtonText}>Start Assessment</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
+                        <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
+                            <Text style={styles.introPanelLabel}>PSS-10 ASSESSMENT</Text>
+                            <Text style={styles.introPanelHeadline}>PERCEIVED STRESS</Text>
+
+                            <View style={styles.introCard}>
+                                <View style={styles.introIconRow}>
+                                    <View style={styles.introIconCircle}>
+                                        <Ionicons name="information-circle-outline" size={24} color={Colors.primary} />
+                                    </View>
+                                    <Text style={styles.introCardTitle}>Instructions</Text>
+                                </View>
+                                <Text style={styles.introCardText}>
+                                    The questions in this scale ask you about your feelings and thoughts during the last month. You will rate how often you felt or thought a certain way.
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.goButton}
+                                onPress={handleStart}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.goButtonText}>Start Assessment</Text>
+                                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
+
+                            <PanelWave />
+                        </View>
+                    </View>
                 </ScrollView>
             </SafeAreaView>
         );
@@ -311,7 +325,7 @@ export default function StressSnapshotScreen() {
 
     // QUESTIONNAIRE SCREEN
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <StatusBar style="dark" />
             <LeavesDecoration width={width} height={width} color={Colors.primary} />
             <PopupModal
@@ -328,11 +342,11 @@ export default function StressSnapshotScreen() {
             <View style={styles.header}>
                 <TouchableOpacity
                     onPress={() => {
-                        if (currentQuestionIndex > 0) {
-                            setCurrentQuestionIndex(prev => prev - 1);
-                        } else {
-                            setCurrentStep('intro');
+                        if (advanceTimeoutRef.current) {
+                            clearTimeout(advanceTimeoutRef.current);
+                            advanceTimeoutRef.current = null;
                         }
+                        navigation.navigate('MainTabs');
                     }}
                     style={styles.backButton}
                 >
@@ -344,110 +358,106 @@ export default function StressSnapshotScreen() {
                 </View>
             </View>
 
-            {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-                <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${((currentQuestionIndex + 1) / PSS_QUESTIONS.length) * 100}%` }]} />
-                </View>
-                <Text style={styles.progressStepText}>Question {currentQuestionIndex + 1} of {PSS_QUESTIONS.length}</Text>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.instructionContainer}>
-                    <Ionicons name="pulse" size={16} color={Colors.primary} />
-                    <Text style={styles.instructionText}>
-                        In the last 1 month, how often have you...
-                    </Text>
-                </View>
-
-                <View style={styles.questionCard}>
-                    <View style={styles.questionNumberBadge}>
-                        <Text style={styles.questionNumberText}>Question {currentQuestionIndex + 1}</Text>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.introWrap}>
+                    {/* Top Section on cream background */}
+                    <View style={styles.illustrationContainer}>
+                        <StressIllustration width={width * 0.35} height={width * 0.35} color={Colors.primary} />
                     </View>
-                    <Text style={styles.questionText}>{currentQuestionText}</Text>
 
-                    <View style={styles.optionsContainer}>
-                        {SCALE_OPTIONS.map((option) => {
-                            const isSelected = answers[`q${currentQuestionIndex + 1}`] === option.value;
-                            return (
+                    {/* Progress Bar */}
+                    <View style={[styles.progressContainer, { width: '100%', paddingHorizontal: 24, marginBottom: 16 }]}>
+                        <View style={styles.progressBarBg}>
+                            <View style={[styles.progressBarFill, { width: `${((currentQuestionIndex + 1) / PSS_QUESTIONS.length) * 100}%` }]} />
+                        </View>
+                        <Text style={styles.progressStepText}>Question {currentQuestionIndex + 1} of {PSS_QUESTIONS.length}</Text>
+                    </View>
+
+                    {/* Bottom Panel (terracotta background) */}
+                    <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
+                        <View style={styles.questionCard}>
+                            <View style={styles.questionNumberBadge}>
+                                <Text style={styles.questionNumberText}>Question {currentQuestionIndex + 1}</Text>
+                            </View>
+                            <Text style={styles.questionText}>{currentQuestionText}</Text>
+
+                            <View style={styles.optionsContainer}>
+                                {SCALE_OPTIONS.map((option) => {
+                                    const isSelected = answers[`q${currentQuestionIndex + 1}`] === option.value;
+                                    return (
+                                        <TouchableOpacity
+                                            key={option.value}
+                                            style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                                            onPress={() => handleSelect(option.value)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                                                {isSelected && <View style={styles.radioInner} />}
+                                            </View>
+                                            <View style={styles.scaleIconSlot}>
+                                                <FrequencyMeter level={option.value} color={Colors.primary} />
+                                            </View>
+                                            <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                                                {option.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        {/* Bottom Navigation */}
+                        <View style={styles.navigationRow}>
+                            {currentQuestionIndex > 0 ? (
                                 <TouchableOpacity
-                                    key={option.value}
-                                    style={[
-                                        styles.optionButton,
-                                        isSelected && styles.optionButtonSelected
-                                    ]}
-                                    onPress={() => handleSelect(option.value)}
+                                    style={styles.navButtonSecondary}
+                                    onPress={() => goToQuestion(currentQuestionIndex - 1)}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={[
-                                        styles.radioCircle,
-                                        isSelected && styles.radioCircleSelected
-                                    ]}>
-                                        {isSelected && <View style={styles.radioInner} />}
-                                    </View>
-                                    <View style={styles.scaleIconSlot}>
-                                        <FrequencyMeter level={option.value} color={Colors.primary} />
-                                    </View>
-                                    <Text style={[
-                                        styles.optionText,
-                                        isSelected && styles.optionTextSelected
-                                    ]}>
-                                        {option.label}
-                                    </Text>
+                                    <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
+                                    <Text style={styles.navButtonTextSecondary}>Back</Text>
                                 </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                </View>
-
-                {/* Bottom Navigation */}
-                <View style={styles.navigationRow}>
-                    {currentQuestionIndex > 0 ? (
-                        <TouchableOpacity
-                            style={styles.navButtonSecondary}
-                            onPress={() => setCurrentQuestionIndex(prev => prev - 1)}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="arrow-back" size={20} color={Colors.textSecondary} />
-                            <Text style={styles.navButtonTextSecondary}>Back</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <View style={{ flex: 1 }} />
-                    )}
-
-                    {currentQuestionIndex < PSS_QUESTIONS.length - 1 ? (
-                        <TouchableOpacity
-                            style={[
-                                styles.navButtonPrimary,
-                                !isCurrentQuestionAnswered && styles.navButtonDisabled
-                            ]}
-                            disabled={!isCurrentQuestionAnswered}
-                            onPress={() => setCurrentQuestionIndex(prev => prev + 1)}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={styles.navButtonTextPrimary}>Next</Text>
-                            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    ) : (
-                        <TouchableOpacity
-                            style={[
-                                styles.submitButton,
-                                (!isCurrentQuestionAnswered || isSubmitting) && styles.navButtonDisabled
-                            ]}
-                            disabled={!isCurrentQuestionAnswered || isSubmitting}
-                            onPress={handleSubmit}
-                            activeOpacity={0.7}
-                        >
-                            {isSubmitting ? (
-                                <ActivityIndicator color="#FFFFFF" size="small" />
                             ) : (
-                                <>
-                                    <Text style={styles.submitButtonText}>Submit</Text>
-                                    <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
-                                </>
+                                <View style={{ flex: 1 }} />
                             )}
-                        </TouchableOpacity>
-                    )}
+
+                            {currentQuestionIndex < PSS_QUESTIONS.length - 1 ? (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.navButtonPrimary,
+                                        !isCurrentQuestionAnswered && styles.navButtonDisabled
+                                    ]}
+                                    disabled={!isCurrentQuestionAnswered}
+                                    onPress={() => goToQuestion(currentQuestionIndex + 1)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.navButtonTextPrimary}>Next</Text>
+                                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.submitButton,
+                                        (!isCurrentQuestionAnswered || isSubmitting) && styles.navButtonDisabled
+                                    ]}
+                                    disabled={!isCurrentQuestionAnswered || isSubmitting}
+                                    onPress={handleSubmit}
+                                    activeOpacity={0.7}
+                                >
+                                    {isSubmitting ? (
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                    ) : (
+                                        <>
+                                            <Text style={styles.submitButtonText}>Submit</Text>
+                                            <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <PanelWave />
+                    </View>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -550,23 +560,21 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     questionCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 30, // Standardized bottom panel/card curves
-        padding: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.04,
-        shadowRadius: 16,
-        elevation: 4,
-        minHeight: 320,
+        width: '100%',
+        zIndex: 1,
     },
     questionNumberBadge: {
         alignSelf: 'flex-start',
-        backgroundColor: THEME_BG, // soft theme primary bg (#FFF4F2)
+        backgroundColor: '#FFFFFF',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
-        marginBottom: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
     questionNumberText: {
         fontSize: 11,
@@ -576,31 +584,37 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
     questionText: {
-        fontSize: 18,
+        fontSize: 19,
         fontWeight: '700',
-        color: '#2D3436',
-        marginBottom: 24,
+        color: '#1E293B',
+        marginBottom: 16,
         lineHeight: 26,
     },
     optionsContainer: {
-        gap: 12,
+        gap: 8,
     },
     optionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 18,
-        borderRadius: 24,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 16,
         backgroundColor: '#FFFFFF',
         borderWidth: 1.5,
         borderColor: '#E2E8F0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+        elevation: 1,
     },
     optionButtonSelected: {
         backgroundColor: THEME_BG,
         borderColor: Colors.primary,
         shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
         elevation: 2,
     },
     radioCircle: {
@@ -641,7 +655,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 20,
+        marginBottom: 32,
         gap: 12,
+        zIndex: 1,
     },
     navButtonSecondary: {
         flex: 1,
@@ -749,26 +765,51 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
-    // Intro styles
+    // Intro styles — About Me front-page layout: illustration above a rounded panel.
     introContent: {
-        padding: 24,
+        paddingHorizontal: 24,
+        paddingTop: 24,
+        flexGrow: 1,
+    },
+    introWrap: {
+        flex: 1,
+        marginHorizontal: -24, // cancels introContent's padding so the panel bleeds to the screen edges
         alignItems: 'center',
     },
     illustrationContainer: {
-        marginBottom: 16,
+        marginBottom: 8,
+        alignItems: 'center',
     },
-    introTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#2D3436',
-        marginBottom: 4,
-        textAlign: 'center',
+    introPanel: {
+        flex: 1,
+        backgroundColor: THEME_BG,
+        width: '100%',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        paddingTop: 24,
+        paddingBottom: 28,
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 6,
     },
-    introSubtitle: {
-        fontSize: 15,
+    introPanelLabel: {
+        fontSize: 13,
+        fontWeight: '600',
         color: '#636E72',
-        marginBottom: 28,
-        textAlign: 'center',
+        letterSpacing: 2,
+        marginBottom: 2,
+    },
+    introPanelHeadline: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: '#2D3436',
+        letterSpacing: 1,
+        marginBottom: 20,
     },
     introCard: {
         backgroundColor: '#FFFFFF',
@@ -815,6 +856,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         borderRadius: 30,
         width: '100%',
+        marginBottom: 32, // leaves room below the button so PanelWave (bottom: 0 of the panel) isn't covered by it
+        zIndex: 1,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,

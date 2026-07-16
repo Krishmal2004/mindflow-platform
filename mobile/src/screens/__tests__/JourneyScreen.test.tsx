@@ -6,9 +6,18 @@ import { apiFetch } from '../../lib/apiClient';
 jest.mock('@react-navigation/native', () => ({
     useFocusEffect: (callback: () => void) => {
         const React = require('react');
-        React.useEffect(callback, []);
+        React.useEffect(() => { callback(); }, []);
     },
 }));
+
+jest.mock('react-native-safe-area-context', () => {
+    const { View } = require('react-native');
+    return {
+        useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+        SafeAreaView: View,
+        SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+    };
+});
 
 jest.mock('../../lib/apiClient', () => ({
     apiFetch: jest.fn(),
@@ -31,6 +40,7 @@ const journeyData = {
 };
 
 beforeEach(() => {
+    mockedApiFetch.mockReset();
     mockedApiFetch.mockResolvedValue({ ok: true, status: 200, data: journeyData });
 });
 

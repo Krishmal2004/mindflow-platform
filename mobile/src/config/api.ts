@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
-// Android Emulator uses 10.0.2.2 to access host's localhost
-// iOS Simulator and real devices need the local network IP
+// Android emulator reaches the host's localhost via 10.0.2.2; iOS simulator uses localhost directly.
 const LOCALHOST = Platform.select({
     android: '10.0.2.2',
     ios: 'localhost',

@@ -6,10 +6,7 @@ interface Props {
     height?: number;
 }
 
-/**
- * "Email Verified" illustration — an open envelope with a floating check,
- * surrounded by sparkle dots. Used on the OTP verification screen.
- */
+// "Email Verified" illustration used on the OTP verification screen.
 export function VerifyIllustration({ width = 200, height = 180 }: Props) {
     return (
         <Svg width={width} height={height} viewBox="0 0 200 180" fill="none">

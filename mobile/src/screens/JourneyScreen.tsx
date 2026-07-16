@@ -9,14 +9,19 @@ import {
     RefreshControl,
     ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { apiFetch, clearApiCache } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
+import { cardShadow } from '../styles/shared';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
-import { LeavesDecoration } from '../components/LeavesDecoration';
+
+
+
+const JOURNEY_ACCENT = '#6366F1';
+const ENTRY_DISPLAY_LIMIT = 15;
 
 const { width } = Dimensions.get('window');
 
@@ -62,7 +67,7 @@ interface SummaryCardProps {
     count: number;
     latestLabel?: string;
     latestDate?: string;
-    /** All submission dates; when provided, the card becomes tappable to reveal the full list. */
+    // All submission dates; when provided, the card becomes tappable to reveal the full list.
     entries?: SummaryCardEntry[];
 }
 
@@ -78,7 +83,7 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
             onPress={() => setExpanded(prev => !prev)}
         >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.listIcon, { backgroundColor: '#E6F4EA' }]}>
+                <View style={[styles.listIcon, { backgroundColor: Colors.primaryTint }]}>
                     <Ionicons name={icon} size={20} color={Colors.primary} />
                 </View>
                 <View style={styles.listContent}>
@@ -95,12 +100,14 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
                     )}
                 </View>
                 {isExpandable && (
-                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#94A3B8" />
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
                 )}
             </View>
             {isExpandable && expanded && (
                 <View style={styles.entryList}>
-                    {entries!.map((entry, index) => (
+                    {/* Longitudinal study means this list only grows over months — cap the
+                        expanded render rather than rendering an unbounded array. */}
+                    {entries!.slice(0, ENTRY_DISPLAY_LIMIT).map((entry, index) => (
                         <View key={index} style={styles.entryRow}>
                             <Ionicons name="ellipse" size={6} color={Colors.primary} style={{ marginRight: 8 }} />
                             <Text style={styles.entryText}>
@@ -108,6 +115,11 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
                             </Text>
                         </View>
                     ))}
+                    {entries!.length > ENTRY_DISPLAY_LIMIT && (
+                        <Text style={styles.entryMoreText}>
+                            +{entries!.length - ENTRY_DISPLAY_LIMIT} more
+                        </Text>
+                    )}
                 </View>
             )}
         </TouchableOpacity>
@@ -115,6 +127,7 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
 };
 
 export default function JourneyScreen() {
+
     const [dailyData, setDailyData] = useState<DailySliderData[]>([]);
     const [weeklyData, setWeeklyData] = useState<QuestionnaireResponse[]>([]);
     const [pss10Data, setPss10Data] = useState<QuestionnaireResponse[]>([]);
@@ -176,6 +189,8 @@ export default function JourneyScreen() {
     }, [pss10Data, ffmq15Data, wemwbs14Data]);
 
     // --- Chart Data ---
+    const CHART_WIDTH = width - 24 * 2 - 16 * 2;
+
     const getChartData = (metric: 'stress' | 'sleep' | 'relax') => {
         const recent = dailyData.slice(0, 7).reverse();
         if (recent.length === 0) return { labels: [], datasets: [{ data: [] }] };
@@ -191,42 +206,64 @@ export default function JourneyScreen() {
         };
     };
 
+    const getLatestValue = (metric: 'stress' | 'sleep' | 'relax'): number | null => {
+        if (dailyData.length === 0) return null;
+        const latest = dailyData[0];
+        return metric === 'stress' ? latest.stress_level : metric === 'sleep' ? latest.sleep_quality : latest.calm_after;
+    };
+
     const renderChart = (metric: 'stress' | 'sleep' | 'relax', color: string) => {
         const data = getChartData(metric);
-        if (data.datasets[0].data.length === 0) return <Text style={styles.noDataText}>No data yet</Text>;
+        if (data.datasets[0].data.length === 0) {
+            return (
+                <View style={styles.noDataBox}>
+                    <Ionicons name="analytics-outline" size={22} color={Colors.textMuted} />
+                    <Text style={styles.noDataText}>No data yet</Text>
+                </View>
+            );
+        }
 
         return (
             <LineChart
                 data={data}
-                width={width - 72}
-                height={200}
+                width={CHART_WIDTH}
+                height={180}
+                fromZero
+                segments={5}
+                yAxisInterval={1}
                 chartConfig={{
-                    backgroundColor: '#ffffff',
-                    backgroundGradientFrom: '#ffffff',
-                    backgroundGradientTo: '#ffffff',
+                    backgroundColor: Colors.surface,
+                    backgroundGradientFrom: Colors.surface,
+                    backgroundGradientTo: Colors.surface,
                     decimalPlaces: 0,
                     color: (opacity = 1) => color,
-                    labelColor: (opacity = 1) => `rgba(45, 52, 54, ${opacity})`,
-                    style: { borderRadius: 24 },
-                    propsForDots: { r: '5', strokeWidth: '2', stroke: color }
+                    labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
+                    propsForBackgroundLines: { stroke: Colors.surfaceMuted },
+                    style: { borderRadius: 16 },
+                    propsForDots: { r: '4', strokeWidth: '2', stroke: color },
                 }}
                 bezier
-                style={{ marginVertical: 8, borderRadius: 24 }}
+                withInnerLines={true}
+                withOuterLines={false}
+                style={styles.chart}
             />
         );
     };
 
+    const METRICS: { key: 'stress' | 'sleep' | 'relax'; title: string; color: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+        { key: 'stress', title: 'Stress Levels', color: '#EF4444', icon: 'flame-outline' },
+        { key: 'sleep', title: 'Sleep Quality', color: '#3B82F6', icon: 'moon-outline' },
+        { key: 'relax', title: 'Calm (After Practice)', color: Colors.primary, icon: 'leaf-outline' },
+    ];
+
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <LeavesDecoration width={width} height={width} />
 
-            <SafeAreaView edges={['top', 'left', 'right']}>
-                <View style={styles.headerContainer}>
-                    <Text style={styles.title}>Your Journey</Text>
-                    <Text style={styles.subtitle}>Track your comprehensive progress</Text>
-                </View>
-            </SafeAreaView>
+            <ScreenHeader
+                title="Your Journey"
+                subtitle="Track your comprehensive progress"
+            />
 
             <ScrollView
                 style={styles.content}
@@ -271,20 +308,27 @@ export default function JourneyScreen() {
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>Daily Metrics (Last 7 Entries)</Text>
 
-                                <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Stress Levels</Text>
-                                    {renderChart('stress', '#EF4444')}
-                                </View>
-
-                                <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Sleep Quality</Text>
-                                    {renderChart('sleep', '#3B82F6')}
-                                </View>
-
-                                <View style={styles.metricCard}>
-                                    <Text style={styles.cardHeader}>Calm (After Practice)</Text>
-                                    {renderChart('relax', Colors.primary)}
-                                </View>
+                                {METRICS.map(({ key, title, color, icon }) => {
+                                    const latest = getLatestValue(key);
+                                    return (
+                                        <View key={key} style={styles.metricCard}>
+                                            <View style={styles.metricCardHeader}>
+                                                <View style={styles.metricTitleRow}>
+                                                    <View style={[styles.metricIconCircle, { backgroundColor: `${color}1A` }]}>
+                                                        <Ionicons name={icon} size={15} color={color} />
+                                                    </View>
+                                                    <Text style={styles.cardHeader}>{title}</Text>
+                                                </View>
+                                                {latest !== null && (
+                                                    <View style={[styles.metricBadge, { backgroundColor: `${color}1A` }]}>
+                                                        <Text style={[styles.metricBadgeText, { color }]}>{latest}/5</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            {renderChart(key, color)}
+                                        </View>
+                                    );
+                                })}
                             </View>
                         )}
 
@@ -323,6 +367,7 @@ export default function JourneyScreen() {
                     </View>
                 )}
             </ScrollView>
+
         </View>
     );
 }
@@ -330,21 +375,7 @@ export default function JourneyScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F8F9',
-    },
-    headerContainer: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#2D3436',
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 15,
-        color: '#636E72',
+        backgroundColor: Colors.background,
     },
     content: {
         flex: 1,
@@ -358,16 +389,12 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     statCard: {
-        backgroundColor: '#ffffff',
+        backgroundColor: Colors.surface,
         borderRadius: 24,
         padding: 16,
         flex: 1,
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+        ...cardShadow,
     },
     statValue: {
         fontSize: 18,
@@ -376,7 +403,7 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 11,
-        color: '#636E72',
+        color: Colors.textSecondary,
         marginTop: 6,
         fontWeight: '700',
         textAlign: 'center',
@@ -392,15 +419,15 @@ const styles = StyleSheet.create({
     },
     activeTab: {
         borderBottomWidth: 3,
-        borderBottomColor: Colors.primary,
+        borderBottomColor: JOURNEY_ACCENT,
     },
     tabText: {
         fontSize: 16,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         fontWeight: '700',
     },
     activeTabText: {
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     section: {
         paddingHorizontal: 24,
@@ -409,46 +436,73 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 15,
         fontWeight: '800',
-        color: '#2D3436',
+        color: Colors.textPrimary,
         marginBottom: 16,
     },
     noDataText: {
         fontStyle: 'italic',
-        color: '#94A3B8',
+        color: Colors.textMuted,
         textAlign: 'center',
-        marginVertical: 16,
+        marginTop: 8,
         fontWeight: '500',
     },
+    noDataBox: {
+        height: 180,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     metricCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: 30,
+        backgroundColor: Colors.surface,
+        borderRadius: 24,
         padding: 16,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 12,
-        elevation: 2,
+        marginBottom: 16,
+        overflow: 'hidden',
+        ...cardShadow,
+    },
+    metricCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    metricTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    metricIconCircle: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    metricBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    metricBadgeText: {
+        fontSize: 12,
+        fontWeight: '800',
     },
     cardHeader: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#2D3436',
-        marginBottom: 8,
-        marginLeft: 4,
+        color: Colors.textPrimary,
+    },
+    chart: {
+        marginTop: 8,
+        borderRadius: 16,
     },
     listItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: Colors.surface,
         padding: 16,
         borderRadius: 24,
         marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.03,
-        shadowRadius: 10,
-        elevation: 2,
+        ...cardShadow,
     },
     listIcon: {
         width: 40,
@@ -464,11 +518,11 @@ const styles = StyleSheet.create({
     listTitle: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     listTime: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         marginTop: 4,
         fontWeight: '500',
     },
@@ -482,7 +536,7 @@ const styles = StyleSheet.create({
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+        borderTopColor: Colors.surfaceMuted,
     },
     entryRow: {
         flexDirection: 'row',
@@ -491,7 +545,14 @@ const styles = StyleSheet.create({
     },
     entryText: {
         fontSize: 12,
-        color: '#636E72',
+        color: Colors.textSecondary,
         fontWeight: '500',
+    },
+    entryMoreText: {
+        fontSize: 11,
+        color: Colors.textMuted,
+        fontStyle: 'italic',
+        marginTop: 4,
+        paddingLeft: 14,
     },
 });

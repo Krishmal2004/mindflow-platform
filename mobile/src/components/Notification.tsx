@@ -46,9 +46,6 @@ export const Notification: React.FC<NotificationProps> = ({ type, message, visib
         };
     });
 
-    // Muted Blue-Green Palette
-    // Success: Sage Green (#8faea3)
-    // Error: Muted Red/Pink
     const backgroundColor = type === 'success' ? Colors.success : Colors.error;
     const iconName = type === 'success' ? 'checkmark-circle-outline' : 'alert-circle-outline';
 

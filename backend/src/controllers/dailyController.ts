@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
 const dailyService = new DailyService();
 
-/** Daily sliders: all core metrics are 1–5 per DB CHECK constraints. */
+// Daily sliders: all core metrics are 1–5 per DB CHECK constraints.
 const dailyEntrySchema = z.object({
     stress_level: z.number().int().min(1).max(5),
     calm_before: z.number().int().min(1).max(5),
@@ -64,9 +64,7 @@ export const updateVideoProgress = async (req: AuthenticatedRequest, res: Respon
         if (!req.user?.id) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
         const { seconds } = req.body;
-        // Upper bound guards against a buggy/malicious client pushing an unbounded
-        // increment; WATCH_SYNC_INTERVAL_SECONDS on the client flushes every 5s, so
-        // 300 (5 min) comfortably covers normal usage plus background/retry bursts.
+        // 300s (5 min) upper bound guards against a buggy/malicious client pushing an unbounded increment.
         if (typeof seconds !== 'number' || seconds < 0 || seconds > 300) {
             res.status(400).json({ error: 'Seconds must be a number between 0 and 300' });
             return;

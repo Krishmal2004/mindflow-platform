@@ -1,10 +1,10 @@
 import { supabase } from '../config/supabase';
 
-/** Reverse scoring: Score = 6 - UserRating. */
+// Reverse scoring: Score = 6 - UserRating.
 const reverseScore = (val: number): number => 6 - val;
 
 export class MindfulService {
-    /** Check if user has submitted FFMQ-15 in the last 30 days. */
+    // Check if user has submitted FFMQ-15 in the last 30 days.
     public async getMindfulStatus(userId: string) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -29,17 +29,8 @@ export class MindfulService {
         return { completed: !!last, nextReset };
     }
 
-    /** Submit FFMQ-15 entry with facet scoring. */
+    // Submit FFMQ-15 entry with facet scoring.
     public async submitMindfulEntry(userId: string, entry: Record<string, number>) {
-        // The 30-day lockout is otherwise client-side only — enforce it here too so a
-        // direct API call can't insert duplicate clinical-scale data points within the window.
-        const status = await this.getMindfulStatus(userId);
-        if (status.completed) {
-            const err = new Error('MINDFUL_ALREADY_SUBMITTED') as any;
-            err.status = 409;
-            throw err;
-        }
-
         const questions = Array.from({ length: 15 }, (_, i) => `q${i + 1}`);
 
         // Validate all 15 answers
@@ -56,26 +47,28 @@ export class MindfulService {
         const nonJudgingScore = reverseScore(entry.q4) + reverseScore(entry.q9) + reverseScore(entry.q14);
         const nonReactivityScore = entry.q5 + entry.q10 + entry.q15;
 
-        const payload: Record<string, any> = {
-            user_id: userId,
-            observing_score: observingScore,
-            describing_score: describingScore,
-            awareness_score: awarenessScore,
-            non_judging_score: nonJudgingScore,
-            non_reactivity_score: nonReactivityScore,
-            created_at: new Date().toISOString(),
-        };
+        // Rolling 30-day lockout has no fixed period to key a UNIQUE constraint on, so submit_mindful_entry (project_db.sql) enforces it atomically via a per-user Postgres advisory lock instead.
+        const { data, error } = await supabase.rpc('submit_mindful_entry', {
+            p_user_id: userId,
+            p_q1: entry.q1, p_q2: entry.q2, p_q3: entry.q3, p_q4: entry.q4, p_q5: entry.q5,
+            p_q6: entry.q6, p_q7: entry.q7, p_q8: entry.q8, p_q9: entry.q9, p_q10: entry.q10,
+            p_q11: entry.q11, p_q12: entry.q12, p_q13: entry.q13, p_q14: entry.q14, p_q15: entry.q15,
+            p_observing_score: observingScore,
+            p_describing_score: describingScore,
+            p_awareness_score: awarenessScore,
+            p_non_judging_score: nonJudgingScore,
+            p_non_reactivity_score: nonReactivityScore,
+            p_duration: typeof entry.duration === 'number' ? entry.duration : null,
+        });
 
-        for (const q of questions) payload[q] = entry[q];
-        if (typeof entry.duration === 'number') payload.duration = entry.duration;
-
-        const { data, error } = await supabase
-            .from('questionnaire_ffmq15_responses')
-            .insert(payload)
-            .select()
-            .single();
-
-        if (error) throw error;
+        if (error) {
+            if (error.message?.includes('MINDFUL_ALREADY_SUBMITTED')) {
+                const err = new Error('MINDFUL_ALREADY_SUBMITTED') as any;
+                err.status = 409;
+                throw err;
+            }
+            throw error;
+        }
         return data;
     }
 }

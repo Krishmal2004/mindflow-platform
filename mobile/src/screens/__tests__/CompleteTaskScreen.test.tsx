@@ -14,6 +14,10 @@ jest.mock('@react-navigation/native', () => ({
     }),
 }));
 
+jest.mock('react-native-safe-area-context', () => ({
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 describe('CompleteTaskScreen', () => {
     it('no longer renders the "Your Progress" section', async () => {
         const { queryByText, getByText } = await render(<CompleteTaskScreen />);

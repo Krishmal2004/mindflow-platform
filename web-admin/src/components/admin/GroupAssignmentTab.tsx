@@ -63,15 +63,29 @@ export function GroupAssignmentTab() {
     const [saving, setSaving] = useState(false);
     const [generating, setGenerating] = useState(false);
 
+    // Clear-assignment confirm dialog
+    const [clearTarget, setClearTarget] = useState<Participant | null>(null);
+    const [clearing, setClearing] = useState(false);
+
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('id, username, research_id')
-                .order('username', { ascending: true });
-            if (error) throw error;
-            setParticipants(data || []);
+            // Page through the full profiles table instead of one unbounded select (which
+            // PostgREST silently caps at its configured max-rows) — otherwise this list
+            // silently drops participants once the study grows past that limit.
+            const PAGE_SIZE = 1000;
+            const rows: Participant[] = [];
+            for (let from = 0; ; from += PAGE_SIZE) {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('id, username, research_id')
+                    .order('username', { ascending: true })
+                    .range(from, from + PAGE_SIZE - 1);
+                if (error) throw error;
+                rows.push(...(data || []));
+                if (!data || data.length < PAGE_SIZE) break;
+            }
+            setParticipants(rows);
         } catch (err: unknown) {
             toast.error(`Failed to load participants: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
@@ -147,14 +161,19 @@ export function GroupAssignmentTab() {
         }
     };
 
-    const handleClear = async (p: Participant) => {
+    const handleClearConfirm = async () => {
+        if (!clearTarget) return;
+        setClearing(true);
         try {
-            const { error } = await supabase.from('profiles').update({ research_id: null }).eq('id', p.id);
+            const { error } = await supabase.from('profiles').update({ research_id: null }).eq('id', clearTarget.id);
             if (error) throw error;
-            toast.success(`Research ID cleared for ${p.username ?? p.id.slice(0, 8)}`);
+            toast.success(`Research ID cleared for ${clearTarget.username ?? clearTarget.id.slice(0, 8)}`);
+            setClearTarget(null);
             load();
         } catch (err: unknown) {
             toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        } finally {
+            setClearing(false);
         }
     };
 
@@ -287,7 +306,7 @@ export function GroupAssignmentTab() {
                             <CardContent className="pb-4">
                                 <div className="divide-y divide-amber-100">
                                     {unassigned.map(p => (
-                                        <ParticipantRow key={p.id} p={p} onAssign={openAssign} onClear={handleClear} />
+                                        <ParticipantRow key={p.id} p={p} onAssign={openAssign} onClear={setClearTarget} />
                                     ))}
                                 </div>
                             </CardContent>
@@ -307,7 +326,7 @@ export function GroupAssignmentTab() {
                             <CardContent className="pb-4">
                                 <div className="divide-y divide-neutral-100">
                                     {assigned.map(p => (
-                                        <ParticipantRow key={p.id} p={p} onAssign={openAssign} onClear={handleClear} />
+                                        <ParticipantRow key={p.id} p={p} onAssign={openAssign} onClear={setClearTarget} />
                                     ))}
                                 </div>
                             </CardContent>
@@ -422,6 +441,29 @@ export function GroupAssignmentTab() {
                         >
                             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
                             Save Assignment
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Clear assignment confirm dialog */}
+            <Dialog open={clearTarget !== null} onOpenChange={open => !open && setClearTarget(null)}>
+                <DialogContent className="max-w-sm bg-white border border-neutral-200 rounded-xl shadow-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-neutral-950 font-bold text-base">Clear Group Assignment</DialogTitle>
+                        <DialogDescription className="text-neutral-500 text-xs">
+                            This removes the Research ID (<strong>{clearTarget?.research_id}</strong>) from{' '}
+                            <strong>{clearTarget?.username ?? clearTarget?.id.slice(0, 8)}</strong>, returning them to
+                            unassigned. They will not be able to enter data until reassigned.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={() => setClearTarget(null)} className="text-xs border-neutral-200 text-neutral-600 rounded-lg">
+                            Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleClearConfirm} disabled={clearing} className="text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                            {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                            Clear Assignment
                         </Button>
                     </DialogFooter>
                 </DialogContent>
