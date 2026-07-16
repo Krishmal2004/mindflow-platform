@@ -8,11 +8,9 @@ import {
     Alert,
     TextInput,
     ActivityIndicator,
-    Dimensions,
     KeyboardAvoidingView,
     Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,11 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '../config/api';
 import { apiFetch, clearApiCache, getAuthToken } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
+import { cardShadow } from '../styles/shared';
 import { PopupModal } from '../components/PopupModal';
 import { JourneyIcons } from '../components/JourneyIcons';
-import { LeavesDecoration } from '../components/LeavesDecoration';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { SignupIllustration } from '../components/SignupIllustration';
+import { PanelWave } from '../components/PanelWave';
 
-const { width } = Dimensions.get('window');
+const ABOUT_ME_ACCENT = '#0D9488';
 
 // Types
 interface AboutMeData {
@@ -102,6 +103,7 @@ export default function AboutMeScreen() {
     const [saving, setSaving] = useState(false);
     const [declarationChecked, setDeclarationChecked] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [currentStep, setCurrentStep] = useState<'intro' | 'form'>('intro');
 
     // Form inputs state
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
@@ -292,29 +294,18 @@ export default function AboutMeScreen() {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <LeavesDecoration width={width} height={width * 0.7} />
 
-            <SafeAreaView edges={['top', 'left', 'right']} style={styles.headerArea}>
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        onPress={() => {
-                            if (navigation.canGoBack()) {
-                                navigation.goBack();
-                            } else {
-                                navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-                            }
-                        }}
-                        style={styles.backButton}
-                    >
-                        <Ionicons name="arrow-back" size={22} color="#1A1A2E" />
-                    </TouchableOpacity>
-                    <View style={styles.headerTitleBlock}>
-                        <Text style={styles.headerTitle}>About Me</Text>
-                        <Text style={styles.headerSubtitle}>Your research profile</Text>
-                    </View>
-                    <View style={{ width: 40 }} />
-                </View>
-            </SafeAreaView>
+            <ScreenHeader
+                title="About Me"
+                subtitle="Your research profile"
+                onBack={() => {
+                    if (navigation.canGoBack()) {
+                        navigation.goBack();
+                    } else {
+                        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+                    }
+                }}
+            />
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -417,6 +408,44 @@ export default function AboutMeScreen() {
                             </View>
                         </View>
                     </View>
+                ) : currentStep === 'intro' ? (
+                    // Mirrors SignupScreen's layout: hero illustration above a rounded
+                    // blue panel (same #E3F2FD tone as Signup's bottomPanel) with a
+                    // caps title/subtitle pair, an info card, the CTA, and a bottom wave.
+                    <View style={styles.introWrap}>
+                        <View style={styles.introIllustrationWrap}>
+                            <SignupIllustration width={180} height={160} />
+                        </View>
+
+                        <View style={styles.introPanel}>
+                            <Text style={styles.introPanelTitle}>YOUR PROFILE</Text>
+                            <Text style={styles.introPanelSubtitle}>TELL US ABOUT YOURSELF</Text>
+
+                            <View style={styles.introCard}>
+                                <View style={styles.introIconRow}>
+                                    <View style={styles.introIconCircle}>
+                                        <Ionicons name="information-circle-outline" size={22} color={ABOUT_ME_ACCENT} />
+                                    </View>
+                                    <Text style={styles.introCardTitle}>Why we ask</Text>
+                                </View>
+                                <Text style={styles.introCardText}>
+                                    A few questions about your academic and personal background give researchers context
+                                    for your mindfulness journey. Takes about 3 minutes — you can review it anytime after.
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.introGoButton}
+                                onPress={() => setCurrentStep('form')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.introGoButtonText}>Fill Form</Text>
+                                <Ionicons name="arrow-forward" size={20} color={Colors.surface} />
+                            </TouchableOpacity>
+
+                            <PanelWave />
+                        </View>
+                    </View>
                 ) : (
                     <>
                         <View style={styles.helpCard}>
@@ -455,7 +484,7 @@ export default function AboutMeScreen() {
                                         value={data.university_id}
                                         onChangeText={t => update('university_id', t)}
                                         placeholder="Your official student ID"
-                                        placeholderTextColor="#94A3B8"
+                                        placeholderTextColor={Colors.textMuted}
                                         editable={!data.is_completed}
                                         onFocus={() => setFocusedInput('university_id')}
                                         onBlur={() => setFocusedInput(null)}
@@ -520,7 +549,7 @@ export default function AboutMeScreen() {
                                         </View>
                                     ) : (
                                         <View style={styles.placeholderBox}>
-                                            <Ionicons name="school-outline" size={20} color="#94A3B8" />
+                                            <Ionicons name="school-outline" size={20} color={Colors.textMuted} />
                                             <Text style={styles.placeholderText}>Please select a Faculty above first to choose a Major.</Text>
                                         </View>
                                     )}
@@ -556,7 +585,7 @@ export default function AboutMeScreen() {
                                             update('age', digits ? parseInt(digits, 10) : null);
                                         }}
                                         placeholder="e.g. 21"
-                                        placeholderTextColor="#94A3B8"
+                                        placeholderTextColor={Colors.textMuted}
                                         keyboardType="numeric"
                                         maxLength={3}
                                         editable={!data.is_completed}
@@ -615,7 +644,7 @@ export default function AboutMeScreen() {
                                             value={otherCultural}
                                             onChangeText={setOtherCultural}
                                             placeholder="Specify cultural background..."
-                                            placeholderTextColor="#94A3B8"
+                                            placeholderTextColor={Colors.textMuted}
                                             editable={!data.is_completed}
                                             onFocus={() => setFocusedInput('otherCultural')}
                                             onBlur={() => setFocusedInput(null)}
@@ -631,7 +660,7 @@ export default function AboutMeScreen() {
                                         value={data.family_background}
                                         onChangeText={t => update('family_background', t)}
                                         placeholder="Tell us about your family..."
-                                        placeholderTextColor="#94A3B8"
+                                        placeholderTextColor={Colors.textMuted}
                                         multiline
                                         editable={!data.is_completed}
                                         onFocus={() => setFocusedInput('family_background')}
@@ -679,7 +708,7 @@ export default function AboutMeScreen() {
                                             value={otherHobby}
                                             onChangeText={setOtherHobby}
                                             placeholder="Specify other hobbies..."
-                                            placeholderTextColor="#94A3B8"
+                                            placeholderTextColor={Colors.textMuted}
                                             editable={!data.is_completed}
                                             onFocus={() => setFocusedInput('otherHobby')}
                                             onBlur={() => setFocusedInput(null)}
@@ -695,7 +724,7 @@ export default function AboutMeScreen() {
                                         value={data.personal_goals}
                                         onChangeText={t => update('personal_goals', t)}
                                         placeholder="What are you working towards?"
-                                        placeholderTextColor="#94A3B8"
+                                        placeholderTextColor={Colors.textMuted}
                                         multiline
                                         editable={!data.is_completed}
                                         onFocus={() => setFocusedInput('personal_goals')}
@@ -711,7 +740,7 @@ export default function AboutMeScreen() {
                                         value={data.why_mindflow}
                                         onChangeText={t => update('why_mindflow', t)}
                                         placeholder="Have you done any mindfulness practices?"
-                                        placeholderTextColor="#94A3B8"
+                                        placeholderTextColor={Colors.textMuted}
                                         multiline
                                         editable={!data.is_completed}
                                         onFocus={() => setFocusedInput('why_mindflow')}
@@ -779,53 +808,114 @@ export default function AboutMeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F6F8F9',
+        backgroundColor: Colors.background,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    headerArea: {
-        backgroundColor: '#FFFFFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F1F5F9',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    headerTitleBlock: {
-        alignItems: 'center',
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1A1A2E',
-    },
-    headerSubtitle: {
-        fontSize: 11,
-        color: '#64748B',
-        fontWeight: '500',
-        letterSpacing: 0.5,
-        marginTop: 2,
-    },
     content: {
         padding: 16,
         paddingBottom: 60,
+    },
+    // Intro step (illustration + blue panel + "Fill Form" gate, before the form
+    // shows) — deliberately mirrors SignupScreen's hero-illustration-over-a-
+    // rounded-blue-panel layout (same #E3F2FD tone, same caps title/subtitle,
+    // same bottom wave) for visual consistency with the rest of the auth/onboarding flow.
+    introWrap: {
+        marginHorizontal: -16, // bleeds the panel to the screen edges like Signup's bottomPanel
+        alignItems: 'center',
+    },
+    introIllustrationWrap: {
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    introPanel: {
+        backgroundColor: '#E3F2FD',
+        width: '100%',
+        borderTopLeftRadius: 40,
+        borderTopRightRadius: 40,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        paddingTop: 24,
+        paddingBottom: 28,
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 6,
+    },
+    introPanelTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+        letterSpacing: 2,
+        marginBottom: 2,
+    },
+    introPanelSubtitle: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: Colors.textPrimary,
+        letterSpacing: 1,
+        marginBottom: 20,
+    },
+    introCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: 20,
+        padding: 20,
+        width: '100%',
+        marginBottom: 20,
+        ...cardShadow,
+    },
+    introIconRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    introIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: `${ABOUT_ME_ACCENT}1A`,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    introCardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.textPrimary,
+    },
+    introCardText: {
+        fontSize: 13,
+        color: Colors.textSecondary,
+        lineHeight: 20,
+    },
+    introGoButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: ABOUT_ME_ACCENT,
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 30,
+        width: '100%',
+        gap: 10,
+        zIndex: 1, // sit above PanelWave
+        shadowColor: ABOUT_ME_ACCENT,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    introGoButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.surface,
     },
     helpCard: {
         backgroundColor: '#EFF6FF',
@@ -858,7 +948,7 @@ const styles = StyleSheet.create({
     
     // Grouped Card styles for Read Only & Forms
     groupedCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 20,
         marginBottom: 16,
         shadowColor: '#475569',
@@ -867,7 +957,7 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 1,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: Colors.surfaceMuted,
         overflow: 'hidden',
     },
     cardHeader: {
@@ -877,11 +967,11 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         backgroundColor: '#F8FAFC',
         borderBottomWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: Colors.surfaceMuted,
         gap: 12,
     },
     cardHeaderIconContainer: {
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
         padding: 8,
         borderRadius: 10,
     },
@@ -899,31 +989,31 @@ const styles = StyleSheet.create({
     infoFieldLabel: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#94A3B8',
+        color: Colors.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.8,
         marginBottom: 4,
     },
     infoFieldValue: {
         fontSize: 15,
-        color: '#2D3436',
+        color: Colors.textPrimary,
         fontWeight: '600',
     },
     infoFieldValueText: {
         fontSize: 14,
-        color: '#2D3436',
+        color: Colors.textPrimary,
         fontWeight: '500',
         lineHeight: 20,
     },
     divider: {
         height: 1,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: Colors.surfaceMuted,
         marginVertical: 12,
     },
 
     // Form styling
     groupedFormCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 20,
         marginBottom: 16,
         shadowColor: '#475569',
@@ -940,7 +1030,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: Colors.surfaceMuted,
         gap: 12,
         backgroundColor: '#FAFBFD',
         borderTopLeftRadius: 20,
@@ -950,7 +1040,7 @@ const styles = StyleSheet.create({
         width: 38,
         height: 38,
         borderRadius: 12,
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -961,21 +1051,21 @@ const styles = StyleSheet.create({
     },
     formCardHeaderSubtext: {
         fontSize: 11,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         marginTop: 2,
     },
     stepBadge: {
-        backgroundColor: '#F1F5F9',
+        backgroundColor: Colors.surfaceMuted,
         borderRadius: 20,
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
     },
     stepBadgeText: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#64748B',
+        color: Colors.iconMuted,
     },
     formCardBody: {
         padding: 16,
@@ -997,16 +1087,16 @@ const styles = StyleSheet.create({
     input: {
         backgroundColor: '#F8FAFC',
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         borderRadius: 14,
         paddingHorizontal: 16,
         paddingVertical: 12,
         fontSize: 15,
-        color: '#2D3436',
+        color: Colors.textPrimary,
     },
     inputFocused: {
         borderColor: Colors.primary,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
     },
     textArea: {
         minHeight: 100,
@@ -1023,12 +1113,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#F1F5F9',
+        backgroundColor: Colors.surfaceMuted,
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
     },
     pillActive: {
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
         borderColor: Colors.primary,
     },
     pillText: {
@@ -1050,14 +1140,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#F8FAFC',
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         borderRadius: 14,
         paddingHorizontal: 16,
         paddingVertical: 12,
         gap: 12,
     },
     selectRowActive: {
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
         borderColor: Colors.primary,
     },
     radioCircle: {
@@ -1095,14 +1185,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#F8FAFC',
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         borderRadius: 14,
         padding: 16,
         gap: 10,
     },
     placeholderText: {
         fontSize: 13,
-        color: '#94A3B8',
+        color: Colors.textMuted,
         fontWeight: '500',
         flex: 1,
     },
@@ -1112,10 +1202,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         marginTop: 20,
         padding: 16,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.surface,
         borderRadius: 20,
         borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderColor: Colors.borderLight,
         alignItems: 'center',
         shadowColor: '#475569',
         shadowOffset: { width: 0, height: 2 },
@@ -1168,7 +1258,7 @@ const styles = StyleSheet.create({
     saveButtonText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: Colors.surface,
     },
 
     readOnlyContainer: {
@@ -1178,7 +1268,7 @@ const styles = StyleSheet.create({
     successBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E6F4EA',
+        backgroundColor: Colors.primaryTint,
         padding: 16,
         borderRadius: 16,
         marginBottom: 16,
