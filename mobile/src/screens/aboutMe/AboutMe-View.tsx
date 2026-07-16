@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,6 +13,13 @@ import { PanelWave } from '../../components/PanelWave';
 import { ABOUT_ME_ACCENT, ABOUT_ME_ACCENT_TINT, AboutMeData, EMPTY_ABOUT_ME_DATA, panelStyles } from './shared';
 
 const AboutMeIllustration = require('../../../assets/aboutMe.png') as number;
+
+// Capped at 400 (its natural size) but shrinks on screens narrower than ~470px wide
+// (400 / 0.85) — the old fixed 400x278 box bled past the edge on narrower phones
+// regardless of device width.
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ILLUSTRATION_WIDTH = Math.min(400, SCREEN_WIDTH * 0.85);
+const ILLUSTRATION_HEIGHT = ILLUSTRATION_WIDTH * (278 / 400);
 
 // Read-only summary of a completed About Me profile, styled like the Front
 // screen: the same illustration above the same rounded blue panel, with the
@@ -186,8 +193,8 @@ export default function AboutMeViewScreen() {
 
 const styles = StyleSheet.create({
     illustration: {
-        width: 400,
-        height: 278,
+        width: ILLUSTRATION_WIDTH,
+        height: ILLUSTRATION_HEIGHT,
     },
     successBanner: {
         flexDirection: 'row',

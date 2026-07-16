@@ -210,6 +210,11 @@ export default function DailySlidersScreen() {
             }
         } catch {
             console.log('Status check failed, proceeding with form');
+            // Fail closed: if we can't confirm the research group, treat this session as
+            // control-group rather than leaving it at '' (which every `=== 'cg'` gate below
+            // treats as experimental) — the alternative risks showing and submitting real
+            // mindfulness-practice answers for a participant we can't actually confirm is .ex.
+            setUserGroup('cg');
         } finally {
             setLoading(false);
         }

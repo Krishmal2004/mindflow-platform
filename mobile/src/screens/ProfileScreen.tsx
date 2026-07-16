@@ -12,8 +12,6 @@ import { Colors } from '../constants/colors';
 import { cardShadow, cardShadowElevated } from '../styles/shared';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { apiFetch, clearAuthStorage } from '../lib/apiClient';
-import { PopupModal } from '../components/PopupModal';
-import { PasswordResetModal } from '../components/PasswordResetModal';
 
 // Component
 export default function ProfileScreen() {
@@ -25,8 +23,6 @@ export default function ProfileScreen() {
 
     // Modals
     const [showSignOutModal, setShowSignOutModal] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [resetVisible, setResetVisible] = useState(false);
 
     // Data
     useFocusEffect(useCallback(() => { fetchProfile(); }, []));
@@ -142,7 +138,7 @@ export default function ProfileScreen() {
 
                     <TouchableOpacity
                         style={[styles.actionButton, { marginBottom: 12 }]}
-                        onPress={() => setResetVisible(true)}
+                        onPress={() => navigation.navigate('ForgotPassword', { email: profileData?.email ?? '', locked: true })}
                         activeOpacity={0.7}
                     >
                         <View style={styles.actionLeft}>
@@ -196,23 +192,6 @@ export default function ProfileScreen() {
                     </View>
                 </View>
             </Modal>
-
-            <PasswordResetModal
-                visible={resetVisible}
-                onClose={() => setResetVisible(false)}
-                onSuccess={() => setShowSuccessModal(true)}
-                initialEmail={profileData?.email ?? ''}
-            />
-
-            {/* ── Success Modal ── */}
-            <PopupModal
-                visible={showSuccessModal}
-                type="success"
-                title="Password Updated"
-                message="Your password has been changed successfully. Use it next time you log in."
-                buttonText="Done"
-                onClose={() => setShowSuccessModal(false)}
-            />
 
         </View>
     );

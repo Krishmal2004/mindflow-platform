@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
     ActivityIndicator, KeyboardAvoidingView, Platform, Image,
@@ -14,6 +14,7 @@ import { Colors } from '../../constants/colors';
 import { PopupModal } from '../../components/PopupModal';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { PanelWave } from '../../components/PanelWave';
+import { useConfirmExitOnBack } from '../../lib/useConfirmExitOnBack';
 import {
     ABOUT_ME_ACCENT, ABOUT_ME_ACCENT_TINT, panelStyles,
     AboutMeData, EMPTY_ABOUT_ME_DATA,
@@ -46,6 +47,11 @@ export default function AboutMeQuestionnaireScreen() {
     const [selectedHobbies, setSelectedHobbies] = useState<string[]>([]);
     const [otherHobby, setOtherHobby] = useState('');
     const [otherCultural, setOtherCultural] = useState('');
+
+    // Android hardware back would otherwise silently discard in-progress answers.
+    const hasUnsavedProgress = JSON.stringify(data) !== JSON.stringify(EMPTY_ABOUT_ME_DATA) || selectedHobbies.length > 0;
+    const exitWithoutSaving = useCallback(() => navigation.goBack(), [navigation]);
+    useConfirmExitOnBack(hasUnsavedProgress, exitWithoutSaving);
 
     useEffect(() => {
         fetchData();
@@ -165,6 +171,13 @@ export default function AboutMeQuestionnaireScreen() {
         try {
             setSaving(true);
             const token = await getAuthToken();
+
+            if (!token) {
+                Alert.alert('Session Expired', 'Please login again to continue.', [
+                    { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) },
+                ]);
+                return;
+            }
 
             const hobbiesToSave = [...selectedHobbies.filter(h => h !== 'Other'), ...(otherHobby.trim() ? [otherHobby.trim()] : [])].join(', ');
 

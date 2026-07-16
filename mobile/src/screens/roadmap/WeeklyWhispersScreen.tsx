@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -19,6 +19,8 @@ import { Audio } from 'expo-av';
 import { Colors as GlobalColors } from '../../constants/colors';
 import { API_URL } from '../../config/api';
 import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
+import { formatUtcMonthDay } from '../../lib/dateFormat';
+import { useConfirmExitOnBack } from '../../lib/useConfirmExitOnBack';
 import { VoiceRecordingIllustration } from '../../components/MeditationIllustration';
 import { LeavesDecoration } from '../../components/LeavesDecoration';
 import { PanelWave } from '../../components/PanelWave';
@@ -91,7 +93,7 @@ export default function WeeklyWhispersScreen() {
 
     useEffect(() => {
         if (isRecording) {
-            Animated.loop(
+            const loop = Animated.loop(
                 Animated.sequence([
                     Animated.timing(pulseAnim, {
                         toValue: 1,
@@ -105,11 +107,37 @@ export default function WeeklyWhispersScreen() {
                         useNativeDriver: true,
                     }),
                 ])
-            ).start();
+            );
+            loop.start();
+            // Without stopping the loop explicitly, setting pulseAnim back to 0 below
+            // (when isRecording flips false) doesn't halt it — it keeps fighting the
+            // reset value every frame in the background for as long as the screen stays mounted.
+            return () => loop.stop();
         } else {
             pulseAnim.setValue(0);
         }
     }, [isRecording]);
+
+    // Android hardware back would otherwise silently discard an in-progress recording —
+    // confirm first, then stop/discard it cleanly before actually leaving the screen.
+    const discardRecordingAndExit = useCallback(async () => {
+        try {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+            if (recordingRef.current) {
+                await recordingRef.current.stopAndUnloadAsync();
+            }
+        } catch (e) {
+            console.log('Error stopping recording on back:', e);
+        } finally {
+            recordingRef.current = null;
+            setIsRecording(false);
+            navigation.goBack();
+        }
+    }, [navigation]);
+    useConfirmExitOnBack(isRecording, discardRecordingAndExit, 'Your recording will be lost if you leave now.');
 
     const checkPermissionAndStatus = async () => {
         try {
@@ -367,7 +395,7 @@ export default function WeeklyWhispersScreen() {
                     <Text style={styles.successText}>You&apos;ve completed this week&apos;s recording.</Text>
                     {nextReset && (
                         <Text style={[styles.successText, { marginTop: 8, fontWeight: '600', color: Colors.primary }]}>
-                            Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            Next reset: {formatUtcMonthDay(nextReset)}
                         </Text>
                     )}
 

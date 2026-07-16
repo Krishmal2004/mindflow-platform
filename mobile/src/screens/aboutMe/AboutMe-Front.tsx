@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,6 +12,13 @@ import { PanelWave } from '../../components/PanelWave';
 import { ABOUT_ME_ACCENT, panelStyles } from './shared';
 
 const AboutMeIllustration = require('../../../assets/aboutMe.png') as number;
+
+// Capped at 400 (its natural size) but shrinks on screens narrower than ~470px wide
+// (400 / 0.85) — the old fixed 400x278 box bled past the edge on narrower phones
+// regardless of device width.
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ILLUSTRATION_WIDTH = Math.min(400, SCREEN_WIDTH * 0.85);
+const ILLUSTRATION_HEIGHT = ILLUSTRATION_WIDTH * (278 / 400);
 
 // Landing/gate screen for the About Me flow: shows why we ask + a "Fill Form"
 // CTA, or silently redirects straight to the read-only view if the profile is
@@ -102,8 +109,8 @@ export default function AboutMeFrontScreen() {
 
 const styles = StyleSheet.create({
     illustration: {
-        width: 400,
-        height: 278,
+        width: ILLUSTRATION_WIDTH,
+        height: ILLUSTRATION_HEIGHT,
     },
     introIconRow: {
         flexDirection: 'row',

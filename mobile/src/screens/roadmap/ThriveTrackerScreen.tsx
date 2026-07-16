@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -17,6 +17,8 @@ import { RootStackParamList } from '../../types/navigation';
 
 import { API_URL } from '../../config/api';
 import { apiFetch, clearApiCache, getAuthToken } from '../../lib/apiClient';
+import { formatUtcMonthDay } from '../../lib/dateFormat';
+import { useConfirmExitOnBack } from '../../lib/useConfirmExitOnBack';
 import { Colors } from '../../constants/colors';
 import { ThriveIllustration } from '../../components/MeditationIllustration';
 import { PopupModal } from '../../components/PopupModal';
@@ -65,6 +67,10 @@ export default function ThriveTrackerScreen() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [alreadySubmitted, setAlreadySubmitted] = useState(false);
     const [nextReset, setNextReset] = useState<Date | null>(null);
+
+    // Android hardware back would otherwise silently discard in-progress answers.
+    const exitWithoutSaving = useCallback(() => navigation.goBack(), [navigation]);
+    useConfirmExitOnBack(Object.keys(answers).length > 0, exitWithoutSaving);
 
     // Popup Modal state
     const [popup, setPopup] = useState<{
@@ -158,6 +164,14 @@ export default function ThriveTrackerScreen() {
 
         try {
             const token = await getAuthToken();
+
+            if (!token) {
+                showPopup('error', 'Session Expired', 'Please login again to continue.', () => {
+                    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+                });
+                return;
+            }
+
             const response = await fetch(`${API_URL}/api/roadmap/thrive`, {
                 method: 'POST',
                 headers: {
@@ -225,7 +239,7 @@ export default function ThriveTrackerScreen() {
                     <Text style={styles.successText}>Thank you for tracking your wellbeing today.</Text>
                     {nextReset && (
                         <Text style={[styles.successText, { marginTop: 8, fontWeight: '700', color: Colors.primary }]}>
-                            Next reset: {nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            Next reset: {formatUtcMonthDay(nextReset)}
                         </Text>
                     )}
 

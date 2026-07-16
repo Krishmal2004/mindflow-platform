@@ -110,7 +110,10 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     const insets = useSafeAreaInsets();
     const bottomPad = Math.max(insets.bottom, Platform.OS === 'android' ? 6 : 0);
 
-    const [researchGroup, setResearchGroup] = React.useState<string>('ex');
+    // Neutral default ('' = not yet known), consistent with DashboardScreen's convention —
+    // hardcoding 'ex' here meant a .cg participant's tab bar could briefly render with the
+    // experimental accent before the AsyncStorage read resolves.
+    const [researchGroup, setResearchGroup] = React.useState<string>('');
 
     // Retrieve group when tab navigates or mounts to dynamically load CG or EX theme
     useEffect(() => {

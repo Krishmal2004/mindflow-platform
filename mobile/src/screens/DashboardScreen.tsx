@@ -11,6 +11,7 @@ import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop, Circle } fr
 import { RootStackParamList } from '../types/navigation';
 import { Colors } from '../constants/colors';
 import { apiFetch } from '../lib/apiClient';
+import { formatUtcMonthDay, formatUtcWeekday } from '../lib/dateFormat';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
@@ -231,9 +232,9 @@ const RoadmapNode = memo(({
         if (id === 1) {
             statusText = 'Next: Tomorrow';
         } else if (id === 2 && nextReset) {
-            statusText = `Next: ${nextReset.toLocaleDateString(undefined, { weekday: 'short' })}`;
+            statusText = `Next: ${formatUtcWeekday(nextReset)}`;
         } else if (id > 2 && nextReset) {
-            statusText = `Next: ${nextReset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+            statusText = `Next: ${formatUtcMonthDay(nextReset)}`;
         } else {
             statusText = 'Completed';
         }
@@ -791,8 +792,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     groupIllustrationImage: {
-        width: 508,
-        height: 198,
+        // Fill the 180x180 container instead of a fixed pixel size — the old fixed
+        // 508x198 was ~3x wider than its own container regardless of device, and
+        // overflowed further on narrow phones. resizeMode="contain" (set on the
+        // Image itself) keeps the aspect ratio correct within the box.
+        width: '100%',
+        height: '100%',
     },
     roadmapWrap: {
         width: '100%',

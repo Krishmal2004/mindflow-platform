@@ -12,10 +12,14 @@ import { RootStackParamList } from '../types/navigation';
 import { getPostAuthRoute } from '../lib/postAuthRoute';
 import { getAuthToken, removeAuthToken, apiFetch } from '../lib/apiClient';
 
+// Pre-scaled ~512px/200px derivatives for inline rendering (52-180pt) — the 1024px
+// masters are reserved for app.json's icon/splash/adaptive-icon config, which needs
+// the full resolution; decoding them here too was a ~19-32x oversized bitmap for no
+// visible benefit at these render sizes.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const AppIcon = require('../../assets/app-icon.png');
+const AppIcon = require('../../assets/app-icon-display.png');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const BrainLabsLogo = require('../../assets/brainlabs_logo.png');
+const BrainLabsLogo = require('../../assets/brainlabs_logo-display.png');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const SLIITLogo = require('../../assets/Logo_SLIIT.png');
 

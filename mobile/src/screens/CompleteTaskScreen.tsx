@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Dimensions, Image
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { Colors } from '../constants/colors';
@@ -16,6 +17,7 @@ type CompleteTaskRouteProp = RouteProp<RootStackParamList, 'CompleteTask'>;
 export default function CompleteTaskScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const route = useRoute<CompleteTaskRouteProp>();
+    const insets = useSafeAreaInsets();
 
     const { title, message, buttonText = "Back to Journey", isDaily, themeColor: paramThemeColor, themeBgGrad: paramThemeBgGrad } = route.params;
 
@@ -60,7 +62,7 @@ export default function CompleteTaskScreen() {
                 <LeavesDecoration width={width} height={width * 0.8} color={themeColor} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 }]} showsVerticalScrollIndicator={false}>
 
                 <View style={styles.header}>
                     <Animated.View style={[styles.illustrationContainer, animatedIconStyle]}>
@@ -109,7 +111,6 @@ const styles = StyleSheet.create({
         right: 0,
     },
     scrollContent: {
-        paddingTop: 100,
         paddingHorizontal: 30,
         alignItems: 'center',
     },

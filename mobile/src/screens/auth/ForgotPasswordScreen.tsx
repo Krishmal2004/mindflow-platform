@@ -2,11 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard, LayoutAnimation, UIManager, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
@@ -14,9 +12,7 @@ import { MeditationIllustration } from '../../components/MeditationIllustration'
 import { Notification, NotificationType } from '../../components/Notification';
 import { PanelWave } from '../../components/PanelWave';
 import { LogoBlock } from '../../components/LogoBlock';
-import { getPostAuthRoute } from '../../lib/postAuthRoute';
 import { AUTH_ENDPOINTS } from '../../config/api';
-import { setSession, setAuthToken } from '../../lib/apiClient';
 import { EMAIL_RE } from '../../lib/validation';
 
 const { width, height } = Dimensions.get('window');
@@ -25,21 +21,24 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+type ForgotPasswordRouteProp = RouteProp<RootStackParamList, 'ForgotPassword'>;
 
-
-export default function LoginScreen() {
+// Step 1 of the OTP-based password reset flow — same visual language as LoginScreen
+// (fixed logo/illustration header, rounded panel with wave). Reachable pre-auth from
+// Login (email editable) or from Profile settings (email known, locked).
+export default function ForgotPasswordScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const route = useRoute<ForgotPasswordRouteProp>();
+    const locked = route.params?.locked ?? false;
     const insets = useSafeAreaInsets();
     const scrollRef = useRef<ScrollView>(null);
-    const passwordRef = useRef<TextInput>(null);
-    const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+
+    const [email, setEmail] = useState(route.params?.email ?? '');
     const [loading, setLoading] = useState(false);
- 
+
     const fadeAnim = useSharedValue(0);
     const scaleAnim = useSharedValue(0.9);
- 
+
     const [notificationVisible, setNotificationVisible] = useState(false);
     const [notificationType, setNotificationType] = useState<NotificationType>('success');
     const [notificationMessage, setNotificationMessage] = useState('');
@@ -81,48 +80,23 @@ export default function LoginScreen() {
         setNotificationType(type); setNotificationMessage(message); setNotificationVisible(true);
     };
 
-    const handleLogin = async () => {
-        if (!email || !password) { showNotification('error', 'Please enter both email and password'); return; }
+    const handleSendCode = async () => {
+        if (!email) { showNotification('error', 'Please enter your email address'); return; }
         if (!EMAIL_RE.test(email)) { showNotification('error', 'Enter a valid email address'); return; }
         setLoading(true);
         try {
-            const response = await fetch(AUTH_ENDPOINTS.LOGIN, {
+            const response = await fetch(AUTH_ENDPOINTS.RESET_PASSWORD, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email }),
             });
             const result = await response.json();
-            if (!response.ok) {
-                if (result.error && result.error.includes('Email not confirmed')) {
-                    showNotification('error', 'Please verify your email first.');
-                    setTimeout(() => navigation.navigate('OtpVerification', { email }), 1500);
-                } else {
-                    throw new Error(result.error || 'Login failed');
-                }
-                setLoading(false); return;
-            }
-            if (result.user && result.user.display_name) {
-                await AsyncStorage.setItem('userName', result.user.display_name);
-            } else {
-                await AsyncStorage.setItem('userName', email.split('@')[0]);
-            }
-            await AsyncStorage.setItem('isLoggedIn', 'true');
-            if (result.session && result.session.access_token) {
-                // setSession (not setAuthToken) so the refresh_token is persisted too —
-                // without it, the app force-logs the user out the moment the short-lived
-                // access token expires, since there's nothing to silently refresh it with.
-                await setSession(result.session);
-            } else if (result.token) {
-                await setAuthToken(result.token);
-            }
+            if (!response.ok) throw new Error(result.error || 'Failed to send code');
             setLoading(false);
-            showNotification('success', 'Welcome back!');
-            const route = await getPostAuthRoute();
-            setTimeout(() => navigation.replace(route), 1000);
-        } catch (error: any) {
-            console.error('Login Error:', error.message);
+            navigation.navigate('ResetOtp', { email });
+        } catch (error: unknown) {
             setLoading(false);
-            showNotification('error', error.message || 'Invalid credentials');
+            showNotification('error', error instanceof Error ? error.message : 'Failed to send code');
         }
     };
 
@@ -134,8 +108,7 @@ export default function LoginScreen() {
         <View style={styles.container}>
             <StatusBar style="dark" translucent backgroundColor="transparent" />
 
-            {/* Fixed Background Header (doesn't move) */}
-            <View 
+            <View
                 pointerEvents="none"
                 onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
                 style={[styles.fixedHeader, { paddingTop: insets.top > 0 ? insets.top + 5 : 24 }]}
@@ -162,15 +135,13 @@ export default function LoginScreen() {
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                 >
-                    {/* Spacer matching fixed header height */}
                     <View style={{ height: headerHeight }} />
 
-                    {/* Bottom panel with wave inside */}
-                    <Animated.View 
+                    <Animated.View
                         style={[styles.bottomPanel, panelStyle, { minHeight: height - headerHeight, paddingBottom: insets.bottom }]}
                     >
-                        <Text style={styles.panelTitle}>WELCOME BACK</Text>
-                        <Text style={styles.panelSubtitle}>LOGIN TO CONTINUE</Text>
+                        <Text style={styles.panelTitle}>RESET PASSWORD</Text>
+                        <Text style={styles.panelSubtitle}>WE'LL EMAIL YOU A CODE</Text>
 
                         <View style={styles.formContainer}>
                             <View style={styles.inputWrapper}>
@@ -179,59 +150,40 @@ export default function LoginScreen() {
                                     placeholder="Email Address"
                                     placeholderTextColor="#90A4AE"
                                     value={email}
-                                    onChangeText={setEmail}
+                                    onChangeText={locked ? undefined : setEmail}
+                                    editable={!locked}
                                     autoCapitalize="none"
                                     keyboardType="email-address"
                                     onFocus={() => handleFocus(0)}
-                                    returnKeyType="next"
-                                    onSubmitEditing={() => passwordRef.current?.focus()}
-                                />
-                            </View>
-
-                            <View style={[styles.inputWrapper, { flexDirection: 'row', alignItems: 'center', paddingRight: 12 }]}>
-                                <TextInput
-                                    ref={passwordRef}
-                                    style={[styles.input, { flex: 1 }]}
-                                    placeholder="Password"
-                                    placeholderTextColor="#90A4AE"
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    secureTextEntry={!showPassword}
-                                    onFocus={() => handleFocus(80)}
                                     returnKeyType="done"
-                                    onSubmitEditing={handleLogin}
+                                    onSubmitEditing={handleSendCode}
                                 />
-                                <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={{ padding: 4 }}>
-                                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#90A4AE" />
-                                </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', { email })} style={styles.forgotButton}>
-                                <Text style={styles.forgotText}>Forgot password?</Text>
-                            </TouchableOpacity>
+                            <Text style={styles.hintText}>
+                                Enter the code along with your new password on the next step.
+                            </Text>
 
                             <TouchableOpacity
-                                style={[styles.loginButton, loading && { opacity: 0.6 }]}
-                                onPress={handleLogin}
+                                style={[styles.sendButton, loading && { opacity: 0.6 }]}
+                                onPress={handleSendCode}
                                 disabled={loading}
                             >
                                 {loading ? (
                                     <ActivityIndicator color="#FFFFFF" size="small" />
                                 ) : (
-                                    <Text style={styles.loginButtonText}>LOG IN</Text>
+                                    <Text style={styles.sendButtonText}>SEND CODE</Text>
                                 )}
                             </TouchableOpacity>
 
-                            <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={styles.switchButton}>
-                                <Text style={styles.switchText}>OR SIGN UP</Text>
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.switchButton}>
+                                <Text style={styles.switchText}>{locked ? 'CANCEL' : 'BACK TO LOGIN'}</Text>
                             </TouchableOpacity>
                         </View>
 
-                        {/* Wave decoration at bottom of panel */}
                         <PanelWave />
                     </Animated.View>
-                    
-                    {/* Bottom spacer to allow scrolling the card to the top */}
+
                     <View style={{ height: keyboardHeight }} />
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -265,7 +217,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         paddingTop: 24,
-        paddingBottom: 104,   // extra space for wave
+        paddingBottom: 104,
         paddingHorizontal: 24,
         alignItems: 'center',
         shadowColor: '#000',
@@ -273,7 +225,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 10,
-        overflow: 'hidden',   // clip wave inside panel
+        overflow: 'hidden',
     },
     panelTitle: { fontSize: 14, fontWeight: '600', color: '#636E72', letterSpacing: 2, marginBottom: 5 },
     panelSubtitle: { fontSize: 18, fontWeight: 'bold', color: '#2D3436', letterSpacing: 1, marginBottom: 20 },
@@ -290,9 +242,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     input: { fontSize: 16, color: '#2D3436' },
-    forgotButton: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4 },
-    forgotText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
-    loginButton: {
+    hintText: { fontSize: 12, color: '#90A4AE', lineHeight: 18, textAlign: 'center', paddingHorizontal: 8 },
+    sendButton: {
         backgroundColor: Colors.primary,
         borderRadius: 30,
         paddingVertical: 15,
@@ -304,17 +255,7 @@ const styles = StyleSheet.create({
         elevation: 4,
         marginTop: 5,
     },
-    loginButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
-    switchButton: {
-        backgroundColor: '#95C27E',
-        borderRadius: 30,
-        paddingVertical: 15,
-        alignItems: 'center',
-        shadowColor: '#95C27E',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 4,
-    },
-    switchText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+    sendButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+    switchButton: { paddingVertical: 12, alignItems: 'center' },
+    switchText: { color: Colors.primary, fontWeight: 'bold', fontSize: 12, letterSpacing: 1, textDecorationLine: 'underline' },
 });

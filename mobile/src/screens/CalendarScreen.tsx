@@ -67,8 +67,11 @@ export default function CalendarScreen() {
             const endDate = new Date(lastDay);
             endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
 
-            const startStr = startDate.toISOString().split('T')[0];
-            const endStr = endDate.toISOString().split('T')[0];
+            // Local date components, not toISOString() (which converts to UTC first) —
+            // for positive-UTC-offset users that shifts the range a day earlier and can
+            // drop the last day(s) of the month/week from the fetch.
+            const startStr = formatDateKey(startDate);
+            const endStr = formatDateKey(endDate);
 
             const { ok, data } = await apiFetch<CalendarEvent[]>(
                 `/api/calendar/events?start=${startStr}&end=${endStr}`,

@@ -19,30 +19,13 @@ import { AUTH_ENDPOINTS } from '../../config/api';
 import { Notification, NotificationType } from '../../components/Notification';
 import { PanelWave } from '../../components/PanelWave';
 import { LogoBlock } from '../../components/LogoBlock';
+import { EMAIL_RE, StrengthLevel, getStrength, STRENGTH_LABEL, STRENGTH_COLOR } from '../../lib/validation';
 
 const { width, height } = Dimensions.get('window');
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-// Password strength
-type StrengthLevel = 0 | 1 | 2 | 3 | 4;
-
-function getStrength(pwd: string): StrengthLevel {
-    if (!pwd) return 0;
-    let score = 0;
-    if (pwd.length >= 8)                    score++;
-    if (/[A-Z]/.test(pwd))                 score++;
-    if (/[0-9]/.test(pwd))                 score++;
-    if (/[^A-Za-z0-9]/.test(pwd))          score++;
-    return Math.min(score, 4) as StrengthLevel;
-}
-
-const STRENGTH_LABEL: Record<StrengthLevel, string> = { 0: '', 1: 'Weak', 2: 'Fair', 3: 'Good', 4: 'Strong' };
-const STRENGTH_COLOR: Record<StrengthLevel, string> = { 0: '#E0E6ED', 1: '#EF5350', 2: '#FFA726', 3: '#66BB6A', 4: '#2E7D32' };
 
 
 

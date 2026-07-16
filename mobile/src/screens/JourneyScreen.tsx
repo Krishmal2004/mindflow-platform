@@ -21,6 +21,7 @@ import { LineChart } from 'react-native-chart-kit';
 
 
 const JOURNEY_ACCENT = '#6366F1';
+const ENTRY_DISPLAY_LIMIT = 15;
 
 const { width } = Dimensions.get('window');
 
@@ -104,7 +105,9 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
             </View>
             {isExpandable && expanded && (
                 <View style={styles.entryList}>
-                    {entries!.map((entry, index) => (
+                    {/* Longitudinal study means this list only grows over months — cap the
+                        expanded render rather than rendering an unbounded array. */}
+                    {entries!.slice(0, ENTRY_DISPLAY_LIMIT).map((entry, index) => (
                         <View key={index} style={styles.entryRow}>
                             <Ionicons name="ellipse" size={6} color={Colors.primary} style={{ marginRight: 8 }} />
                             <Text style={styles.entryText}>
@@ -112,6 +115,11 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
                             </Text>
                         </View>
                     ))}
+                    {entries!.length > ENTRY_DISPLAY_LIMIT && (
+                        <Text style={styles.entryMoreText}>
+                            +{entries!.length - ENTRY_DISPLAY_LIMIT} more
+                        </Text>
+                    )}
                 </View>
             )}
         </TouchableOpacity>
@@ -539,5 +547,12 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: Colors.textSecondary,
         fontWeight: '500',
+    },
+    entryMoreText: {
+        fontSize: 11,
+        color: Colors.textMuted,
+        fontStyle: 'italic',
+        marginTop: 4,
+        paddingLeft: 14,
     },
 });
