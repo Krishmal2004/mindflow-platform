@@ -19,6 +19,7 @@ import { PopupModal } from '../components/PopupModal';
 const { width } = Dimensions.get('window');
 
 const AppIcon = require('../../assets/app-icon.png') as number;
+const EgGroupImage = require('../../assets/egGroup.png') as number;
 
 type DashboardNavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -146,38 +147,12 @@ function BreathingIllustration({ color, isControlGroup }: { color: string; isCon
                     <Circle cx="32" cy="11" r="2.5" fill="#FFFFFF" />
                 </Svg>
             ) : (
-                /* Fine lotus vector graphic illustration for the experimental group (.ex) */
-                <Svg width={100} height={100} viewBox="0 0 64 64" style={{ zIndex: 1 }}>
-                    <Defs>
-                        <SvgLinearGradient id="lotusGrad" x1="0" y1="0" x2="1" y2="1">
-                            <Stop offset="0" stopColor={color} stopOpacity="1" />
-                            <Stop offset="1" stopColor={color} stopOpacity="0.5" />
-                        </SvgLinearGradient>
-                    </Defs>
-                    {/* Central leaf petal */}
-                    <Path
-                        d="M32 10 C37 26 37 45 32 54 C27 45 27 26 32 10 Z"
-                        fill="url(#lotusGrad)"
-                    />
-                    {/* Left petal */}
-                    <Path
-                        d="M32 18 C18 28 14 44 21 50 C28 46 30 33 32 18 Z"
-                        fill="url(#lotusGrad)"
-                        opacity="0.8"
-                    />
-                    {/* Right petal */}
-                    <Path
-                        d="M32 18 C46 28 50 44 43 50 C36 46 34 33 32 18 Z"
-                        fill="url(#lotusGrad)"
-                        opacity="0.8"
-                    />
-                    {/* Bottom base leaf / ripple */}
-                    <Path
-                        d="M16 50 C23 57 41 57 48 50 C44 48 20 48 16 50 Z"
-                        fill="url(#lotusGrad)"
-                        opacity="0.6"
-                    />
-                </Svg>
+                /* Experimental-group (.ex) illustration, replacing the previous lotus SVG. */
+                <Image
+                    source={EgGroupImage}
+                    style={{ width: 108, height: 68, zIndex: 1 }}
+                    resizeMode="contain"
+                />
             )}
         </View>
     );
