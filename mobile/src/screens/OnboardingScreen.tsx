@@ -1,211 +1,290 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../types/navigation';
-import { Colors } from '../constants/colors';
-import { LeavesDecoration } from '../components/LeavesDecoration';
-import { MeditationIllustration } from '../components/MeditationIllustration';
+import { MeditationIllustration, ThriveIllustration, StressIllustration, MirrorIllustration, VoiceRecordingIllustration } from '../components/MeditationIllustration';
+import { JourneyIcons } from '../components/JourneyIcons';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width - 48; // 24px margin either side of the card
+const SLIDE_WIDTH = width; // each page is a full-width viewport so the card recenters per slide
 
+// Deep royal-blue backdrop + soft blue / warm yellow accents — a deliberate
+// departure from the app's sage-green theme, scoped to this screen only.
+const DEEP_BLUE = '#141B4D';
+const DEEP_BLUE_LIGHT = '#232C72';
+const ACCENT_BLUE = '#4C6FFF';
+const ACCENT_YELLOW = '#FFC93C';
+const HEADING_COLOR = '#161B33';
+const BODY_GRAY = '#6B7280';
+
+// One slide per real roadmap step (see DashboardScreen's ROADMAP_STEPS) — same
+// icons and accent colors as the in-app journey, so onboarding previews the
+// exact 5-step path the participant will walk through rather than a generic pitch.
+const SLIDES = [
+    {
+        key: 'daily',
+        title: 'Daily Check-ins',
+        desc: 'Track your mood, stress, and sleep in just a minute a day, then unwind with short guided sessions.',
+        color: '#D97706',
+        RoadmapIcon: JourneyIcons.Sun,
+        Illustration: (size: number) => <MeditationIllustration width={size} height={size * 0.9} />,
+    },
+    {
+        key: 'voice',
+        title: 'Weekly Voice Journal',
+        desc: 'A short reading captures your vocal wellbeing patterns over time.',
+        color: '#6366F1',
+        RoadmapIcon: JourneyIcons.Microphone,
+        Illustration: (size: number) => <VoiceRecordingIllustration width={size} height={size * 0.9} color="INDIGO" />,
+    },
+    {
+        key: 'thrive',
+        title: 'Thrive Tracker',
+        desc: 'A quick wellbeing check-in every two weeks using the WEMWBS-14 scale.',
+        color: '#749F82',
+        RoadmapIcon: JourneyIcons.Chart,
+        Illustration: (size: number) => <ThriveIllustration width={size} height={size * 0.9} />,
+    },
+    {
+        key: 'stress',
+        title: 'Stress Snapshot',
+        desc: 'See how your perceived stress shifts over the month with the PSS-10 scale.',
+        color: '#E07A5F',
+        RoadmapIcon: JourneyIcons.StressCamera,
+        Illustration: (size: number) => <StressIllustration width={size} height={size * 0.9} color="CORAL" />,
+    },
+    {
+        key: 'mindful',
+        title: 'Mindful Mirror',
+        desc: 'Reflect on your mindfulness habits each month using the FFMQ-15 scale.',
+        color: '#0D9488',
+        RoadmapIcon: JourneyIcons.Mirror,
+        Illustration: (size: number) => <MirrorIllustration width={size} height={size * 0.9} color="TEAL" />,
+    },
+];
+
+// Premium, minimal onboarding: deep royal-blue backdrop with a centered white
+// rounded card per slide (illustration, heading, description) and fixed
+// pagination + CTA below it — distinct from the auth screens' light panel
+// language on purpose, since this is the very first, brand-setting impression.
 export default function OnboardingScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
+    const [activeSlide, setActiveSlide] = useState(0);
+    const carouselRef = useRef<ScrollView>(null);
+
     const fadeAnim = useSharedValue(0);
-    const slideAnim = useSharedValue(50);
-    const imageScale = useSharedValue(0.8);
+    const scaleAnim = useSharedValue(0.94);
 
     useEffect(() => {
-        fadeAnim.value = withTiming(1, { duration: 1200, easing: Easing.bezier(0.25, 0.1, 0.25, 1) });
-        // Removed withDelay wrapper here as per previous fix
-        slideAnim.value = withTiming(0, { duration: 800 });
-        imageScale.value = withDelay(200, withTiming(1, { duration: 1000, easing: Easing.out(Easing.exp) }));
+        fadeAnim.value = withTiming(1, { duration: 700 });
+        scaleAnim.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.exp) });
     }, []);
 
-    const handleLogin = async () => {
+    const handleContinue = async () => {
         await AsyncStorage.setItem('alreadyLaunched', 'true');
         navigation.replace('Login');
     };
 
-    const handleSignup = async () => {
-        await AsyncStorage.setItem('alreadyLaunched', 'true');
-        navigation.replace('Signup');
+    const handleNext = () => {
+        if (activeSlide === SLIDES.length - 1) {
+            handleContinue();
+            return;
+        }
+        goToSlide(activeSlide + 1);
     };
 
-    const headerStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ translateY: slideAnim.value }],
-    }));
+    const handleSlideScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const index = Math.round(e.nativeEvent.contentOffset.x / SLIDE_WIDTH);
+        setActiveSlide(Math.max(0, Math.min(SLIDES.length - 1, index)));
+    };
 
-    const illustrationStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ scale: imageScale.value }],
-    }));
+    const goToSlide = (index: number) => {
+        carouselRef.current?.scrollTo({ x: index * SLIDE_WIDTH, animated: true });
+        setActiveSlide(index);
+    };
 
-    const animatedContentStyle = useAnimatedStyle(() => ({
-        opacity: fadeAnim.value,
-        transform: [{ translateY: slideAnim.value }],
-    }));
+    const cardStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value, transform: [{ scale: scaleAnim.value }] }));
+
+    const isLast = activeSlide === SLIDES.length - 1;
 
     return (
-        <View style={styles.container}>
-            <StatusBar style="dark" />
+        <LinearGradient
+            colors={[DEEP_BLUE_LIGHT, DEEP_BLUE]}
+            style={styles.container}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+        >
+            <StatusBar style="light" translucent backgroundColor="transparent" />
 
-            {/* Background Decoration */}
-            <View style={styles.decorationContainer}>
-                <LeavesDecoration width={width} height={height * 0.6} color={Colors.primary} />
+            {/* Soft decorative glows for a polished, fintech-style backdrop */}
+            <View pointerEvents="none" style={[styles.glowYellow, { top: insets.top + 40 }]} />
+            <View pointerEvents="none" style={[styles.glowBlue, { bottom: 120 }]} />
+
+            <View style={[styles.topBar, { paddingTop: insets.top > 0 ? insets.top + 8 : 24 }]}>
+                <TouchableOpacity onPress={handleContinue} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={styles.skipText}>Skip</Text>
+                </TouchableOpacity>
             </View>
 
-            {/* Header */}
-            <Animated.View style={[styles.header, headerStyle]}>
-                <Text style={styles.headerText}>MindFlow</Text>
-            </Animated.View>
+            <ScrollView
+                ref={carouselRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                snapToInterval={SLIDE_WIDTH}
+                onMomentumScrollEnd={handleSlideScrollEnd}
+                style={styles.carousel}
+            >
+                {SLIDES.map((slide) => (
+                    <View key={slide.key} style={[styles.slidePage, { width: SLIDE_WIDTH }]}>
+                        <Animated.View style={[styles.card, cardStyle]}>
+                            <View style={styles.illustrationWrap}>
+                                {slide.Illustration(CARD_WIDTH * 0.56)}
+                            </View>
+                            <Text style={styles.heading}>{slide.title}</Text>
+                            <Text style={styles.description}>{slide.desc}</Text>
+                        </Animated.View>
+                    </View>
+                ))}
+            </ScrollView>
 
-            {/* Illustration */}
-            <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                <MeditationIllustration width={width * 0.9} height={width * 0.9} color={Colors.primary} />
-            </Animated.View>
-
-            {/* Bottom Content Panel */}
-            <Animated.View style={[styles.bottomPanel, animatedContentStyle]}>
-                <Text style={styles.welcomeTitle}>WELCOME</Text>
-                <Text style={styles.welcomeSubtitle}>START YOUR JOURNEY</Text>
-                <Text style={styles.description}>
-                    Discover mindfulness, reduce stress, and find your balance with daily guided sessions.
-                </Text>
-
-                <View style={styles.buttonGroup}>
-                    <TouchableOpacity style={styles.primaryButton} onPress={handleLogin} activeOpacity={0.8}>
-                        <Text style={styles.primaryButtonText}>LOG IN</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.secondaryButton} onPress={handleSignup} activeOpacity={0.8}>
-                        <Text style={styles.secondaryButtonText}>OR SIGN UP</Text>
-                    </TouchableOpacity>
+            <View style={[styles.footer, { paddingBottom: insets.bottom > 0 ? insets.bottom + 16 : 28 }]}>
+                {/* Mini roadmap stepper — mirrors the in-app 5-step journey path,
+                    doubling as pagination so the preview and the real thing match. */}
+                <View style={styles.roadmapRow}>
+                    {SLIDES.map((slide, i) => {
+                        const reached = i <= activeSlide;
+                        const isActive = i === activeSlide;
+                        const Icon = slide.RoadmapIcon;
+                        return (
+                            <React.Fragment key={slide.key}>
+                                {i > 0 && (
+                                    <View
+                                        style={[
+                                            styles.roadmapLine,
+                                            reached && { backgroundColor: ACCENT_BLUE, opacity: 0.9 },
+                                        ]}
+                                    />
+                                )}
+                                <TouchableOpacity
+                                    onPress={() => goToSlide(i)}
+                                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                                >
+                                    <View
+                                        style={[
+                                            styles.roadmapNode,
+                                            { backgroundColor: reached ? `${slide.color}26` : 'rgba(255,255,255,0.08)' },
+                                            isActive && { borderColor: slide.color, borderWidth: 2 },
+                                        ]}
+                                    >
+                                        <Icon width={16} height={16} color={reached ? slide.color : 'rgba(255,255,255,0.35)'} />
+                                    </View>
+                                </TouchableOpacity>
+                            </React.Fragment>
+                        );
+                    })}
                 </View>
-            </Animated.View>
-        </View>
+
+                <TouchableOpacity style={styles.continueButton} onPress={handleNext} activeOpacity={0.85}>
+                    <Text style={styles.continueButtonText}>{isLast ? 'GET STARTED' : 'NEXT'}</Text>
+                </TouchableOpacity>
+            </View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-        alignItems: 'center',
-    },
-    decorationContainer: {
+    container: { flex: 1 },
+    glowYellow: {
         position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 0,
+        right: -60,
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        backgroundColor: ACCENT_YELLOW,
+        opacity: 0.12,
     },
-    header: {
-        marginTop: 60,
-        marginBottom: 10,
-        zIndex: 1,
+    glowBlue: {
+        position: 'absolute',
+        left: -80,
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: ACCENT_BLUE,
+        opacity: 0.18,
     },
-    headerText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: Colors.textSecondary,
-        letterSpacing: 3,
-        textTransform: 'uppercase',
-    },
-    illustrationContainer: {
-        flex: 1,
-        justifyContent: 'center',
+    topBar: { alignItems: 'flex-end', paddingHorizontal: 24, zIndex: 1 },
+    skipText: { color: 'rgba(255,255,255,0.72)', fontSize: 13, fontWeight: '600', letterSpacing: 1 },
+    carousel: { flex: 1 },
+    slidePage: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+    card: {
+        width: CARD_WIDTH,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 30,
+        paddingTop: 32,
+        paddingBottom: 28,
+        paddingHorizontal: 24,
         alignItems: 'center',
-        zIndex: 1,
-        marginTop: -40,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 18 },
+        shadowOpacity: 0.25,
+        shadowRadius: 28,
+        elevation: 18,
     },
-    imageWrapper: {
-        width: width * 0.9,
-        height: width * 0.9,
-        justifyContent: 'center',
-        alignItems: 'center',
-        // Optional: Add soft glow/backdrop
-    },
-    image: {
+    illustrationWrap: {
         width: '100%',
-        height: '100%',
-    },
-    bottomPanel: {
-        backgroundColor: Colors.surface,
-        width: '100%',
-        borderTopLeftRadius: 40,
-        borderTopRightRadius: 40,
-        paddingVertical: 40,
-        paddingHorizontal: 30,
         alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -6 },
-        shadowOpacity: 0.05,
-        shadowRadius: 16,
-        elevation: 8,
+        justifyContent: 'center',
+        marginBottom: 24,
     },
-    welcomeTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: Colors.textSecondary,
-        letterSpacing: 2,
-        marginBottom: 6,
-        textTransform: 'uppercase',
-    },
-    welcomeSubtitle: {
+    heading: {
         fontSize: 22,
         fontWeight: '800',
-        color: Colors.textPrimary,
-        letterSpacing: 0.5,
-        marginBottom: 16,
+        color: HEADING_COLOR,
         textAlign: 'center',
+        letterSpacing: 0.2,
+        marginBottom: 10,
     },
     description: {
         fontSize: 14,
-        color: '#636E72',
+        color: BODY_GRAY,
         textAlign: 'center',
-        marginBottom: 30,
-        lineHeight: 22,
-        paddingHorizontal: 20,
+        lineHeight: 21,
+        paddingHorizontal: 4,
     },
-    buttonGroup: {
+    footer: { alignItems: 'center', paddingHorizontal: 24, zIndex: 1 },
+    roadmapRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 26 },
+    roadmapNode: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    roadmapLine: { width: 14, height: 2, backgroundColor: 'rgba(255,255,255,0.15)' },
+    continueButton: {
         width: '100%',
-        gap: 14,
-    },
-    primaryButton: {
-        backgroundColor: Colors.primary,
-        borderRadius: 30,
+        backgroundColor: ACCENT_YELLOW,
+        borderRadius: 28,
         paddingVertical: 16,
         alignItems: 'center',
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 3,
+        shadowColor: ACCENT_YELLOW,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 6,
     },
-    primaryButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: 1.5,
-    },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        borderRadius: 30,
-        paddingVertical: 16,
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: Colors.primary,
-    },
-    secondaryButtonText: {
-        color: Colors.primary,
-        fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: 1.5,
-    },
+    continueButtonText: { color: DEEP_BLUE, fontWeight: 'bold', fontSize: 15, letterSpacing: 1 },
 });

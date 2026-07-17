@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard,
-    LayoutAnimation, UIManager, ActivityIndicator,
+    LayoutAnimation, UIManager, ActivityIndicator, Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
-import { SignupIllustration } from '../../components/SignupIllustration';
 import { AUTH_ENDPOINTS } from '../../config/api';
 import { Notification, NotificationType } from '../../components/Notification';
 import { PanelWave } from '../../components/PanelWave';
@@ -22,6 +21,8 @@ import { LogoBlock } from '../../components/LogoBlock';
 import { EMAIL_RE, StrengthLevel, getStrength, STRENGTH_LABEL, STRENGTH_COLOR } from '../../lib/validation';
 
 const { width, height } = Dimensions.get('window');
+
+const SignupImage = require('../../../assets/signup.png');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -178,9 +179,10 @@ export default function SignupScreen() {
                 </Animated.View>
 
                 <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                    <SignupIllustration
-                        width={width * 0.42}
-                        height={width * 0.37}
+                    <Image
+                        source={SignupImage}
+                        style={{ width: width * 0.5, height: width * 0.5 }}
+                        resizeMode="contain"
                     />
                 </Animated.View>
             </View>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard, LayoutAnimation, UIManager, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Dimensions, ScrollView, Keyboard, LayoutAnimation, UIManager, ActivityIndicator, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -8,7 +8,6 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from '
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
-import { MeditationIllustration } from '../../components/MeditationIllustration';
 import { Notification, NotificationType } from '../../components/Notification';
 import { PanelWave } from '../../components/PanelWave';
 import { LogoBlock } from '../../components/LogoBlock';
@@ -16,6 +15,8 @@ import { AUTH_ENDPOINTS } from '../../config/api';
 import { EMAIL_RE } from '../../lib/validation';
 
 const { width, height } = Dimensions.get('window');
+
+const ForgetImage = require('../../../assets/forget.png');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -118,10 +119,10 @@ export default function ForgotPasswordScreen() {
                 </Animated.View>
 
                 <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
-                    <MeditationIllustration
-                        width={width * 0.70}
-                        height={width * 0.70}
-                        color={Colors.primary}
+                    <Image
+                        source={ForgetImage}
+                        style={{ width: width * 0.70, height: width * 0.70 }}
+                        resizeMode="contain"
                     />
                 </Animated.View>
             </View>

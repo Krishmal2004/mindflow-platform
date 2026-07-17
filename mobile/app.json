@@ -19,14 +19,14 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon-adaptive.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#00000000"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.brainlabs.mindflow"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/app-icon-display.png"
     },
     "plugins": [
       "expo-asset",
