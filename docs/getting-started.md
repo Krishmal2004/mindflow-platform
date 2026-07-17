@@ -33,7 +33,7 @@ npm start                # or: npx expo start -c to clear the Metro cache
 ```
 Press `a`/`i` for an emulator/simulator, or scan the QR code with **Expo Go**. `npx tsc --noEmit` type-checks; `npm test` runs Jest (`jest-expo`).
 
-> Push notifications (8 AM / 7 PM reminders) need an EAS project, which isn't configured yet — see `mobile/README.md` before relying on them.
+> Push notifications (8 AM / 7 PM reminders) need an EAS project — one is already linked (`extra.eas.projectId` in `app.json`), but registration still only works from a dev client or an EAS build, not plain Expo Go (SDK 53+ dropped remote push support there). See `mobile/README.md` before relying on them.
 
 ## 3. Web Admin (`web-admin/`)
 
