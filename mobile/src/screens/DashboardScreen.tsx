@@ -796,8 +796,8 @@ const styles = StyleSheet.create({
         // 508x198 was ~3x wider than its own container regardless of device, and
         // overflowed further on narrow phones. resizeMode="contain" (set on the
         // Image itself) keeps the aspect ratio correct within the box.
-        width: '100%',
-        height: '100%',
+        width: '150%',
+        height: '150%',
     },
     roadmapWrap: {
         width: '100%',
