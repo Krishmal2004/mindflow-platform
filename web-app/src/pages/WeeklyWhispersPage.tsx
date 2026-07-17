@@ -227,8 +227,8 @@ export default function WeeklyWhispersPage() {
                   <p style={{ fontSize: 12, color: '#636E72' }}>Read aloud when ready</p>
                 </div>
               </div>
-              <div style={{ background: '#F8F8FF', borderRadius: 16, padding: 16 }}>
-                <p style={{ fontSize: 14, color: '#2D3436', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{PASSAGE_TEXT}</p>
+              <div style={{ background: '#F8F8FF', borderRadius: 14, padding: 14, maxHeight: 160, overflowY: 'auto' }}>
+                <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{PASSAGE_TEXT}</p>
               </div>
             </div>
             <div style={{ background: '#fff', borderRadius: 20, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>

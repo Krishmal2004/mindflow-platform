@@ -14,7 +14,7 @@ export const FrequencyMeter = ({ level, color }: { level: number; color: string 
                 key={bar}
                 style={[
                     styles.frequencyBar,
-                    { height: 6 + bar * 3, backgroundColor: bar <= level ? color : '#E2E8F0' }
+                    { height: 5 + bar * 2, backgroundColor: bar <= level ? color : '#E2E8F0' }
                 ]}
             />
         ))}
@@ -114,10 +114,10 @@ const styles = StyleSheet.create({
     frequencyMeter: {
         flexDirection: 'row',
         alignItems: 'flex-end',
-        gap: 3,
+        gap: 2,
     },
     frequencyBar: {
-        width: 4,
-        borderRadius: 2,
+        width: 3,
+        borderRadius: 1.5,
     },
 });

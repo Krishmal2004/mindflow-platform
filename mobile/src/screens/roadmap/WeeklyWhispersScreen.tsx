@@ -585,16 +585,20 @@ export default function WeeklyWhispersScreen() {
 
                     <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
                         <View style={styles.panelBody}>
-                            <View style={styles.passageHeader}>
-                                <Ionicons name="book-outline" size={18} color={Colors.primary} />
-                                <Text style={styles.passageLabel}>PASSAGE TO READ</Text>
-                            </View>
+                            {!recordingUri && (
+                                <>
+                                    <View style={styles.sectionBadge}>
+                                        <Ionicons name="book-outline" size={14} color={Colors.primary} />
+                                        <Text style={styles.sectionBadgeText}>PASSAGE TO READ</Text>
+                                    </View>
 
-                            <View style={styles.passageContainer}>
-                                <ScrollView nestedScrollEnabled style={{ maxHeight: 400 }}>
-                                    <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
-                                </ScrollView>
-                            </View>
+                                    <View style={styles.passageContainer}>
+                                        <ScrollView nestedScrollEnabled style={{ maxHeight: 255 }}>
+                                            <Text style={styles.passageText}>{PASSAGE_TEXT}</Text>
+                                        </ScrollView>
+                                    </View>
+                                </>
+                            )}
 
                             {isRecording && (
                                 <View style={styles.recordingIndicator}>
@@ -605,9 +609,9 @@ export default function WeeklyWhispersScreen() {
 
                             {recordingUri && (
                                 <View style={styles.reviewSection}>
-                                    <View style={styles.reviewHeaderRow}>
-                                        <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                                        <Text style={styles.reviewSectionTitle}>Recording Ready</Text>
+                                    <View style={[styles.sectionBadge, styles.sectionBadgeSuccess]}>
+                                        <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                                        <Text style={[styles.sectionBadgeText, styles.sectionBadgeTextSuccess]}>RECORDING READY</Text>
                                     </View>
 
                                     <View style={styles.waveformContainer}>
@@ -907,31 +911,47 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     // Passage Section
-    passageHeader: {
+    sectionBadge: {
         flexDirection: 'row',
         alignItems: 'center',
+        alignSelf: 'center',
+        gap: 6,
+        backgroundColor: THEME_BG,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 20,
         marginBottom: 12,
     },
-    passageLabel: {
-        fontSize: 12,
+    sectionBadgeText: {
+        fontSize: 11,
         fontWeight: '700',
         color: Colors.primary,
-        marginLeft: 8,
         letterSpacing: 1.5,
+    },
+    sectionBadgeSuccess: {
+        backgroundColor: '#DCFCE7',
+    },
+    sectionBadgeTextSuccess: {
+        color: '#16A34A',
     },
     passageContainer: {
         backgroundColor: '#F8FAFC',
-        borderRadius: 20,
-        padding: 16,
+        borderRadius: 16,
+        padding: 14,
         borderWidth: 1,
         borderColor: '#E2E8F0',
         marginBottom: 4,
-        minHeight: 180,
+        minHeight: 150,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 1,
     },
     passageText: {
-        fontSize: 16,
-        color: '#334155',
-        lineHeight: 28,
+        fontSize: 13.5,
+        color: '#475569',
+        lineHeight: 21,
     },
     // Review Screen
     reviewSection: {
@@ -940,17 +960,6 @@ const styles = StyleSheet.create({
         paddingTop: 16,
         borderTopWidth: 1,
         borderTopColor: '#E2E8F0',
-    },
-    reviewHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
-    },
-    reviewSectionTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#2D3436',
     },
     waveformContainer: {
         flexDirection: 'row',

@@ -6,6 +6,8 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
+    Animated,
+    Easing,
     Dimensions
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,6 +60,8 @@ export default function ThriveTrackerScreen() {
     const insets = useSafeAreaInsets();
     const startTimeRef = useRef<number | null>(null);
     const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const questionAnim = useRef(new Animated.Value(0)).current;
+    const progressAnim = useRef(new Animated.Value(0)).current;
 
     // State
     const [currentStep, setCurrentStep] = useState<'intro' | 'questionnaire'>('intro');
@@ -95,6 +99,24 @@ export default function ThriveTrackerScreen() {
             if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
         };
     }, []);
+
+    // Fade + slide the question card in on every question change, and ease the progress bar toward its new position.
+    useEffect(() => {
+        if (currentStep !== 'questionnaire') return;
+        questionAnim.setValue(0);
+        Animated.timing(questionAnim, {
+            toValue: 1,
+            duration: 260,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        }).start();
+        Animated.timing(progressAnim, {
+            toValue: (currentQuestionIndex + 1) / WEMWBS_QUESTIONS.length,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+        }).start();
+    }, [currentQuestionIndex, currentStep]);
 
     const checkStatus = async () => {
         try {
@@ -282,7 +304,7 @@ export default function ThriveTrackerScreen() {
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.introContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.introWrap}>
                         <View style={styles.illustrationContainer}>
-                            <ThriveIllustration width={width * 0.67} height={width * 0.67} color={Colors.primary} />
+                            <ThriveIllustration width={width * 0.60} height={width * 0.60} color={Colors.primary} />
                         </View>
 
                         <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
@@ -360,20 +382,28 @@ export default function ThriveTrackerScreen() {
                 <View style={styles.introWrap}>
                     {/* Top Section on cream background */}
                     <View style={styles.illustrationContainer}>
-                        <ThriveIllustration width={width * 0.35} height={width * 0.35} color={Colors.primary} />
+                        <ThriveIllustration width={width * 0.22} height={width * 0.22} color={Colors.primary} />
                     </View>
 
                     {/* Progress Bar */}
-                    <View style={[styles.progressContainer, { width: '100%', paddingHorizontal: 24, marginBottom: 16 }]}>
+                    <View style={[styles.progressContainer, { width: '100%', paddingHorizontal: 24, marginBottom: 12 }]}>
                         <View style={styles.progressBarBg}>
-                            <View style={[styles.progressBarFill, { width: `${((currentQuestionIndex + 1) / WEMWBS_QUESTIONS.length) * 100}%` }]} />
+                            <Animated.View style={[styles.progressBarFill, { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) }]} />
                         </View>
                         <Text style={styles.progressStepText}>Question {currentQuestionIndex + 1} of {WEMWBS_QUESTIONS.length}</Text>
                     </View>
 
                     {/* Bottom Panel (green background) */}
                     <View style={[styles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
-                        <View style={styles.questionCard}>
+                        <Animated.View
+                            style={[
+                                styles.questionCard,
+                                {
+                                    opacity: questionAnim,
+                                    transform: [{ translateY: questionAnim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }],
+                                },
+                            ]}
+                        >
                             <View style={styles.questionNumberBadge}>
                                 <Text style={styles.questionNumberText}>Question {currentQuestionIndex + 1}</Text>
                             </View>
@@ -394,7 +424,7 @@ export default function ThriveTrackerScreen() {
                                                 {isSelected && <View style={styles.radioInner} />}
                                             </View>
                                             <View style={styles.scaleIconSlot}>
-                                                <GrowthIcon size={30} />
+                                                <GrowthIcon size={22} />
                                             </View>
                                             <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                                                 {option.label}
@@ -403,7 +433,7 @@ export default function ThriveTrackerScreen() {
                                     );
                                 })}
                             </View>
-                        </View>
+                        </Animated.View>
 
                         {/* Bottom Navigation */}
                         <View style={styles.navigationRow}>
@@ -565,10 +595,10 @@ const styles = StyleSheet.create({
     questionNumberBadge: {
         alignSelf: 'flex-start',
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: 12,
-        marginBottom: 12,
+        marginBottom: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
@@ -576,28 +606,28 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     questionNumberText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '800',
         color: Colors.primary,
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
     questionText: {
-        fontSize: 19,
+        fontSize: 16,
         fontWeight: '700',
         color: '#1E293B',
-        marginBottom: 16,
-        lineHeight: 26,
+        marginBottom: 12,
+        lineHeight: 22,
     },
     optionsContainer: {
-        gap: 8,
+        gap: 7,
     },
     optionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 14,
         backgroundColor: '#FFFFFF',
         borderWidth: 1.5,
         borderColor: '#E2E8F0',
@@ -617,12 +647,12 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     radioCircle: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
         borderWidth: 2,
         borderColor: '#94A3B8',
-        marginRight: 12,
+        marginRight: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -630,18 +660,18 @@ const styles = StyleSheet.create({
         borderColor: Colors.primary,
     },
     scaleIconSlot: {
-        marginRight: 12,
+        marginRight: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
     radioInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         backgroundColor: Colors.primary,
     },
     optionText: {
-        fontSize: 15,
+        fontSize: 13.5,
         color: '#475569',
         flex: 1,
         fontWeight: '500',
@@ -653,8 +683,8 @@ const styles = StyleSheet.create({
     navigationRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 20,
-        marginBottom: 32,
+        marginTop: 16,
+        marginBottom: 20,
         gap: 12,
         zIndex: 1,
     },
@@ -664,14 +694,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 16,
+        paddingVertical: 13,
         borderRadius: 30,
         borderWidth: 1.5,
         borderColor: '#DFE6E9',
         backgroundColor: '#FFFFFF',
     },
     navButtonTextSecondary: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
         color: '#636E72',
     },
@@ -681,12 +711,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 16,
+        paddingVertical: 13,
         borderRadius: 30,
         backgroundColor: Colors.primary,
     },
     navButtonTextPrimary: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
     },
@@ -696,7 +726,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        paddingVertical: 16,
+        paddingVertical: 13,
         borderRadius: 30,
         backgroundColor: Colors.primary, // Sage green for submission
         shadowColor: Colors.primary,
@@ -706,7 +736,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     submitButtonText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
     },

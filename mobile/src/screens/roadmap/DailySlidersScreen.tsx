@@ -36,9 +36,8 @@ const THEME_BG = '#FFFBEB';
 
 const { width } = Dimensions.get('window');
 
-// Player grows while playing (visual focus), shrinks back when paused so the surrounding content has room.
-const VIDEO_HEIGHT_PAUSED = 200;
-const VIDEO_HEIGHT_PLAYING = 260;
+// Fixed 16:9 height for the full-bleed player — doesn't grow/shrink on play so the step layout never jumps.
+const VIDEO_HEIGHT = Math.round((width * 9) / 16);
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -174,6 +173,17 @@ export default function DailySlidersScreen() {
         } finally {
             setDraftRestored(true);
         }
+    };
+
+    // Exiting via the header close button discards whatever's been entered so far — draft
+    // resume is only meant to survive an accidental app close/kill, not an intentional exit.
+    // Navigates first so the screen unmounts (cancelling the debounced draft-save timer)
+    // before the draft is cleared, or that timer could re-write it right after removal.
+    const handleBack = () => {
+        navigation.goBack();
+        AsyncStorage.removeItem(DAILY_DRAFT_KEY).catch(error => {
+            console.log('Failed to clear daily check-in draft', error);
+        });
     };
 
     const fetchWeeklyVideo = async () => {
@@ -476,7 +486,7 @@ export default function DailySlidersScreen() {
 
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                     <Ionicons name="close" size={24} color="#1E293B" />
                 </TouchableOpacity>
                 <Text style={styles.title}>Daily Check-in</Text>
@@ -714,6 +724,21 @@ export default function DailySlidersScreen() {
                 {/* STEP 2: Guided Video Session */}
                 {currentStep === 2 && (
                     <View style={styles.wizardCard}>
+                        {weeklyVideoId && (
+                            <View style={[styles.videoWrapper, { height: VIDEO_HEIGHT }]}>
+                                <YoutubePlayer
+                                    height={VIDEO_HEIGHT}
+                                    videoId={weeklyVideoId}
+                                    play={isVideoPlaying}
+                                    onChangeState={handleVideoStateChange}
+                                    onError={handleVideoError}
+                                    webViewProps={{
+                                        allowsInlineMediaPlayback: true,
+                                        mediaPlaybackRequiresUserAction: false,
+                                    }}
+                                />
+                            </View>
+                        )}
                         <View style={styles.samsungPanel}>
                             <View style={styles.sectionHeader}>
                                 <View style={[styles.sectionIconCircle, { backgroundColor: THEME_BG }]}>
@@ -729,21 +754,7 @@ export default function DailySlidersScreen() {
                                 </View>
                             </View>
 
-                            {weeklyVideoId ? (
-                                <View style={[styles.videoWrapper, { height: isVideoPlaying ? VIDEO_HEIGHT_PLAYING : VIDEO_HEIGHT_PAUSED }]}>
-                                    <YoutubePlayer
-                                        height={isVideoPlaying ? VIDEO_HEIGHT_PLAYING : VIDEO_HEIGHT_PAUSED}
-                                        videoId={weeklyVideoId}
-                                        play={isVideoPlaying}
-                                        onChangeState={handleVideoStateChange}
-                                        onError={handleVideoError}
-                                        webViewProps={{
-                                            allowsInlineMediaPlayback: true,
-                                            mediaPlaybackRequiresUserAction: false,
-                                        }}
-                                    />
-                                </View>
-                            ) : (
+                            {!weeklyVideoId && (
                                 <View style={styles.recordingCard}>
                                     <View style={styles.recordingIcon}>
                                         <Ionicons name="headset" size={48} color="#CBD5E1" />
@@ -1245,16 +1256,14 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '600',
     },
+    // Bleeds past `content`'s 20px padding so the player runs edge-to-edge — wider and more
+    // immersive than a boxed-in card — with square corners to match the bleed, sitting above
+    // the info card rather than inside it.
     videoWrapper: {
-        borderRadius: 20,
+        marginHorizontal: -20,
+        marginBottom: 16,
         overflow: 'hidden',
         backgroundColor: '#000',
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
     },
     recordingCard: {
         flexDirection: 'row',

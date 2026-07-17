@@ -146,8 +146,8 @@ export default function LoginScreen() {
 
                 <Animated.View style={[styles.illustrationContainer, illustrationStyle]}>
                     <MeditationIllustration
-                        width={width * 0.70}
-                        height={width * 0.70}
+                        width={width * 0.66}
+                        height={width * 0.66}
                         color={Colors.primary}
                     />
                 </Animated.View>
@@ -258,13 +258,13 @@ const styles = StyleSheet.create({
         zIndex: 0,
     },
     scrollContent: { flexGrow: 1, alignItems: 'center' },
-    illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+    illustrationContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
     bottomPanel: {
         backgroundColor: '#E3F2FD',
         width: '100%',
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
-        paddingTop: 24,
+        paddingTop: 20,
         paddingBottom: 104,   // extra space for wave
         paddingHorizontal: 24,
         alignItems: 'center',
@@ -275,40 +275,40 @@ const styles = StyleSheet.create({
         elevation: 10,
         overflow: 'hidden',   // clip wave inside panel
     },
-    panelTitle: { fontSize: 14, fontWeight: '600', color: '#636E72', letterSpacing: 2, marginBottom: 5 },
-    panelSubtitle: { fontSize: 18, fontWeight: 'bold', color: '#2D3436', letterSpacing: 1, marginBottom: 20 },
-    formContainer: { width: '100%', gap: 12 },
+    panelTitle: { fontSize: 13, fontWeight: '600', color: '#636E72', letterSpacing: 2, marginBottom: 2 },
+    panelSubtitle: { fontSize: 17, fontWeight: 'bold', color: '#2D3436', letterSpacing: 1, marginBottom: 14 },
+    formContainer: { width: '100%', gap: 10 },
     inputWrapper: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 30,
-        paddingHorizontal: 20,
-        paddingVertical: 12,
+        borderRadius: 26,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 3,
         elevation: 2,
     },
-    input: { fontSize: 16, color: '#2D3436' },
+    input: { fontSize: 15, color: '#2D3436' },
     forgotButton: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4 },
     forgotText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
     loginButton: {
         backgroundColor: Colors.primary,
-        borderRadius: 30,
-        paddingVertical: 15,
+        borderRadius: 26,
+        paddingVertical: 14,
         alignItems: 'center',
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
         elevation: 4,
-        marginTop: 5,
+        marginTop: 4,
     },
     loginButtonText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
     switchButton: {
         backgroundColor: '#95C27E',
-        borderRadius: 30,
-        paddingVertical: 15,
+        borderRadius: 26,
+        paddingVertical: 14,
         alignItems: 'center',
         shadowColor: '#95C27E',
         shadowOffset: { width: 0, height: 4 },
