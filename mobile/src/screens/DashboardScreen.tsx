@@ -13,6 +13,7 @@ import { Colors } from '../constants/colors';
 import { apiFetch } from '../lib/apiClient';
 import { formatUtcMonthDay, formatUtcWeekday } from '../lib/dateFormat';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
+import { useTabBarHeight } from '../lib/useTabBarHeight';
 import { JourneyIcons } from '../components/JourneyIcons';
 import { PopupModal } from '../components/PopupModal';
 import { LogoBlock } from '../components/LogoBlock';
@@ -352,6 +353,7 @@ const RoadmapNode = memo(({
 export default function DashboardScreen() {
     const navigation = useNavigation<DashboardNavProp>();
     const insets = useSafeAreaInsets();
+    const tabBarHeight = useTabBarHeight();
 
     const [userName, setUserName] = useState('User');
     const [statuses, setStatuses] = useState<any>({});
@@ -609,7 +611,7 @@ export default function DashboardScreen() {
                 <View style={styles.roadmapWrap}>
                     <View style={[
                         styles.roadmapPanel,
-                        { backgroundColor: isControlGroup ? '#FFF8EC' : '#E3F2FD' }
+                        { backgroundColor: isControlGroup ? '#FFF8EC' : '#E3F2FD', paddingBottom: tabBarHeight + 24 }
                     ]}>
                         <Text style={[
                             styles.panelLabel,
@@ -807,7 +809,8 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         paddingTop: 28,
-        paddingBottom: 120,
+        // paddingBottom is set dynamically at the usage site via useTabBarHeight(),
+        // so the last roadmap node always clears the floating tab bar.
         paddingHorizontal: 24,
         overflow: 'hidden',
         shadowColor: '#000',

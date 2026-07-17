@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
@@ -26,6 +27,7 @@ const ILLUSTRATION_HEIGHT = ILLUSTRATION_WIDTH * (278 / 400);
 // navigation.navigate('AboutMe') call site keeps working unchanged.
 export default function AboutMeFrontScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -73,7 +75,7 @@ export default function AboutMeFrontScreen() {
                         <Image source={AboutMeIllustration} style={styles.illustration} resizeMode="contain" />
                     </View>
 
-                    <View style={panelStyles.introPanel}>
+                    <View style={[panelStyles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
                         <Text style={panelStyles.introPanelTitle}>YOUR PROFILE</Text>
                         <Text style={panelStyles.introPanelSubtitle}>TELL US ABOUT YOURSELF</Text>
 

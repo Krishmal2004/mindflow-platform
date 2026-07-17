@@ -62,7 +62,12 @@ export default function CompleteTaskScreen() {
                 <LeavesDecoration width={width} height={width * 0.8} color={themeColor} />
             </View>
 
-            <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                overScrollMode="never"
+            >
 
                 <View style={styles.header}>
                     <Animated.View style={[styles.illustrationContainer, animatedIconStyle]}>

@@ -18,6 +18,7 @@ import { apiFetch } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { cardShadow, cardShadowElevated } from '../styles/shared';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { useTabBarHeight } from '../lib/useTabBarHeight';
 import { StatusBar } from 'expo-status-bar';
 
 
@@ -35,6 +36,7 @@ interface CalendarEvent {
 }
 
 export default function CalendarScreen() {
+    const tabBarHeight = useTabBarHeight();
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -260,7 +262,7 @@ export default function CalendarScreen() {
             <ScrollView
                 ref={scrollViewRef}
                 style={styles.content}
-                contentContainerStyle={{ paddingBottom: 120 }}
+                contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }

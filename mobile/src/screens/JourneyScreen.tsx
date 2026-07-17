@@ -15,6 +15,7 @@ import { apiFetch, clearApiCache } from '../lib/apiClient';
 import { Colors } from '../constants/colors';
 import { cardShadow } from '../styles/shared';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { useTabBarHeight } from '../lib/useTabBarHeight';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 
@@ -127,6 +128,7 @@ const SummaryCard = ({ icon, title, count, latestLabel, latestDate, entries }: S
 };
 
 export default function JourneyScreen() {
+    const tabBarHeight = useTabBarHeight();
 
     const [dailyData, setDailyData] = useState<DailySliderData[]>([]);
     const [weeklyData, setWeeklyData] = useState<QuestionnaireResponse[]>([]);
@@ -267,7 +269,7 @@ export default function JourneyScreen() {
 
             <ScrollView
                 style={styles.content}
-                contentContainerStyle={{ paddingBottom: 120 }}
+                contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 showsVerticalScrollIndicator={false}
             >

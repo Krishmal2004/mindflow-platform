@@ -12,10 +12,12 @@ import { Colors } from '../constants/colors';
 import { cardShadow, cardShadowElevated } from '../styles/shared';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { apiFetch, clearAuthStorage } from '../lib/apiClient';
+import { useTabBarHeight } from '../lib/useTabBarHeight';
 
 // Component
 export default function ProfileScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const tabBarHeight = useTabBarHeight();
     const [loading, setLoading] = useState(true);
     const [profileData, setProfileData] = useState<{
         username: string; research_id: string | null; email: string | null;
@@ -64,7 +66,7 @@ export default function ProfileScreen() {
 
             <ScreenHeader title="My Account" subtitle="Manage your profile & security" />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: tabBarHeight + 24 }]}>
                 {/* Profile Hero */}
                 <View style={styles.profileCard}>
                     <View style={styles.avatarCircle}>
@@ -200,7 +202,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-    content: { paddingTop: 20, paddingBottom: 120 },
+    content: { paddingTop: 20 },
 
     profileCard: {
         marginHorizontal: 24, backgroundColor: Colors.surface, borderRadius: 30,

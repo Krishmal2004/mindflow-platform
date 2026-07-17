@@ -177,6 +177,11 @@ export default function TabNavigator() {
     );
 }
 
+// Fixed portion of the bar's rendered height (paddingTop 4 + barInner paddingTop 8 +
+// tabItem minHeight 56 + barInner paddingBottom 4 = 72) — kept in sync with
+// lib/useTabBarHeight.ts's TAB_BAR_BASE_HEIGHT, which the 4 tab screens use to size
+// their own bottom scroll padding so content never ends up hidden behind this bar.
+// If any of the values below change, update TAB_BAR_BASE_HEIGHT to match.
 const styles = StyleSheet.create({
     barOuter: {
         position: 'absolute',
