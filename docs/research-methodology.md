@@ -21,7 +21,7 @@
 ### Perceived Stress Scale (PSS-10)
 The PSS is a psychological instrument that measures the degree to which situations in one's life are appraised as stressful over the last month.
 - 10-item version evaluated periodically (30-day lockout interval).
-- Items are rated on a 5-point Likert scale (0 = Never, 4 = Very Often).
+- Items are rated on a 5-point Likert scale (1 = Never, 5 = Very Often) — implemented as `1–5` (DB-constrained), not the standard instrument's `0–4`.
 - Higher scores indicate higher perceived stress.
 - Validated for research use in diverse populations.
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet, View, Text, TextInput, TouchableOpacity,
     KeyboardAvoidingView, Platform, Dimensions, ScrollView,
-    NativeSyntheticEvent, TextInputKeyPressEventData, Keyboard, LayoutAnimation, UIManager, ActivityIndicator,
+    NativeSyntheticEvent, TextInputKeyPressEventData, Keyboard, LayoutAnimation, UIManager, ActivityIndicator, Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +13,6 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, E
 
 import { RootStackParamList } from '../../types/navigation';
 import { Colors } from '../../constants/colors';
-import { VerifyIllustration } from '../../components/VerifyIllustration';
 import { Notification, NotificationType } from '../../components/Notification';
 import { PanelWave } from '../../components/PanelWave';
 import { LogoBlock } from '../../components/LogoBlock';
@@ -22,6 +21,8 @@ import { StrengthLevel, getStrength, STRENGTH_LABEL, STRENGTH_COLOR } from '../.
 
 const { width, height } = Dimensions.get('window');
 const CODE_LENGTH = 8;
+
+const ForgetImage = require('../../../assets/forget.png');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -237,7 +238,11 @@ export default function ResetOtpScreen() {
                 </Animated.View>
 
                 <Animated.View style={[styles.illusContainer, illusStyle]}>
-                    <VerifyIllustration width={width * 0.55} height={width * 0.49} />
+                    <Image
+                        source={ForgetImage}
+                        style={{ width: width * 0.55, height: width * 0.49 }}
+                        resizeMode="contain"
+                    />
                 </Animated.View>
             </View>
 

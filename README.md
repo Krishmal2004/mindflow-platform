@@ -78,7 +78,7 @@ Bug reports and feature requests: [github.com/BrAINLabs-Inc/mindflow-platform/is
 
 ## Recent Changes
 
-See the [commit history](https://github.com/BrAINLabs-Inc/mindflow-platform/commits/main) for the full log. Latest at the time of writing:
+See the [commit history](https://github.com/BrAINLabs-Inc/mindflow-platform/commits/main) for the full log.
 
 ## Contributing
 

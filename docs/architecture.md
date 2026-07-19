@@ -75,9 +75,12 @@ React + Vite + TypeScript, React Router, React Hook Form, Radix UI, Recharts —
 
 - **Database**: Supabase-hosted Postgres. Apply `database/project_db.sql` via the Supabase SQL editor (it's idempotent — safe to re-run after a schema change).
 - **Backend**: any Node-compatible host (Render/Railway/Fly/etc.) — stateless, no local file storage (audio uploads go straight to R2).
-- **Mobile**: Expo Go for local dev only; production builds need EAS (see `mobile/README.md` — no EAS project is configured yet, so push notifications and standalone builds aren't available out of the box).
+- **Mobile**: Expo Go for local dev only; production builds need EAS (see `mobile/README.md`). An EAS project is linked (`extra.eas.projectId` in `app.json`), so push-token registration and `eas build` both work — but push notifications still require a dev client or an actual EAS build, since Expo Go (SDK 53+) no longer supports remote push.
 - **web-admin / web-app**: static builds (`npm run build` → `dist/`), deployable to any static host.
 
 ## CI
 
-`.github/workflows/ci.yml` runs, per push/PR to `main`/`development`: `backend` (build + test), `mobile` (typecheck + test), `web-admin` (build). `web-app` has no CI job yet.
+`.github/workflows/`:
+- `ci.yml` — per push/PR to `main`/`development`, four jobs: `backend` (lint + build + test), `web-admin` (lint + build), `web-app` (lint + build), `mobile` (lint + typecheck + test). Lint is blocking for `backend`; the others run it `continue-on-error` (pre-existing lint issues not yet cleaned up).
+- `codeql.yml` — CodeQL security analysis on push/PR to `main` plus a weekly schedule.
+- `ios-build.yml` / `build-android.yml` / `mobile-build.yml` — native/EAS build workflows for `mobile/`, separate from the `ci.yml` typecheck+test job.

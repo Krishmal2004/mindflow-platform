@@ -5,7 +5,7 @@
 The mobile dashboard presents five independent check-ins as a gamified, sequenced roadmap (`GET /api/journey/status` reports each one's completion so the dashboard can lock/unlock nodes). Each step has its own reset cadence — sequencing is a frontend concept; the underlying tables don't know about each other.
 
 ### 1. Daily Sliders (resets every 24h)
-- **Guided video** (Step 0): an admin-curated YouTube video (`weekly_recordings`, optionally per study-group), played via `react-native-youtube-iframe`. Watch time is only counted while the player reports `playing`, not just while the screen is open; the user needs ≥60s of actual playback to continue (skippable if no video is published that week).
+- **Guided video** (Step 0): an admin-curated YouTube video (`weekly_recordings`, optionally per study-group), played via `react-native-youtube-iframe`, full-width and edge-to-edge above an info card (title, watch-progress text, tip). Watch time is only counted while the player reports `playing`, not just while the screen is open, and synced to the backend periodically — but it's tracked for analytics only; the step doesn't require any minimum watch time to continue, and is skipped entirely if no video is published that week.
 - **Relaxation & stress** sliders (1–5).
 - **Mindfulness practice**: yes/no, and if yes, duration + practice type(s) (free text, not a DB enum — option list lives in `DailySlidersScreen.tsx`).
 - **Mood** (1–5) + **primary influencing factor** (Education / Personal / Environment — also free text).

@@ -13,8 +13,12 @@ export const LeavesDecoration = ({ width = 400, height = 400, color = '#7EA889' 
     const softAmber = '#FDF4E5'; // soft sunlight
     const softMint = '#E6FAF6';  // soft mint water
 
+    // preserveAspectRatio="none": the 400x400 viewBox is square but callers can pass a
+    // non-square width/height (e.g. CompleteTaskScreen's width*0.8 height) — without this
+    // the default "meet" scaling letterboxes the square content, leaving empty gaps on the
+    // wider axis instead of filling the given box edge-to-edge.
     return (
-        <Svg width={width} height={height} viewBox="0 0 400 400" style={{ position: 'absolute' }} pointerEvents="none">
+        <Svg width={width} height={height} viewBox="0 0 400 400" preserveAspectRatio="none" style={{ position: 'absolute' }} pointerEvents="none">
             <Defs>
                 {/* Top-Right Sage Glow */}
                 <RadialGradient id="sageGlowGrad" cx="95%" cy="5%" rx="75%" ry="75%">

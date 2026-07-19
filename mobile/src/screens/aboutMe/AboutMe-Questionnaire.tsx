@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
@@ -36,6 +37,7 @@ const TOTAL_STEPS = STEP_TITLES.length;
 // once, from the Submit button on the final step (with the declaration checkbox).
 export default function AboutMeQuestionnaireScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [declarationChecked, setDeclarationChecked] = useState(false);
@@ -266,7 +268,7 @@ export default function AboutMeQuestionnaireScreen() {
                             <Image source={STEP_ILLUSTRATIONS[formStep]} style={styles.wizardIllustration} resizeMode="contain" />
                         </View>
 
-                        <View style={panelStyles.introPanel}>
+                        <View style={[panelStyles.introPanel, { paddingBottom: 28 + insets.bottom }]}>
                             <View style={styles.stepDots}>
                                 {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
                                     <View key={i} style={[styles.stepDot, formStep === i && styles.stepDotActive]} />

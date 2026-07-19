@@ -24,18 +24,21 @@ Run these from inside the relevant subdirectory (`backend/`, `mobile/`, `web-adm
 - `npm start` — run the compiled server (`dist/server.js`).
 - `npm test` — Jest (`tests/**/*.test.ts`); single file: `npx jest tests/auth.test.ts`; single test: `npx jest -t "name fragment"`.
 - `npm run seed` — `ts-node src/seed.ts`, seeds sample data including `.ex`/`.cg` research accounts.
+- `npm run lint` — ESLint (blocking in CI, unlike the other three projects).
+- `npm run loadtest:stress` / `loadtest:spike` / `loadtest:soak` / `loadtest:concurrency` — Artillery load tests under `backend/loadtest/`; each needs a token first via `npm run loadtest:token`.
 
 **mobile/**
 - `npm start` / `npm run android` / `npm run ios` / `npm run web` — Expo dev server.
 - `npx tsc --noEmit` — type check (no separate build step; this is what CI runs).
 - `npm test` — Jest via the `jest-expo` preset; single file: `npx jest src/screens/__tests__/JourneyScreen.test.tsx`.
+- `npm run lint` — ESLint (non-blocking in CI; pre-existing warnings/1 error not yet cleaned up).
 
 **web-admin/** and **web-app/**
 - `npm run dev` — Vite dev server (web-app defaults to port 5174 to coexist with web-admin's 5173).
 - `npm run build` — `tsc -b && vite build`.
 - `npm run lint` — ESLint.
 
-CI (`.github/workflows/ci.yml`) runs build+test for `backend` and `mobile`, and build for `web-admin`, as separate jobs.
+CI (`.github/workflows/ci.yml`) runs four separate jobs on push/PR to `main`/`development`: `backend` (lint + build + test, lint blocking), `web-admin` and `web-app` (lint + build, lint non-blocking), `mobile` (lint + typecheck + test, lint non-blocking). Separate workflows (`codeql.yml`, `ios-build.yml`, `build-android.yml`, `mobile-build.yml`) handle CodeQL scanning and native/EAS mobile builds.
 
 ## Architecture notes that span multiple files
 

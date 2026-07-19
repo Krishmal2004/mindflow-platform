@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Image, Animated, Easing as NativeEasing, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -130,6 +131,7 @@ function BottomWave() {
 // Screen
 export default function SplashScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
 
     const logoOpacity    = useSharedValue(0);
     const logoScale      = useSharedValue(0.82);
@@ -240,9 +242,9 @@ export default function SplashScreen() {
                 <BottomWave />
             </View>
 
-            {/* Footer */}
-            <Animated2.View style={[styles.footer, partnerStyle]}>
-                <View style={styles.footerDivider} />
+            {/* Footer — bottom offset includes the safe-area/nav-bar inset so it never
+                sits flush against (or behind) the device's gesture bar / home indicator. */}
+            <Animated2.View style={[styles.footer, { bottom: insets.bottom + 24 }, partnerStyle]}>
                 <View style={styles.footerRow}>
                     <View style={styles.footerItem}>
                         <Image source={BrainLabsLogo} style={styles.brandLogo} resizeMode="contain" />
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
     tagline: { fontSize: 11, color: P.textGray, letterSpacing: 3, textTransform: 'uppercase', fontWeight: '600' },
     pulseWrap: { marginTop: 2 },
     waveContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 220 },
-    footer: { position: 'absolute', bottom: 44, alignItems: 'center', gap: 14, width: '80%' },
+    footer: { position: 'absolute', alignItems: 'center', gap: 14, width: '80%' },
     footerDivider: { width: '100%', height: 1, backgroundColor: P.divider },
     footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20 },
     footerItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },

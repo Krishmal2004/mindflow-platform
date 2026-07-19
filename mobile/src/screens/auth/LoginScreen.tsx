@@ -225,6 +225,21 @@ export default function LoginScreen() {
                             <TouchableOpacity onPress={() => navigation.navigate('Signup')} style={styles.switchButton}>
                                 <Text style={styles.switchText}>OR SIGN UP</Text>
                             </TouchableOpacity>
+
+                            {/* Dev-only: onboarding is otherwise a one-time, first-launch-only
+                                screen (gated by AsyncStorage's `alreadyLaunched`) — this is the
+                                only way to see it again in Expo Go without clearing app data. */}
+                            {__DEV__ && (
+                                <TouchableOpacity
+                                    onPress={async () => {
+                                        await AsyncStorage.removeItem('alreadyLaunched');
+                                        navigation.replace('Onboarding');
+                                    }}
+                                    style={styles.devReplayButton}
+                                >
+                                    <Text style={styles.devReplayText}>↺ Replay onboarding (dev)</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
 
                         {/* Wave decoration at bottom of panel */}
@@ -317,4 +332,6 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     switchText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16, letterSpacing: 1 },
+    devReplayButton: { alignItems: 'center', paddingVertical: 10, marginTop: 2 },
+    devReplayText: { fontSize: 12, fontWeight: '600', color: '#90A4AE' },
 });
