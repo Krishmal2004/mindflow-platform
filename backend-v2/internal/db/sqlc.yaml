@@ -1,0 +1,15 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "sql"
+    # References database/project_db.sql directly (the repo's single source of
+    # truth for schema) rather than a local copy, so schema drift is impossible.
+    schema: "../../../database/project_db.sql"
+    gen:
+      go:
+        package: "queries"
+        out: "queries"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: true
+        emit_exact_table_names: false

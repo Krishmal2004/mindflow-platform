@@ -118,6 +118,36 @@ CREATE TRIGGER on_auth_user_created_profile
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user_profile();
 
+-- ------------------------------------------------------------------------------
+-- Table: admins
+-- Purpose: Stores admin user credentials and metadata.
+--
+-- Created here, before profiles' own RLS policies below, because those
+-- policies reference `admins` in an EXISTS subquery -- CREATE POLICY
+-- resolves table references at creation time (unlike a plain FK), so
+-- `admins` must already exist or a from-scratch run of this script errors
+-- out immediately after creating just the profiles table.
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admins (
+    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE
+);
+
+-- RLS: admins
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can view their own status" ON admins;
+CREATE POLICY "Admins can view their own status"
+    ON admins
+    FOR SELECT
+    USING (id = auth.uid());
+
+-- Index for admin lookups
+CREATE INDEX IF NOT EXISTS idx_admins_id ON admins(id);
+
 -- RLS: profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
@@ -148,30 +178,6 @@ CREATE POLICY "Admins manage all profiles"
     ON profiles FOR ALL
     USING (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()))
     WITH CHECK (EXISTS (SELECT 1 FROM admins WHERE id = auth.uid()));
-
--- ------------------------------------------------------------------------------
--- Table: admins
--- Purpose: Stores admin user credentials and metadata.
--- ------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS admins (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login TIMESTAMP WITH TIME ZONE
-);
-
--- RLS: admins
-ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Admins can view their own status" ON admins;
-CREATE POLICY "Admins can view their own status"
-    ON admins
-    FOR SELECT
-    USING (id = auth.uid());
-
--- Index for admin lookups
-CREATE INDEX IF NOT EXISTS idx_admins_id ON admins(id);
 
 -- ------------------------------------------------------------------------------
 -- Table: about_me_profiles
